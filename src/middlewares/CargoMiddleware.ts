@@ -1,7 +1,4 @@
 import { Request, Response, NextFunction } from "express";
-
-import { Cargo } from "../models/Cargo";
-import { CargoDAO } from "../dao/CargoDAO";
 import { ErrorResponse } from "../http/ErrorResponse";
 
 /**
@@ -22,12 +19,12 @@ export class CargoMiddleware {
      * - Se o campo obrigatório 'nomeCargo' está presente e não é vazio
      * 
      * @param {Request} request - Objeto de requisição do Express
-     * @param {Response} response - Objeto de resposta do Express
+     * @param {Response} _response - Objeto de resposta do Express
      * @param {NextFunction} next - Função next() para passar para o próximo middleware
      * 
      * Lança ErrorResponse com código HTTP 400 em caso de validação falha.
      */
-    validateBody = (request: Request, response: Response, next: NextFunction): void => {
+    validateBody = (request: Request, _response: Response, next: NextFunction): void => {
         console.log("🔷 CargoMiddleware.validateBody()");
         const body = request.body;
 
@@ -51,12 +48,12 @@ export class CargoMiddleware {
      * - Se o parâmetro 'idCargo' foi passado na URL
      * 
      * @param {Request} request - Objeto de requisição do Express
-     * @param {Response} response - Objeto de resposta do Express
+     * @param {Response} _response - Objeto de resposta do Express
      * @param {NextFunction} next - Função next() para passar para o próximo middleware
      * 
      * Lança ErrorResponse com código HTTP 400 caso 'idCargo' não seja fornecido.
      */
-    validateIdParam = (request: Request, response: Response, next: NextFunction): void => {
+    validateIdParam = (request: Request, _response: Response, next: NextFunction): void => {
         console.log("🔷 CargoMiddleware.validateIdParam()");
         const { idCargo } = request.params;
 

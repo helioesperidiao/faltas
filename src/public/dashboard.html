@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="/css/bootstrap.min.css" rel="stylesheet" />
+    <title>Document</title>
+</head>
+
+<body>
+    <div id="divUsuario"></div>
+    <div>
+        <a href="Cargos.html">Cargos</a>
+    </div>
+    <div>
+        <a href="Funcionarios.html">Funcionarios</a>
+    </div>
+</body>
+<script type="module">
+    const divUsuario = document.getElementById("divUsuario");
+    let userData = localStorage.getItem("userData");
+
+    if (userData) {
+        userData = JSON.parse(userData);
+        divUsuario.textContent = "Bem Vindo (" + userData.data.funcionario[0].nomeFuncionario + ")";
+        divUsuario.className = "alert alert-primary";
+    }else{
+         window.location.href = "login.html"; 
+    }
+
+</script>
+
+</html>

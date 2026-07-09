@@ -57,11 +57,12 @@ export class FuncionarioController {
      * 
      * Retorna JSON com o ID do funcionário criado e mensagem de sucesso.
      */
-    store = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
-        console.log("🔵 FuncionarioControl.store()");
+    create = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+        console.log("🔵 FuncionarioControl.create()");
         try {
             const jsonFuncionario = request.body.funcionario;
-            const resultado = await this._funcionarioService.createFuncionario(jsonFuncionario);
+            console.log(jsonFuncionario)
+            const resultado = await this._funcionarioService.create(jsonFuncionario);
 
             response.status(200).json({
                 success: true,
@@ -75,13 +76,13 @@ export class FuncionarioController {
 
     /**
      * Lista todos os funcionários cadastrados.
-     * @param {Request} request - Objeto da requisição Express.js.
+     * @param {Request} _request - Objeto da requisição Express.js.
      * @param {Response} response - Objeto da resposta Express.js.
      * @param {NextFunction} next - Middleware de tratamento de erros.
      * 
      * Retorna JSON com array de funcionários.
      */
-    index = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+    findAll = async (_request: Request, response: Response, next: NextFunction): Promise<void> => {
         console.log("🔵 FuncionarioControl.index()");
         try {
             const listaFuncionarios = await this._funcionarioService.findAll();
@@ -104,7 +105,7 @@ export class FuncionarioController {
      * 
      * Retorna JSON com os dados do funcionário encontrado.
      */
-    show = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+    findById = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
         console.log("🔵 FuncionarioControl.show()");
         try {
             const idFuncionario = request.params.idFuncionario.toString();
@@ -132,7 +133,7 @@ export class FuncionarioController {
         console.log("🔵 FuncionarioControl.update()");
         try {
             const idFuncionario = request.params.idFuncionario.toString();
-            const funcionarioAtualizado = await this._funcionarioService.updateFuncionario(idFuncionario, request.body);
+            await this._funcionarioService.updateFuncionario(idFuncionario, request.body);
 
             response.status(200).json({
                 success: true,
@@ -157,8 +158,8 @@ export class FuncionarioController {
      * 
      * Retorna status 204 se excluído com sucesso ou 404 se o funcionário não existir.
      */
-    destroy = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
-        console.log("🔵 FuncionarioControl.destroy()");
+    delete = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+        console.log("🔵 FuncionarioControl.delete("+request.params.idFuncionario.toString()+")");
         try {
             const idFuncionario = request.params.idFuncionario.toString();
             const excluiu = await this._funcionarioService.deleteFuncionario(idFuncionario);

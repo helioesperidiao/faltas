@@ -31,7 +31,7 @@ export class CargoController {
      * 
      * Retorna JSON com o ID do cargo criado e mensagem de sucesso.
      */
-    store = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+    create = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
         console.log("🔵 CargoControle.store()");
         try {
             const cargoBodyRequest = request.body.cargo;
@@ -60,13 +60,13 @@ export class CargoController {
 
     /**
      * Lista todos os cargos cadastrados.
-     * @param {Request} request - Objeto da requisição Express.js
+     * @param {Request} _request - Objeto da requisição Express.js
      * @param {Response} response - Objeto da resposta Express.js
      * @param {NextFunction} next - Middleware de tratamento de erros
      * 
      * Retorna JSON com um array de cargos.
      */
-    index = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+    findAll = async (_request: Request, response: Response, next: NextFunction): Promise<void> => {
         console.log("🔵 CargoControle.index()");
         try {
             const arrayCargos = await this._cargoService.findAll();
@@ -91,7 +91,7 @@ export class CargoController {
      * 
      * Retorna JSON com o cargo encontrado ou erro caso não exista.
      */
-    show = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+    findById = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
         console.log("🔵 CargoControle.show()");
         try {
             const cargoId = request.params.idCargo.toString();
@@ -162,11 +162,11 @@ export class CargoController {
      * 
      * Retorna status 204 se excluído com sucesso ou 404 se o cargo não existir.
      */
-    destroy = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+    delete = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
         console.log("🔵 CargoControle.destroy()");
         try {
             const cargoId = request.params.idCargo;
-            const excluiu = await this._cargoService.deleteCargo(cargoId.toString());
+            const excluiu = await this._cargoService.delete(cargoId.toString());
 
             if (excluiu) {
                 response.status(204).send({

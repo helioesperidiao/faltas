@@ -1,10 +1,3 @@
-/**
- * Representa a entidade Cargo do sistema.
- * 
- * Objetivo:
- * - Encapsular os dados de um cargo.
- * - Garantir integridade dos atributos via getters e setters.
- */
 export class Cargo {
     private _idCargo: string = '';
     private _nomeCargo: string = '';
@@ -18,8 +11,6 @@ export class Cargo {
     }
 
     set idCargo(value: string) {
-
-
         this._idCargo = value;
     }
 
@@ -39,5 +30,16 @@ export class Cargo {
             throw new Error("nomeCargo deve ter no máximo 64 caracteres.");
         }
         this._nomeCargo = nome;
+    }
+
+    /**
+     * Controla a serialização para JSON.
+     * Remove os underlines dos campos.
+     */
+    toJSON() {
+        return {
+            idCargo: this._idCargo,
+            nomeCargo: this._nomeCargo
+        };
     }
 }

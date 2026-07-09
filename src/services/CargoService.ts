@@ -79,7 +79,7 @@ export class CargoService {
     /**
      * Atualiza um cargo existente.
      *
-     * 🔹 Regra de domínio: o idCargo deve ser um número inteiro positivo.
+
      *
      * @param {string} idCargo - Identificador do cargo a ser atualizado.
      * @param {string} nomeCargo - Nome do cargo (deve ser string não vazia).
@@ -106,7 +106,7 @@ export class CargoService {
      * Deleta um cargo por ID
      * @param {string} idCargo - ID do cargo (string hex)
      */
-    deleteCargo = async (idCargo: string): Promise<boolean> => {
+    delete = async (idCargo: string): Promise<boolean> => {
         console.log("🟣 CargoService.deleteCargo()");
 
         const cargo = new Cargo();

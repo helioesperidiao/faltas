@@ -23,12 +23,12 @@ export class FuncionarioMiddleware {
      * - idCargo é um inteiro positivo
      * 
      * @param {Request} request - Objeto de requisição do Express
-     * @param {Response} response - Objeto de resposta do Express
+     * @param {Response} _response - Objeto de resposta do Express
      * @param {NextFunction} next - Função next() para passar para o próximo middleware
      * 
      * Lança ErrorResponse com código HTTP 400 em caso de validação falha.
      */
-    validateCreateBody = (request: Request, response: Response, next: NextFunction): void => {
+    validateCreateBody = (request: Request, _response: Response, next: NextFunction): void => {
         console.log("🔷 FuncionarioMiddleware.validateCreateBody()");
         const body = request.body;
 
@@ -55,11 +55,7 @@ export class FuncionarioMiddleware {
             throw new ErrorResponse(400, "Erro na validação de dados", { message: "O campo 'cargo' é obrigatório e deve ser um objeto" });
         }
 
-        const idCargo = Number(funcionario.cargo.idCargo);
-        if (!Number.isInteger(idCargo) || idCargo <= 0) {
-            throw new ErrorResponse(400, "Erro na validação de dados", { message: "O campo 'idCargo' deve ser um número inteiro positivo" });
-        }
-
+ 
         next();
     };
 
@@ -72,12 +68,12 @@ export class FuncionarioMiddleware {
      * - Formato básico de email
      * 
      * @param {Request} request - Objeto de requisição do Express
-     * @param {Response} response - Objeto de resposta do Express
+     * @param {Response} _response - Objeto de resposta do Express
      * @param {NextFunction} next - Função next() para passar para o próximo middleware
      * 
      * Lança ErrorResponse com código HTTP 400 em caso de validação falha.
      */
-    validateLoginBody = (request: Request, response: Response, next: NextFunction): void => {
+    validateLoginBody = (request: Request, _response: Response, next: NextFunction): void => {
         console.log("🔷 FuncionarioMiddleware.validateLoginBody()");
         const body = request.body;
 
@@ -109,12 +105,12 @@ export class FuncionarioMiddleware {
      * - Se o parâmetro 'idFuncionario' foi passado na URL
      * 
      * @param {Request} request - Objeto de requisição do Express
-     * @param {Response} response - Objeto de resposta do Express
+     * @param {Response} _response - Objeto de resposta do Express
      * @param {NextFunction} next - Função next() para passar para o próximo middleware
      * 
      * Lança ErrorResponse com código HTTP 400 caso 'idFuncionario' não seja fornecido.
      */
-    validateIdParam = (request: Request, response: Response, next: NextFunction): void => {
+    validateIdParam = (request: Request, _response: Response, next: NextFunction): void => {
         console.log("🔷 FuncionarioMiddleware.validateIdParam()");
         const { idFuncionario } = request.params;
 

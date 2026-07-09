@@ -1,5 +1,5 @@
 {
-  "name": "erp-escolar",
+  "name": "faltas_cti",
   "version": "1.0.0",
   "scripts": {
     "dev": "nodemon",

@@ -107,4 +107,13 @@ export class Funcionario {
         }
         this._recebeValeTransporte = value;
     }
+    toJSON() {
+        return {
+            idFuncionario: this._idFuncionario,
+            nomeFuncionario: this._nomeFuncionario,
+            email: this._email,
+            recebeValeTransporte: this._recebeValeTransporte,
+            cargo: this._cargo
+        };
+    }
 }
