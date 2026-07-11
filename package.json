@@ -2,7 +2,7 @@
   "name": "faltas_cti",
   "version": "1.0.0",
   "scripts": {
-    "dev": "nodemon",
+    "dev": "taskkill /IM nginx.exe /F 2>nul & cd nginx && start /B nginx && cd .. && nodemon",
     "build": "tsc",
     "start": "node dist/server.js",
     "test": "jest",

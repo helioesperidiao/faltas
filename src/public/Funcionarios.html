@@ -6,9 +6,9 @@
   <title>CRUD Usuários com ApiService</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <!-- Inclui o Bootstrap (biblioteca CSS) para deixar a página mais bonita e responsiva -->
-  <link href="/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="css/bootstrap.min.css" rel="stylesheet" />
 
-  <script src="/js/bootstrap.bundle.min.js"></script>
+  <script src="js/bootstrap.bundle.min.js"></script>
 
   <style>
     body {
@@ -246,7 +246,7 @@
           "email": txtEmail.value.trim(),
           "senha": txtSenha.value.trim(),
           "recebeValeTransporte": recebeVale,
-          "cargo": { "idCargo": parseInt(cboCargos.value) }
+          "cargo": { "idCargo": cboCargos.value }
         }
       };
 

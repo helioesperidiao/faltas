@@ -32,20 +32,16 @@ export class CargoService {
      * - nomeCargo não pode estar vazio
      * - Não pode existir outro cargo com mesmo nome
      */
-    createCargo = async (cargoJson: { nomeCargo: string }): Promise<string> => {
+    createCargo = async (cargo: Cargo): Promise<Cargo> => {
         console.log("🟣 CargoService.createCargo()");
 
-        const cargo = new Cargo();
-       
-        //valida regra de dominio
-        cargo.nomeCargo = cargoJson.nomeCargo;
 
         //valida regra de negócio
         const resultado = await this._cargoDAO.findByField("nomeCargo", cargo.nomeCargo);
 
         if (resultado.length > 0) {
             throw new ErrorResponse(
-                400, 
+                400,
                 "Cargo já existe",
                 { message: `O cargo ${cargo.nomeCargo} já existe` }
             );
@@ -57,7 +53,7 @@ export class CargoService {
     /**
      * Retorna todos os cargos
      */
-    findAll = async (): Promise<any[]> => {
+    findAll = async (): Promise<Cargo[]> => {
         console.log("🟣 CargoService.findAll()");
         return this._cargoDAO.findAll();
     };
@@ -66,13 +62,13 @@ export class CargoService {
      * Retorna um cargo por ID
      * @param {string} idCargo - ID do cargo (string hex do MongoDB)
      */
-    findById = async (idCargo: string): Promise<any> => {
+    findById = async (idCargo: string): Promise<Cargo | null> => {
         console.log("🟣 CargoService.findById()");
         const cargo = new Cargo();
-        
+
         //passa pela validação de regra de dominio.
         cargo.idCargo = idCargo;
-      
+
         return this._cargoDAO.findById(cargo.idCargo);
     };
 
@@ -90,14 +86,10 @@ export class CargoService {
      * @example
      * const cargoAtualizado = await cargoService.updateCargo("507f1f77bcf86cd799439011", "Gerente");
      */
-    updateCargo = async (idCargo: string, nomeCargo: string): Promise<boolean> => {
+    updateCargo = async (cargo: Cargo): Promise<boolean> => {
         console.log("🟣 CargoService.updateCargo()");
-       
-        const cargo = new Cargo();
 
-        //validação de regras de dominio
-        cargo.idCargo = idCargo;
-        cargo.nomeCargo = nomeCargo;
+   
 
         return this._cargoDAO.update(cargo);
     };
@@ -106,11 +98,10 @@ export class CargoService {
      * Deleta um cargo por ID
      * @param {string} idCargo - ID do cargo (string hex)
      */
-    delete = async (idCargo: string): Promise<boolean> => {
+    delete = async (cargo: Cargo): Promise<boolean> => {
         console.log("🟣 CargoService.deleteCargo()");
 
-        const cargo = new Cargo();
-        cargo.idCargo = idCargo;    //validação de regra de dominio
+        
 
         //passa como parametro objeto que será excluido
         return this._cargoDAO.delete(cargo);

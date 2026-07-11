@@ -1,6 +1,5 @@
 import { Router } from "express";
 import { JwtMiddleware } from "../middlewares/JwtMiddleware";
-import { FuncionarioMiddleware } from "../middlewares/FuncionarioMiddleware";
 import { FuncionarioController } from "../controllers/FuncionarioController";
 import { FuncionarioService } from "../services/FuncionarioService";
 import { FuncionarioDAO } from "../dao/FuncionarioDAO";
@@ -22,12 +21,12 @@ export class FuncionarioRouter {
         const funcionarioService = new FuncionarioService(funcionarioDAO, cargoDAO);
         const funcionarioController = new FuncionarioController(funcionarioService);
         const jwtMiddleware = new JwtMiddleware();
-        const funcionarioMiddleware = new FuncionarioMiddleware();
+
 
         // ROTA: POST /login (pública)
         this._router.post(
             "/login",
-            funcionarioMiddleware.validateLoginBody,
+
             funcionarioController.login
         );
 
@@ -35,7 +34,7 @@ export class FuncionarioRouter {
         this._router.post(
             "/",
             jwtMiddleware.validateToken,
-            funcionarioMiddleware.validateCreateBody,
+
             funcionarioController.create
         );
 
@@ -43,8 +42,7 @@ export class FuncionarioRouter {
         this._router.put(
             "/:idFuncionario",
             jwtMiddleware.validateToken,
-            funcionarioMiddleware.validateIdParam,
-            funcionarioMiddleware.validateCreateBody,
+
             funcionarioController.update
         );
 
@@ -52,7 +50,7 @@ export class FuncionarioRouter {
         this._router.delete(
             "/:idFuncionario",
             jwtMiddleware.validateToken,
-            funcionarioMiddleware.validateIdParam,
+
             funcionarioController.delete
         );
 
@@ -67,7 +65,7 @@ export class FuncionarioRouter {
         this._router.get(
             "/:idFuncionario",
             jwtMiddleware.validateToken,
-            funcionarioMiddleware.validateIdParam,
+   
             funcionarioController.findById
         );
     }

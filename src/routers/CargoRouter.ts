@@ -1,6 +1,5 @@
 import { Router } from "express";
 import { JwtMiddleware } from "../middlewares/JwtMiddleware";
-import { CargoMiddleware } from "../middlewares/CargoMiddleware";
 import { CargoController } from "../controllers/CargoController";
 import { CargoService } from "../services/CargoService";
 import { CargoDAO } from "../dao/CargoDAO";
@@ -19,12 +18,12 @@ export class CargoRouter {
         const cargoService = new CargoService(cargoDAO);
         const cargoController = new CargoController(cargoService);
         const jwtMiddleware = new JwtMiddleware();
-        const cargoMiddleware = new CargoMiddleware();
+
 
         // Rotas com prefixo /api/cargos
         this._router.post("/",
             jwtMiddleware.validateToken,
-            cargoMiddleware.validateBody,
+
             cargoController.create
         );
         this._router.get("/",
@@ -33,18 +32,15 @@ export class CargoRouter {
         );
         this._router.get("/:idCargo",
             jwtMiddleware.validateToken,
-            cargoMiddleware.validateIdParam,
+
             cargoController.findById
         );
         this._router.put("/:idCargo",
             jwtMiddleware.validateToken,
-            cargoMiddleware.validateIdParam,
-            cargoMiddleware.validateBody,
             cargoController.update
         );
         this._router.delete("/:idCargo",
             jwtMiddleware.validateToken,
-            cargoMiddleware.validateIdParam,
             cargoController.delete
         );
     }

@@ -7,100 +7,81 @@ export class FuncionarioDAO {
     private _database: MongoDatabase;
 
     constructor(dbInstance: MongoDatabase) {
-        console.log("⬆️  FuncionarioDAO.constructor()");
+        console.log("⬆️ FuncionarioDAO.constructor()");
         this._database = dbInstance;
     }
 
-    private async getFuncionarioCollection(): Promise<Collection<Document>> {
+    private async getCollection(): Promise<Collection<Document>> {
         const db = await this._database.getDb();
         return db.collection("funcionario");
     }
 
-
-
-    /**
-     * Insere um novo funcionário no banco.
-     * A senha já deve vir criptografada.
-     */
-    async create(objFuncionarioModel: Funcionario): Promise<string> {
-        console.log(`🟢 FuncionarioDAO.create(${objFuncionarioModel.email})`);
+    async create(objFuncionarioModel: Funcionario): Promise<Funcionario> {
+        console.log("🟢 FuncionarioDAO.create()");
+        const collection = await this.getCollection();
 
         if (!objFuncionarioModel.cargo) {
             throw new Error("Cargo não informado");
         }
 
-        const cargoId = objFuncionarioModel.cargo.idCargo;
-
-        // Busca o cargo apenas para obter o ObjectId (não valida existência, isso é feito no Service)
-        // Mas ainda precisamos garantir que o cargoId é um ObjectId válido
-        const cargoObjectId = new ObjectId(cargoId);
+        // Obtém a senha diretamente do campo privado (caso o getter tenha validação)
+        const senha = (objFuncionarioModel as any)._senha || objFuncionarioModel.senha || '';
 
         const doc: OptionalId<Document> = {
             nomeFuncionario: objFuncionarioModel.nomeFuncionario,
             email: objFuncionarioModel.email,
-            senha: objFuncionarioModel.senha, // Já deve vir hash
+            senha: senha,
             recebeValeTransporte: objFuncionarioModel.recebeValeTransporte,
-            cargoId: cargoObjectId,
+            cargoId: new ObjectId(objFuncionarioModel.cargo.idCargo),
         };
 
-        const funcionarioCollection = await this.getFuncionarioCollection();
-        const result = await funcionarioCollection.insertOne(doc);
+        const result = await collection.insertOne(doc);
         if (!result.insertedId) {
             throw new Error("Falha ao inserir funcionário");
         }
-        return result.insertedId.toHexString();
+
+        objFuncionarioModel.idFuncionario = result.insertedId.toHexString();
+        return objFuncionarioModel;
     }
 
-    async delete(idFuncionario: string): Promise<boolean> {
-        console.log(`🟢 FuncionarioDAO.delete(${idFuncionario})`);
-        const collection = await this.getFuncionarioCollection();
-        const filter: Filter<Document> = { _id: new ObjectId(idFuncionario) };
+    async delete(objFuncionarioModel: Funcionario): Promise<boolean> {
+        console.log(`🟢 FuncionarioDAO.delete(${objFuncionarioModel.idFuncionario})`);
+        const collection = await this.getCollection();
+        const filter: Filter<Document> = { _id: new ObjectId(objFuncionarioModel.idFuncionario) };
         const result = await collection.deleteOne(filter);
         return result.deletedCount > 0;
     }
 
-    /**
-     * Atualiza os dados de um funcionário.
-     * A senha, se fornecida, já deve vir hash.
-     * O cargoId, se fornecido, já deve ser um ObjectId válido.
-     */
-    async update(idFuncionario: string, updateData: any): Promise<boolean> {
-        console.log(`🟢 FuncionarioDAO.update(${idFuncionario})`);
-        const collection = await this.getFuncionarioCollection();
-        const filter: Filter<Document> = { _id: new ObjectId(idFuncionario) };
+    async update(objFuncionarioModel: Funcionario): Promise<boolean> {
+        console.log(`🟢 FuncionarioDAO.update(${objFuncionarioModel.idFuncionario})`);
+        const collection = await this.getCollection();
+        const filter: Filter<Document> = { _id: new ObjectId(objFuncionarioModel.idFuncionario) };
 
-        // Remove campos undefined para não sobrescrever com vazio
-        Object.keys(updateData).forEach(key => {
-            if (updateData[key] === undefined) {
-                delete updateData[key];
-            }
-        });
+        const updateData: any = {
+            nomeFuncionario: objFuncionarioModel.nomeFuncionario,
+            email: objFuncionarioModel.email,
+            recebeValeTransporte: objFuncionarioModel.recebeValeTransporte,
+        };
+
+        // Obtém a senha do campo privado
+        const senha = (objFuncionarioModel as any)._senha || objFuncionarioModel.senha;
+        if (senha) {
+            updateData.senha = senha;
+        }
+
+        if (objFuncionarioModel.cargo?.idCargo) {
+            updateData.cargoId = new ObjectId(objFuncionarioModel.cargo.idCargo);
+        }
 
         const update: UpdateFilter<Document> = { $set: updateData };
         const result = await collection.updateOne(filter, update);
         return result.modifiedCount > 0;
     }
 
-    /**
-     * Converte um documento do MongoDB (com cargo populado) em instância de Funcionario.
-     */
-    private toFuncionario(doc: any): Funcionario {
-        const cargo = new Cargo();
-        cargo.idCargo = doc.cargo.idCargo.toHexString ? doc.cargo.idCargo.toHexString() : doc.cargo.idCargo;
-        cargo.nomeCargo = doc.cargo.nomeCargo;
-
-        const funcionario = new Funcionario();
-        funcionario.idFuncionario = doc.idFuncionario.toHexString ? doc.idFuncionario.toHexString() : doc.idFuncionario;
-        funcionario.nomeFuncionario = doc.nomeFuncionario;
-        funcionario.email = doc.email;
-        funcionario.recebeValeTransporte = doc.recebeValeTransporte;
-        funcionario.cargo = cargo;
-        return funcionario;
-    }
-
     async findAll(): Promise<Funcionario[]> {
         console.log("🟢 FuncionarioDAO.findAll()");
-        const collection = await this.getFuncionarioCollection();
+        const collection = await this.getCollection();
+
         const pipeline = [
             {
                 $lookup: {
@@ -122,6 +103,7 @@ export class FuncionarioDAO {
                     idFuncionario: "$_id",
                     nomeFuncionario: 1,
                     email: 1,
+                    senha: 1, // ✅ inclui senha
                     recebeValeTransporte: 1,
                     cargo: {
                         idCargo: "$cargoInfo._id",
@@ -130,14 +112,15 @@ export class FuncionarioDAO {
                 }
             }
         ];
+
         const cursor = collection.aggregate(pipeline);
-        const resultado = await cursor.toArray();
-        return resultado.map(doc => this.toFuncionario(doc));
+        const docs = await cursor.toArray();
+        return docs.map(doc => this.toFuncionario(doc));
     }
 
     async findById(idFuncionario: string): Promise<Funcionario | null> {
         console.log(`🟢 FuncionarioDAO.findById(${idFuncionario})`);
-        const collection = await this.getFuncionarioCollection();
+        const collection = await this.getCollection();
         const filter: Filter<Document> = { _id: new ObjectId(idFuncionario) };
 
         const pipeline = [
@@ -162,6 +145,7 @@ export class FuncionarioDAO {
                     idFuncionario: "$_id",
                     nomeFuncionario: 1,
                     email: 1,
+                    senha: 1, // ✅ inclui senha
                     recebeValeTransporte: 1,
                     cargo: {
                         idCargo: "$cargoInfo._id",
@@ -170,20 +154,21 @@ export class FuncionarioDAO {
                 }
             }
         ];
+
         const cursor = collection.aggregate(pipeline);
-        const resultado = await cursor.toArray();
-        if (resultado.length === 0) return null;
-        return this.toFuncionario(resultado[0]);
+        const docs = await cursor.toArray();
+        if (docs.length === 0) return null;
+        return this.toFuncionario(docs[0]);
     }
 
     async findByField(field: string, value: any): Promise<Funcionario[]> {
-        console.log(`🟢 FuncionarioDAO.findByField(${field}=${value})`);
+        console.log(`🟢 FuncionarioDAO.findByField() - Campo: ${field}, Valor: ${value}`);
         const allowedFields = ["_id", "nomeFuncionario", "email", "recebeValeTransporte", "cargoId"];
         if (!allowedFields.includes(field)) {
-            throw new Error("Campo inválido para busca");
+            throw new Error(`Campo inválido para busca: ${field}`);
         }
 
-        const collection = await this.getFuncionarioCollection();
+        const collection = await this.getCollection();
         let filter: Filter<Document> = {};
         if (field === "_id") {
             filter = { _id: new ObjectId(value) };
@@ -213,6 +198,7 @@ export class FuncionarioDAO {
                     idFuncionario: "$_id",
                     nomeFuncionario: 1,
                     email: 1,
+                    senha: 1, // ✅ inclui senha
                     recebeValeTransporte: 1,
                     cargo: {
                         idCargo: "$cargoInfo._id",
@@ -221,18 +207,20 @@ export class FuncionarioDAO {
                 }
             }
         ];
+
         const cursor = collection.aggregate(pipeline);
-        const resultado = await cursor.toArray();
-        return resultado.map(doc => this.toFuncionario(doc));
+        const docs = await cursor.toArray();
+        return docs.map(doc => this.toFuncionario(doc));
     }
 
     /**
-     * Busca um funcionário pelo email, retornando o documento bruto (com senha) para validação.
-     * Usado exclusivamente no login.
+     * Busca um funcionário pelo email (para login).
+     * Retorna o documento com a senha para validação.
      */
-    async findRawByEmail(email: string): Promise<any | null> {
-        console.log(`🟢 FuncionarioDAO.findRawByEmail(${email})`);
-        const collection = await this.getFuncionarioCollection();
+    async findByEmail(email: string): Promise<Funcionario | null> {
+        console.log(`🟢 FuncionarioDAO.findByEmail(${email})`);
+        const collection = await this.getCollection();
+
         const pipeline = [
             { $match: { email } },
             {
@@ -255,7 +243,7 @@ export class FuncionarioDAO {
                     idFuncionario: "$_id",
                     nomeFuncionario: 1,
                     email: 1,
-                    senha: 1,
+                    senha: 1, // ✅ inclui senha
                     recebeValeTransporte: 1,
                     cargo: {
                         idCargo: "$cargoInfo._id",
@@ -264,8 +252,35 @@ export class FuncionarioDAO {
                 }
             }
         ];
+
         const cursor = collection.aggregate(pipeline);
-        const resultado = await cursor.toArray();
-        return resultado.length === 1 ? resultado[0] : null;
+        const docs = await cursor.toArray();
+
+        if (docs.length === 0) {
+            return null;
+        }
+
+        return this.toFuncionario(docs[0]);
+    }
+
+    /**
+     * Converte um documento MongoDB em uma instância de Funcionario.
+     * Usa os setters para garantir validações.
+     */
+    private toFuncionario(doc: any): Funcionario {
+        const cargo = new Cargo();
+        cargo.idCargo = doc.cargo.idCargo.toHexString ? doc.cargo.idCargo.toHexString() : doc.cargo.idCargo;
+        cargo.nomeCargo = doc.cargo.nomeCargo;
+
+        const funcionario = new Funcionario();
+        funcionario.idFuncionario = doc.idFuncionario.toHexString ? doc.idFuncionario.toHexString() : doc.idFuncionario;
+        funcionario.nomeFuncionario = doc.nomeFuncionario;
+        funcionario.email = doc.email;
+        // Atribui a senha diretamente ao campo privado para evitar validação
+        (funcionario as any)._senha = doc.senha || '';
+        funcionario.recebeValeTransporte = doc.recebeValeTransporte;
+        funcionario.cargo = cargo;
+
+        return funcionario;
     }
 }

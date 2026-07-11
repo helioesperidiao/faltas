@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { CargoService } from "../services/CargoService";
+import { Cargo } from "@/models/Cargo";
 
 /**
  * Classe responsável por controlar os endpoints da API REST para a entidade Cargo.
@@ -34,17 +35,19 @@ export class CargoController {
     create = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
         console.log("🔵 CargoControle.store()");
         try {
-            const cargoBodyRequest = request.body.cargo;
+    
+            const novoCargo = new Cargo();
+            novoCargo.nomeCargo =  request.body.cargo.nomeCargo;
 
-            const novoId = await this._cargoService.createCargo(cargoBodyRequest);
+            const novoId = await this._cargoService.createCargo(novoCargo);
 
             const objResposta = {
                 success: true,
                 message: "Cadastro realizado com sucesso",
                 data: {
                     cargos: [{
-                        idCargo: novoId,
-                        nomeCargo: cargoBodyRequest.nomeCargo
+                        idCargo: novoCargo.idCargo,
+                        nomeCargo: novoCargo.nomeCargo
                     }]
                 }
             };
@@ -124,7 +127,12 @@ export class CargoController {
         try {
             const cargoId = request.params.idCargo.toString();
             const nomeCargo = request.body.cargo.nomeCargo;
-            const atualizou = await this._cargoService.updateCargo(cargoId, nomeCargo);
+
+            const cargo = new Cargo();
+            cargo.idCargo = cargoId;
+            cargo.nomeCargo = nomeCargo;
+
+            const atualizou = await this._cargoService.updateCargo(cargo);
 
             if (atualizou) {
                 response.status(200).send({
@@ -165,8 +173,12 @@ export class CargoController {
     delete = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
         console.log("🔵 CargoControle.destroy()");
         try {
-            const cargoId = request.params.idCargo;
-            const excluiu = await this._cargoService.delete(cargoId.toString());
+            const cargo = new Cargo();
+            cargo.idCargo = request.params.idCargo.toString();
+
+
+
+            const excluiu = await this._cargoService.delete(cargo);
 
             if (excluiu) {
                 response.status(204).send({
@@ -174,7 +186,7 @@ export class CargoController {
                     message: 'Excluído com sucesso',
                     data: {
                         cargos: [{
-                            idCargo: cargoId
+                            idCargo: cargo.idCargo
                         }]
                     }
                 });
@@ -184,7 +196,7 @@ export class CargoController {
                     message: 'Cargo não encontrado para exclusão',
                     data: {
                         cargos: [{
-                            idCargo: cargoId,
+                            idCargo: cargo.idCargo,
                         }]
                     }
                 });

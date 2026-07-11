@@ -1,3 +1,5 @@
+import { ObjectId } from "mongodb";
+
 export class Cargo {
     private _idCargo: string = '';
     private _nomeCargo: string = '';
@@ -11,6 +13,12 @@ export class Cargo {
     }
 
     set idCargo(value: string) {
+        if (!value) {
+            throw new Error("idCargo é obrigatório.");
+        }
+        if (!ObjectId.isValid(value)) {
+            throw new Error(`idCargo inválido: "${value}". Deve ser um ObjectId de 24 caracteres hexadecimais.`);
+        }
         this._idCargo = value;
     }
 

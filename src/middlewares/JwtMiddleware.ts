@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { MeuTokenJWT } from '../http/MeuTokenJWT';
 
+
 /**
  * Middleware para validação de tokens JWT em requisições.
  * 
@@ -33,33 +34,21 @@ export class JwtMiddleware {
         const authorization = request.headers.authorization;
 
         const jwt = new MeuTokenJWT();
+        const funcionario = jwt.validarToken(authorization as string);
 
-        const autorizado = jwt.validarToken(authorization as string);
+        if (funcionario) {
+            // Opcional: armazena o funcionário na requisição para uso posterior
+            (request as any).user = funcionario;
 
-        if (autorizado === true) {
-            const payload = jwt.payload;
-            // Garantimos que payload não é null, pois autorizado é true
-            if (payload) {
-                const obj = {
-                    email: payload.email,
-                    role: payload.role,
-                    name: payload.name,
-                    idFuncionario: payload.idFuncionario // necessário para a geração, mas o obj original não o incluía; mantido para consistência
-                };
+            // Opcional: regenera o token e atualiza o header (se quiser manter refresh)
+            // request.headers.authorization = jwt.gerarToken(funcionario);
 
-                // Re-gerar token e atualizar no header da requisição
-                request.headers.authorization = jwt.gerarToken(obj);
-            }
-
-            next(); // Prossegue para o próximo middleware ou controller
+            next();
         } else {
-            const objResposta = {
+            response.status(401).send({
                 status: false,
                 msg: "token inválido"
-            };
-
-            // Retorna resposta de erro 401 (Unauthorized)
-            response.status(401).send(objResposta);
+            });
         }
-    }
+    };
 }

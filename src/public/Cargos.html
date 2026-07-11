@@ -8,9 +8,9 @@
   <!-- Meta tag essencial para responsividade em dispositivos móveis -->
 
   <!-- Importa o Bootstrap para estilização rápida e layout responsivo -->
-  <link href="/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="css/bootstrap.min.css" rel="stylesheet" />
   
-  <script src="/js/bootstrap.bundle.min.js"></script>
+  <script src="js/bootstrap.bundle.min.js"></script>
 
 
   <!-- Estilos adicionais da página -->
@@ -169,7 +169,7 @@
       };
 
       // Chama o endpoint POST da API
-      await api.post("/api/v1/cargos", objetoCriar);
+      await api.post("api/v1/cargos", objetoCriar);
 
       // Atualiza a tabela após criar
       listAll();
@@ -190,7 +190,7 @@
       };
 
       // Envia atualização via PUT
-      await api.put("/api/v1/cargos", id, objetoAtualizar);
+      await api.put("api/v1/cargos", id, objetoAtualizar);
       listAll(); // Atualiza a tabela
     };
     divBotoes.appendChild(btnAtualizar);
@@ -213,7 +213,7 @@
       // Botão de confirmação no modal
       const btnConfirmDelete = document.getElementById("btnConfirmDelete");
       btnConfirmDelete.onclick = async function () {
-        await api.delete("/api/v1/cargos", id);
+        await api.delete("api/v1/cargos", id);
         listAll();
         divResposta.textContent = `Cargo ID ${id} excluído com sucesso.`;
         divResposta.className = "alert alert-success";
@@ -228,7 +228,7 @@
     // Função para buscar todos os cargos e exibi-los em tabela
     // -------------------------------------------------------------------------
     async function listAll() {
-      API_DATA = await api.get("/api/v1/cargos"); // Requisição GET
+      API_DATA = await api.get("api/v1/cargos"); // Requisição GET
 
       if (API_DATA.success == true) {
         renderTable(API_DATA); // Mostra tabela com dados válidos

@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { FuncionarioService } from "../services/FuncionarioService";
+import { Funcionario } from "@/models/Funcionario";
 
 /**
  * Classe responsável por controlar os endpoints da API REST para a entidade Funcionario.
@@ -36,8 +37,11 @@ export class FuncionarioController {
     login = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
         console.log("🔵 FuncionarioControl.login()");
         try {
-            const jsonFuncionario = request.body.funcionario;
-            const resultado = await this._funcionarioService.loginFuncionario(jsonFuncionario);
+            const funcionario = new Funcionario();
+            funcionario.email = request.body.funcionario.email;
+            funcionario.senha = request.body.funcionario.senha;
+
+            const resultado = await this._funcionarioService.loginFuncionario(funcionario);
 
             response.status(200).json({
                 success: true,
@@ -60,9 +64,16 @@ export class FuncionarioController {
     create = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
         console.log("🔵 FuncionarioControl.create()");
         try {
-            const jsonFuncionario = request.body.funcionario;
-            console.log(jsonFuncionario)
-            const resultado = await this._funcionarioService.create(jsonFuncionario);
+
+            console.log( request.body.funcionario.cargo.idCargo.toString());
+            const funcionario = new Funcionario();
+            funcionario.nomeFuncionario = request.body.funcionario.nomeFuncionario;
+            funcionario.cargo.idCargo = request.body.funcionario.cargo.idCargo.toString();
+            funcionario.email = request.body.funcionario.email;
+            funcionario.recebeValeTransporte = request.body.funcionario.recebeValeTransporte;
+            funcionario.senha = request.body.funcionario.senha;
+            console.log(funcionario)
+            const resultado = await this._funcionarioService.create(funcionario);
 
             response.status(200).json({
                 success: true,
@@ -133,7 +144,16 @@ export class FuncionarioController {
         console.log("🔵 FuncionarioControl.update()");
         try {
             const idFuncionario = request.params.idFuncionario.toString();
-            await this._funcionarioService.updateFuncionario(idFuncionario, request.body);
+            const funcionario = new Funcionario();
+            funcionario.idFuncionario = idFuncionario;
+            funcionario.nomeFuncionario = request.body.funcionario.nomeFuncionario;
+            funcionario.cargo.idCargo = request.body.funcionario.cargo.idCargo;
+            funcionario.email = request.body.funcionario.email;
+            funcionario.recebeValeTransporte = request.body.funcionario.recebeValeTransporte;
+            funcionario.senha = request.body.funcionario.senha;
+            console.log(funcionario)
+
+            await this._funcionarioService.updateFuncionario(funcionario);
 
             response.status(200).json({
                 success: true,
@@ -159,10 +179,12 @@ export class FuncionarioController {
      * Retorna status 204 se excluído com sucesso ou 404 se o funcionário não existir.
      */
     delete = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
-        console.log("🔵 FuncionarioControl.delete("+request.params.idFuncionario.toString()+")");
+        console.log("🔵 FuncionarioControl.delete(" + request.params.idFuncionario.toString() + ")");
         try {
             const idFuncionario = request.params.idFuncionario.toString();
-            const excluiu = await this._funcionarioService.deleteFuncionario(idFuncionario);
+            const funcionario = new Funcionario();
+            funcionario.idFuncionario = idFuncionario;
+            const excluiu = await this._funcionarioService.deleteFuncionario(funcionario);
 
             if (!excluiu) {
                 response.status(404).json({

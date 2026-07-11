@@ -1,3 +1,4 @@
+import { ObjectId } from "mongodb";
 import { Cargo } from "./Cargo";
 
 /**
@@ -16,14 +17,23 @@ export class Funcionario {
     private _senha: string = '';
     private _recebeValeTransporte: number = 0; // 0 ou 1
 
+    constructor(){
+        this._cargo = new Cargo();
+    }
     get idFuncionario(): string {
         return this._idFuncionario;
     }
 
-    set idFuncionario(value: string) {
-
+   set idFuncionario(value: string) {
+        if (!value) {
+            throw new Error("idCargo é obrigatório.");
+        }
+        if (!ObjectId.isValid(value)) {
+            throw new Error(`idCargo inválido: "${value}". Deve ser um ObjectId de 24 caracteres hexadecimais.`);
+        }
         this._idFuncionario = value;
     }
+
 
     get cargo(): Cargo {
         return this._cargo;
@@ -75,26 +85,8 @@ export class Funcionario {
     }
 
     set senha(value: string) {
-        if (typeof value !== "string") {
-            throw new Error("senha deve ser uma string.");
-        }
-        const senhaTrimmed = value.trim();
-        if (senhaTrimmed === "") {
-            throw new Error("senha não pode ser vazia.");
-        }
-        if (senhaTrimmed.length < 6) {
-            throw new Error("senha deve ter pelo menos 6 caracteres.");
-        }
-        if (!/[A-Z]/.test(senhaTrimmed)) {
-            throw new Error("senha deve conter pelo menos uma letra maiúscula.");
-        }
-        if (!/[0-9]/.test(senhaTrimmed)) {
-            throw new Error("senha deve conter pelo menos um número.");
-        }
-        if (!/[!@#$%^&*(),.?":{}|<>]/.test(senhaTrimmed)) {
-            throw new Error("senha deve conter pelo menos um caractere especial.");
-        }
-        this._senha = senhaTrimmed;
+ 
+        this._senha = value;
     }
 
     get recebeValeTransporte(): number {
@@ -116,4 +108,5 @@ export class Funcionario {
             cargo: this._cargo
         };
     }
+    
 }

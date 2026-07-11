@@ -10,7 +10,7 @@ import { Server } from "./Server";
 const startServer = async (): Promise<void> => {
     try {
         // Porta definida por variável de ambiente ou padrão 8080
-        const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 8080;
+        const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
         
         const server = new Server(PORT);
         await server.init(); // Conecta ao banco e configura middlewares/rotas

@@ -15,17 +15,21 @@ export class CargoDAO {
         return db.collection("cargo");
     }
 
-    async create(objCargoModel: Cargo): Promise<string> {
+    async create(cargo: Cargo): Promise<Cargo> {
         console.log("🟢 CargoDAO.create()");
         const collection = await this.getCollection();
         const doc: OptionalId<Document> = {
-            nomeCargo: objCargoModel.nomeCargo,
+            nomeCargo: cargo.nomeCargo,
         };
         const result = await collection.insertOne(doc);
         if (!result.insertedId) {
             throw new Error("Falha ao inserir cargo");
         }
-        return result.insertedId.toHexString();
+
+     
+        cargo.idCargo  =result.insertedId.toString();;
+       
+        return cargo;
     }
 
     async delete(objCargoModel: Cargo): Promise<boolean> {

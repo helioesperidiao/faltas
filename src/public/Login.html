@@ -116,7 +116,7 @@
             */
 
             // Chama a API validar o login
-            const respostaAPI = await api.post("/api/v1/funcionarios/login", dadosLogin);
+            const respostaAPI = await api.post("api/v1/funcionarios/login", dadosLogin);
             console.log(respostaAPI)
             if (respostaAPI.success == true) {
                 localStorage.setItem("userData", JSON.stringify(respostaAPI)); // converte a resposta para texto e armazena no local storage na variavel userData
