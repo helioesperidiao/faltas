@@ -1,6 +1,11 @@
 /**
  * Classe ApiService para facilitar chamadas HTTP (GET, POST, PUT, DELETE) a APIs RESTful.
  * Suporta autenticação via token Bearer e fornece métodos reutilizáveis para diferentes tipos de requisições.
+ * 
+ * @example
+ * const api = new ApiService(token);
+ * const response = await api.get("api/v1/cargos");
+ * if (response.success) { ... }
  */
 export default class ApiService {
     #token;  // Atributo privado para armazenar o token de autenticação
@@ -200,6 +205,10 @@ export default class ApiService {
      * @param {string} uri - URL base do recurso.
      * @param {string|number} id - ID do recurso a ser deletado.
      * @returns {Promise<Object|null>} Retorna JSON da resposta ou null se não houver corpo ou erro.
+     * 
+     * 🔹 Tratamento especial para 204 No Content:
+     * Retorna { success: true, message: "Excluído com sucesso", data: null }
+     * para padronizar a resposta no front-end.
      */
     async delete(uri, id) {
         const fullUri = `${uri}/${id}`;
@@ -208,20 +217,30 @@ export default class ApiService {
             const headers = this._getHeaders();
             const options = { method: "DELETE", headers };
             const response = await fetch(fullUri, options);
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status} - ${response.statusText}`);
+
+            // 204 No Content → sucesso sem corpo
+            if (response.status === 204) {
+                this._logRequest('DELETE', fullUri, options, response, null);
+                return { success: true, message: "Excluído com sucesso", data: null };
             }
-            // DELETE pode não ter corpo, então tentamos parsear JSON ou retornar null
+
+            // Se não for 204, tenta parsear JSON
             let jsonObj = null;
             const contentType = response.headers.get('content-type');
             if (contentType && contentType.includes('application/json')) {
                 jsonObj = await response.json();
             }
+
+            if (!response.ok) {
+                throw new Error(jsonObj?.message || `HTTP ${response.status} - ${response.statusText}`);
+            }
+
             this._logRequest('DELETE', fullUri, options, response, jsonObj);
             return jsonObj;
+
         } catch (error) {
             this._logRequest('DELETE', fullUri, {}, null, null, error);
-            return null;
+            return { success: false, message: error.message || "Erro ao excluir recurso", error };
         }
     }
 

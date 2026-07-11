@@ -26,6 +26,7 @@ export class MeuTokenJWT {
      * Gera um token JWT a partir de um objeto Funcionario.
      */
     gerarToken = (funcionario: Funcionario): string => {
+        console.log ("🔷  MeuTokenJWT.gerarToken()");
         const headers = {
             alg: this._alg,
             typ: this._type,
@@ -55,6 +56,7 @@ export class MeuTokenJWT {
      * Valida um token JWT e retorna um objeto Funcionario se válido, ou null.
      */
     validarToken = (stringToken: string): Funcionario | null => {
+        console.log ("🔷  MeuTokenJWT.validarToken()");
         if (!stringToken || stringToken.trim() === "") {
             console.error("Token não fornecido ou vazio");
             return null;
@@ -67,7 +69,7 @@ export class MeuTokenJWT {
                 algorithms: [this._alg as jwt.Algorithm],
             });
 
-            console.log(decoded);
+           // console.log(decoded);
 
             const cargo = new Cargo();
             if (decoded.role) {

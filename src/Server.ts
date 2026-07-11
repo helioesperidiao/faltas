@@ -5,6 +5,7 @@ import path from "path";
 import { CargoRouter } from "./routers/CargoRouter";
 import { FuncionarioRouter } from "./routers/FuncionarioRouter";
 import { ErrorResponse } from "./http/ErrorResponse";
+import { StandardResponse } from "./http/StandardResponse";
 
 export class Server {
     private _porta: number;
@@ -32,29 +33,27 @@ export class Server {
         //await this._mongoDB.connect();
 
         // Rotas da API (os routers já têm seus prefixos internos)
-        this._app.use(CargoRouter.PREFIX, this._cargoRouter.getRouter());
-        this._app.use(FuncionarioRouter.PREFIX, this._funcionarioRouter.getRouter());
+        this._app.use(this._cargoRouter.getRouter());
+        this._app.use(this._funcionarioRouter.getRouter());
 
    
 
         this.setupErrorMiddleware();
     }
 
-    private setupErrorMiddleware(): void {
+   private setupErrorMiddleware(): void {
         this._app.use((error: any, _req: Request, res: Response, _next: NextFunction) => {
-            if (error instanceof ErrorResponse) {
-                return res.status(error.httpCode).json({
-                    success: false,
-                    message: error.message,
-                    error: error.error
-                });
-            }
             console.error("❌ Erro capturado:", error);
-            return res.status(500).json({
-                success: false,
-                message: "Erro interno do servidor",
-                error: { message: error.message || "Erro interno" }
-            });
+
+            // Se for um erro personalizado (ErrorResponse), usa seus dados
+            if (error instanceof ErrorResponse) {
+                return StandardResponse.error(error.message, error.error, error.httpCode).send(res);
+            }
+
+            // Erro genérico (não tratado)
+            return StandardResponse.internalError("Erro interno do servidor", {
+                message: error.message || "Erro interno"
+            }).send(res);
         });
     }
 

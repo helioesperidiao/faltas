@@ -3,85 +3,51 @@
 
 <head>
   <meta charset="UTF-8" />
-  <title>CRUD Usuários com ApiService</title>
+  <title>CRUD Cargos com ApiService</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- Meta tag essencial para responsividade em dispositivos móveis -->
-
-  <!-- Importa o Bootstrap para estilização rápida e layout responsivo -->
   <link href="css/bootstrap.min.css" rel="stylesheet" />
-  
   <script src="js/bootstrap.bundle.min.js"></script>
-
-
-  <!-- Estilos adicionais da página -->
   <style>
-    body {
-      padding: 2em;
-      /* Espaçamento interno geral */
-    }
-
-    table {
-      margin-top: 1em;
-      /* Espaço acima da tabela */
-    }
+    body { padding: 2em; }
+    table { margin-top: 1em; }
   </style>
 </head>
 
 <body class="container">
-  <!-- Usa a classe 'container' do Bootstrap para centralizar o conteúdo -->
 
   <h1 class="mb-4">Gerenciamento de Cargos</h1>
-  <!-- Título principal da aplicação -->
 
-  <!-- =========================== SEÇÃO DE FILTRO =========================== -->
+  <!-- FILTRO -->
   <div class="card mb-3">
-    <div class="card-header">
-      Filtro de Cargo
-    </div>
+    <div class="card-header">Filtro de Cargo</div>
     <div class="card-body">
-      <!-- Campo de entrada para digitar o nome e filtrar cargos -->
       <label for="txtFiltroCargo" class="form-label">Nome do Cargo</label>
       <input type="text" id="txtFiltroCargo" class="form-control" placeholder="Digite o nome do cargo">
     </div>
   </div>
 
-  <!-- =========================== SEÇÃO DE CADASTRO =========================== -->
+  <!-- CADASTRO -->
   <div class="card mb-3">
-    <div class="card-header">
-      Cadastro de Cargo
-    </div>
-
+    <div class="card-header">Cadastro de Cargo</div>
     <div class="card-body">
-      <!-- Campos de formulário para criar/editar cargos -->
       <div class="mb-3">
-        <!-- Campo ID (desabilitado, usado apenas para update/delete) -->
         <input type="text" id="txtId" class="form-control mb-2" disabled placeholder="ID (para update ou delete)" />
-
-        <!-- Campo para o nome do cargo -->
         <input type="text" id="txtNomeCargo" class="form-control mb-2" placeholder="Nome" />
       </div>
-
-      <!-- Área onde os botões CRUD serão inseridos dinamicamente -->
       <div class="mb-3 d-flex gap-2" id="divBotoes"></div>
-
-      <!-- Div para mensagens de sucesso/erro -->
       <div id="divResposta"></div>
     </div>
   </div>
 
-  <!-- =========================== SEÇÃO DE LISTAGEM =========================== -->
+  <!-- LISTAGEM -->
   <div class="card mt-4">
-    <div class="card-header">
-      Lista de Cargos
-    </div>
+    <div class="card-header">Lista de Cargos</div>
     <div class="card-body">
-      <!-- Div onde a tabela será renderizada dinamicamente -->
       <div id="divTabela"></div>
     </div>
   </div>
 
-
-  <!-- Modal de confirmação -->
+  <!-- MODAL DE CONFIRMAÇÃO -->
   <div class="modal fade" id="modalConfirm" tabindex="-1" aria-labelledby="modalConfirmLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
@@ -89,9 +55,7 @@
           <h5 class="modal-title" id="modalConfirmLabel">Confirmar Exclusão</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
         </div>
-        <div class="modal-body">
-          Tem certeza que deseja excluir este cargo?
-        </div>
+        <div class="modal-body">Tem certeza que deseja excluir este cargo?</div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
           <button type="button" class="btn btn-danger" id="btnConfirmDelete">Excluir</button>
@@ -100,254 +64,196 @@
     </div>
   </div>
 
-  <!-- =========================== SCRIPT PRINCIPAL =========================== -->
   <script type="module">
-    // Importa a classe ApiService (responsável por comunicação com a API)
     import ApiService from './ApiService.js';
 
-    // Referência de elemento (não usada neste caso)
-    const divUsuario = document.getElementById("divUsuario");
-
-    // Recupera informações do usuário armazenadas localmente (token)
     let userData = localStorage.getItem("userData");
-
-    // Se o token existir, faz parse do JSON; caso contrário, redireciona ao login
     if (userData) {
       userData = JSON.parse(userData);
     } else {
-      window.location.href = "login.html"; // Segurança: força login
+      window.location.href = "login.html";
     }
-
-    // Extrai o token JWT do objeto userData
     const token = userData.data.token;
-
-    // Instancia o serviço de API, passando o token (usado nos headers)
     const api = new ApiService(token);
 
-    // Variável global que guardará os dados da API
     let API_DATA;
 
-    // Referências para elementos da interface
     const txtId = document.getElementById("txtId");
     const txtNomeCargo = document.getElementById("txtNomeCargo");
+    const txtFiltroCargo = document.getElementById("txtFiltroCargo");
     const divBotoes = document.getElementById("divBotoes");
     const divResposta = document.getElementById("divResposta");
 
-    // -------------------------------------------------------------------------
-    // Função utilitária para criar botões dinamicamente
-    // -------------------------------------------------------------------------
     function createButton(text, className) {
       const btn = document.createElement("button");
       btn.textContent = text;
-      btn.className = `btn ${className} flex-fill`; // Ocupa toda a largura dentro do container flex
+      btn.className = `btn ${className} flex-fill`;
       return btn;
     }
 
-    // ========================= CRIAÇÃO DOS BOTÕES CRUD =========================
+    function mostrarMensagem(mensagem, tipo = "success") {
+      divResposta.textContent = mensagem;
+      divResposta.className = `alert alert-${tipo}`;
+    }
 
-    // ---------- BOTÃO LISTAR ----------
+    // ---------- BOTÕES ----------
     const btnListar = createButton("Listar", "btn-primary");
-    btnListar.onclick = async function btnListar_click() {
-      // Atualiza a lista de cargos chamando a API
-      listAll();
-    };
+    btnListar.onclick = () => listAll();
     divBotoes.appendChild(btnListar);
 
-    // ---------- BOTÃO CRIAR ----------
     const btnCriar = createButton("Criar", "btn-success");
-    btnCriar.onclick = async function btnCriar_click() {
-      // Valida se o campo nome foi preenchido
-      if (txtNomeCargo.value.trim() == "") {
-        divResposta.textContent = "Nome inválido";
-        divResposta.className = "alert alert-warning";
+    btnCriar.onclick = async () => {
+      const nome = txtNomeCargo.value.trim();
+      if (!nome) {
+        mostrarMensagem("Informe o nome do cargo", "warning");
         return;
       }
-
-      // Monta o objeto no formato esperado pela API
-      const objetoCriar = {
-        "cargo": { "nomeCargo": txtNomeCargo.value.trim() }
-      };
-
-      // Chama o endpoint POST da API
-      await api.post("api/v1/cargos", objetoCriar);
-
-      // Atualiza a tabela após criar
-      listAll();
+      const objeto = { cargo: { nomeCargo: nome } };
+      const resposta = await api.post("api/v1/cargos", objeto);
+      if (resposta.success) {
+        mostrarMensagem(resposta.message || "Cargo criado com sucesso", "success");
+        listAll();
+        txtNomeCargo.value = "";
+      } else {
+        mostrarMensagem(resposta.message || "Erro ao criar cargo", "danger");
+        if (resposta.error) console.error(resposta.error);
+      }
     };
     divBotoes.appendChild(btnCriar);
 
-    // ---------- BOTÃO ATUALIZAR ----------
     const btnAtualizar = createButton("Atualizar", "btn-warning");
-    btnAtualizar.onclick = async function btnAtualizar_click() {
+    btnAtualizar.onclick = async () => {
       const id = txtId.value.trim();
       if (!id) {
-        divResposta.textContent = "Selecione um cargo para atualizar";
-        divResposta.className = "alert alert-warning";
-        return
+        mostrarMensagem("Selecione um cargo para atualizar", "warning");
+        return;
       }
-      const objetoAtualizar = {
-        "cargo": { "nomeCargo": txtNomeCargo.value.trim() }
-      };
-
-      // Envia atualização via PUT
-      await api.put("api/v1/cargos", id, objetoAtualizar);
-      listAll(); // Atualiza a tabela
+      const nome = txtNomeCargo.value.trim();
+      if (!nome) {
+        mostrarMensagem("Informe o nome do cargo", "warning");
+        return;
+      }
+      const objeto = { cargo: { nomeCargo: nome } };
+      const resposta = await api.put("api/v1/cargos", id, objeto);
+      if (resposta.success) {
+        mostrarMensagem(resposta.message || "Cargo atualizado com sucesso", "success");
+        listAll();
+        txtId.value = "";
+        txtNomeCargo.value = "";
+      } else {
+        mostrarMensagem(resposta.message || "Erro ao atualizar cargo", "danger");
+        if (resposta.error) console.error(resposta.error);
+      }
     };
     divBotoes.appendChild(btnAtualizar);
 
-    // ---------- BOTÃO EXCLUIR ----------
     const btnExcluir = createButton("Excluir", "btn-danger");
-    btnExcluir.onclick = function () {
-      // Atualiza o ID do cargo a ser excluído
+    btnExcluir.onclick = () => {
       const id = txtId.value.trim();
       if (!id) {
-        divResposta.textContent = "Selecione um cargo para excluir";
-        divResposta.className = "alert alert-warning";
+        mostrarMensagem("Selecione um cargo para excluir", "warning");
         return;
       }
-
-      // Mostra o modal
       const modal = new bootstrap.Modal(document.getElementById('modalConfirm'));
       modal.show();
-
-      // Botão de confirmação no modal
       const btnConfirmDelete = document.getElementById("btnConfirmDelete");
-      btnConfirmDelete.onclick = async function () {
-        await api.delete("api/v1/cargos", id);
-        listAll();
-        divResposta.textContent = `Cargo ID ${id} excluído com sucesso.`;
-        divResposta.className = "alert alert-success";
-        txtId.value = "";
-        txtNomeCargo.value = "";
-        modal.hide(); // fecha o modal
+      btnConfirmDelete.onclick = async () => {
+        const resposta = await api.delete("api/v1/cargos", id);
+        // Trata a resposta (que já está normalizada pelo ApiService)
+        if (resposta.success) {
+          mostrarMensagem(resposta.message || "Cargo excluído com sucesso", "success");
+          listAll();
+          txtId.value = "";
+          txtNomeCargo.value = "";
+        } else {
+          mostrarMensagem(resposta.message || "Erro ao excluir cargo", "danger");
+          if (resposta.error) console.error(resposta.error);
+        }
+        modal.hide();
       };
     };
     divBotoes.appendChild(btnExcluir);
 
-    // -------------------------------------------------------------------------
-    // Função para buscar todos os cargos e exibi-los em tabela
-    // -------------------------------------------------------------------------
+    // ---------- LISTAR ----------
     async function listAll() {
-      API_DATA = await api.get("api/v1/cargos"); // Requisição GET
-
-      if (API_DATA.success == true) {
-        renderTable(API_DATA); // Mostra tabela com dados válidos
+      const resposta = await api.get("api/v1/cargos");
+      if (resposta.success) {
+        API_DATA = resposta.data;
+        renderTable(API_DATA);
+        divResposta.className = "";
       } else {
-        // Tratamento de erro opcional: token inválido, etc.
-        // alert("Token inválido");
-        // window.location.href = "login.html";
+        mostrarMensagem(resposta.message || "Erro ao carregar cargos", "danger");
+        if (resposta.error) console.error(resposta.error);
       }
     }
 
-    // -------------------------------------------------------------------------
-    // Função que monta dinamicamente a tabela de cargos no DOM
-    // -------------------------------------------------------------------------
+    // ---------- RENDERIZAR TABELA ----------
     function renderTable(dados) {
       const divTabela = document.getElementById("divTabela");
-      divTabela.innerHTML = ""; // Remove qualquer tabela anterior
+      divTabela.innerHTML = "";
 
-      // Cria a estrutura base da tabela
       const table = document.createElement("table");
-      table.className = "table table-bordered table-striped"; // Classes Bootstrap
+      table.className = "table table-bordered table-striped";
 
-      // -------------------- Cabeçalho --------------------
       const thead = document.createElement("thead");
-      thead.className = "table-light"; // Fundo claro
+      thead.className = "table-light";
       const trHead = document.createElement("tr");
-
-      // Define os títulos das colunas
       ["ID", "Nome Cargo", "Ações"].forEach(text => {
         const th = document.createElement("th");
         th.textContent = text;
         trHead.appendChild(th);
       });
-
       thead.appendChild(trHead);
       table.appendChild(thead);
 
-      // -------------------- Corpo da tabela --------------------
       const tbody = document.createElement("tbody");
-
-      // Itera sobre cada cargo retornado da API
-      dados.data.cargos.forEach(cargo => {
+      const cargos = dados?.cargos || [];
+      cargos.forEach(cargo => {
         const tr = document.createElement("tr");
-
-        // Coluna ID
         const tdId = document.createElement("td");
         tdId.textContent = cargo.idCargo;
         tr.appendChild(tdId);
 
-        // Coluna Nome
         const tdNome = document.createElement("td");
         tdNome.textContent = cargo.nomeCargo;
         tr.appendChild(tdNome);
 
-        // Coluna de Ações (Selecionar e Excluir)
         const tdAcoes = document.createElement("td");
+        const divBtns = document.createElement("div");
+        divBtns.className = "d-flex gap-2";
 
-        // Cria um container flexível para os botões
-        const divBotoes = document.createElement("div");
-        divBotoes.className = "d-flex gap-2"; // Flex horizontal com espaçamento
-
-        // ------ Botão Selecionar ------
         const btnSel = createButton("Selecionar", "btn-info");
-        btnSel.onclick = function () {
-          // Preenche os campos com o cargo selecionado
+        btnSel.onclick = () => {
           txtId.value = cargo.idCargo;
           txtNomeCargo.value = cargo.nomeCargo;
-
-          // Limpa mensagens anteriores
-          divResposta.textContent = "";
           divResposta.className = "";
+          divResposta.textContent = "";
         };
-        divBotoes.appendChild(btnSel);
+        divBtns.appendChild(btnSel);
 
-
-
-        // Anexa os botões à célula e a linha
-        tdAcoes.appendChild(divBotoes);
+        tdAcoes.appendChild(divBtns);
         tr.appendChild(tdAcoes);
-
-        // Adiciona a linha ao corpo da tabela
         tbody.appendChild(tr);
       });
 
-      // Monta tabela final e exibe na tela
       table.appendChild(tbody);
       divTabela.appendChild(table);
     }
 
-    // -------------------------------------------------------------------------
-    // Filtro em tempo real: atualiza a tabela conforme o usuário digita
-    // -------------------------------------------------------------------------
+    // ---------- FILTRO ----------
     txtFiltroCargo.addEventListener("input", function () {
-      const filtro = txtFiltroCargo.value.trim().toLowerCase();
-
-      // Garante que os dados existem antes de filtrar
-      if (!API_DATA || !API_DATA.data || !API_DATA.data.cargos) return;
-
-      // Filtra cargos cujo nome contenha o texto digitado
-      const dadosFiltrados = {
-        data: {
-          cargos: API_DATA.data.cargos.filter(cargo =>
-            cargo.nomeCargo.toLowerCase().includes(filtro)
-          )
-        }
+      const filtro = this.value.trim().toLowerCase();
+      if (!API_DATA || !API_DATA.cargos) return;
+      const filtrados = {
+        cargos: API_DATA.cargos.filter(c => c.nomeCargo.toLowerCase().includes(filtro))
       };
-
-      // Atualiza a tabela com o resultado filtrado
-      renderTable(dadosFiltrados);
-
-      // Limpa campo ID para evitar inconsistência ao editar
+      renderTable(filtrados);
       txtId.value = "";
     });
 
-    // -------------------------------------------------------------------------
-    // Inicializa a aplicação listando todos os cargos ao carregar a página
-    // -------------------------------------------------------------------------
+    // ---------- INICIALIZAR ----------
     listAll();
   </script>
-
 </body>
 
 </html>

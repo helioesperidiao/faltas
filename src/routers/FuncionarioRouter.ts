@@ -24,48 +24,37 @@ export class FuncionarioRouter {
 
 
         // ROTA: POST /login (pública)
-        this._router.post(
-            "/login",
-
+        this._router.post(FuncionarioRouter.PREFIX + "/login",
             funcionarioController.login
         );
 
         // ROTA: POST / (protegida)
-        this._router.post(
-            "/",
+        this._router.post(FuncionarioRouter.PREFIX + "/",
             jwtMiddleware.validateToken,
-
             funcionarioController.create
         );
 
         // ROTA: PUT /:idFuncionario (protegida)
-        this._router.put(
-            "/:idFuncionario",
+        this._router.put(FuncionarioRouter.PREFIX + "/:idFuncionario",
             jwtMiddleware.validateToken,
-
             funcionarioController.update
         );
 
         // ROTA: DELETE /:idFuncionario (protegida)
-        this._router.delete(
-            "/:idFuncionario",
+        this._router.delete(FuncionarioRouter.PREFIX + "/:idFuncionario",
             jwtMiddleware.validateToken,
-
             funcionarioController.delete
         );
 
         // ROTA: GET / (protegida)
-        this._router.get(
-            "/",
+        this._router.get(FuncionarioRouter.PREFIX + "/",
             jwtMiddleware.validateToken,
             funcionarioController.findAll
         );
 
         // ROTA: GET /:idFuncionario (protegida)
-        this._router.get(
-            "/:idFuncionario",
+        this._router.get(FuncionarioRouter.PREFIX + "/:idFuncionario",
             jwtMiddleware.validateToken,
-   
             funcionarioController.findById
         );
     }

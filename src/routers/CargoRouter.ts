@@ -21,25 +21,25 @@ export class CargoRouter {
 
 
         // Rotas com prefixo /api/cargos
-        this._router.post("/",
+        this._router.post(CargoRouter.PREFIX + "/",
             jwtMiddleware.validateToken,
 
             cargoController.create
         );
-        this._router.get("/",
+        this._router.get(CargoRouter.PREFIX + "/",
             jwtMiddleware.validateToken,
             cargoController.findAll
         );
-        this._router.get("/:idCargo",
+        this._router.get(CargoRouter.PREFIX + "/:idCargo",
             jwtMiddleware.validateToken,
 
             cargoController.findById
         );
-        this._router.put("/:idCargo",
+        this._router.put(CargoRouter.PREFIX + "/:idCargo",
             jwtMiddleware.validateToken,
             cargoController.update
         );
-        this._router.delete("/:idCargo",
+        this._router.delete(CargoRouter.PREFIX + "/:idCargo",
             jwtMiddleware.validateToken,
             cargoController.delete
         );

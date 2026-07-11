@@ -216,7 +216,7 @@
       };
 
       // Envia o POST para a API
-      const resposta = await api.post("/api/v1/funcionarios", objetoCriar);
+      const resposta = await api.post("api/v1/funcionarios", objetoCriar);
       if (resposta.success) {
         divResposta.textContent = "Criado com sucesso!";
         divResposta.className = "alert alert-success";
@@ -251,7 +251,7 @@
       };
 
       // Chama a API com método PUT
-      const resposta = await api.put("/api/v1/funcionarios", id, objetoAtualizar);
+      const resposta = await api.put("api/v1/funcionarios", id, objetoAtualizar);
       if (!resposta.success) {
         divResposta.textContent = resposta.error.message;
         divResposta.className = "alert alert-danger";
@@ -285,7 +285,7 @@
 
       newBtnConfirm.onclick = async function () {
         try {
-          await api.delete("/api/v1/funcionarios", id);
+          await api.delete("api/v1/funcionarios", id);
           listAll(); // Atualiza tabela após exclusão
           divResposta.textContent = `Funcionário ID ${id} excluído com sucesso.`;
           divResposta.className = "alert alert-success";
@@ -304,7 +304,7 @@
 
     // Busca todos os funcionários na API e chama a renderização
     async function listAll() {
-      API_DATA = await api.get("/api/v1/funcionarios");
+      API_DATA = await api.get("api/v1/funcionarios");
       if (API_DATA.success) renderTable(filterData());
     }
 
@@ -473,7 +473,7 @@
     }
 
     // Busca a lista de cargos na API logo que a página é carregada
-    const cargos = await api.get("/api/v1/cargos");
+    const cargos = await api.get("api/v1/cargos");
     preencherSelectCargos(cargos);
 
     // ======================== FILTROS EM TEMPO REAL ========================

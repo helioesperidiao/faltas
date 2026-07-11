@@ -1,6 +1,8 @@
-import { Request, Response, NextFunction } from "express";
+import { Request, Response } from "express";
 import { FuncionarioService } from "../services/FuncionarioService";
 import { Funcionario } from "@/models/Funcionario";
+import { StandardResponse } from "@/http/StandardResponse";
+import { Cargo } from "@/models/Cargo";
 
 /**
  * Classe responsável por controlar os endpoints da API REST para a entidade Funcionario.
@@ -15,192 +17,110 @@ export class FuncionarioController {
     /**
      * Construtor da classe FuncionarioControl
      * @param {FuncionarioService} funcionarioServiceDependency - Instância do FuncionarioService
-     * 
-     * A injeção de dependência permite:
-     * - Testes unitários fáceis com mocks;
-     * - Troca de implementação do serviço sem alterar o controlador;
-     * - Maior desacoplamento entre camadas.
      */
     constructor(funcionarioServiceDependency: FuncionarioService) {
-        console.log("⬆️  FuncionarioControl.constructor()");
+        console.log("⬆️  FuncionarioController.constructor()");
         this._funcionarioService = funcionarioServiceDependency;
     }
 
     /**
      * Autentica um funcionário pelo email e senha.
-     * @param {Request} request - Objeto da requisição Express.js contendo email e senha.
-     * @param {Response} response - Objeto da resposta Express.js.
-     * @param {NextFunction} next - Middleware de tratamento de erros.
-     * 
-     * Retorna JSON com os dados do funcionário autenticado ou encaminha o erro.
      */
-    login = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
-        console.log("🔵 FuncionarioControl.login()");
-        try {
-            const funcionario = new Funcionario();
-            funcionario.email = request.body.funcionario.email;
-            funcionario.senha = request.body.funcionario.senha;
+    login = async (request: Request, response: Response): Promise<void> => {
+        console.log("🔵 FuncionarioController.login()");
+        const funcionario = new Funcionario();
+        funcionario.email = request.body.funcionario.email;
+        funcionario.senha = request.body.funcionario.senha;
 
-            const resultado = await this._funcionarioService.loginFuncionario(funcionario);
+        const resultado = await this._funcionarioService.loginFuncionario(funcionario);
 
-            response.status(200).json({
-                success: true,
-                message: "Login efetuado com sucesso!",
-                data: resultado
-            });
-        } catch (error) {
-            next(error);
-        }
+        StandardResponse.success("Login efetuado com sucesso!", resultado).send(response);
     };
 
     /**
      * Cria um novo funcionário.
-     * @param {Request} request - Objeto da requisição Express.js com os dados do funcionário.
-     * @param {Response} response - Objeto da resposta Express.js.
-     * @param {NextFunction} next - Middleware de tratamento de erros.
-     * 
-     * Retorna JSON com o ID do funcionário criado e mensagem de sucesso.
      */
-    create = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
-        console.log("🔵 FuncionarioControl.create()");
-        try {
+    create = async (request: Request, response: Response): Promise<void> => {
+        console.log("🔵 FuncionarioController.create()");
+        const funcionario = new Funcionario();
+        funcionario.nomeFuncionario = request.body.funcionario.nomeFuncionario;
+        // ✅ garantir que cargo seja criado antes de atribuir
+        const cargo = new Cargo();
+        cargo.idCargo = request.body.funcionario.cargo.idCargo.toString();
+        funcionario.cargo = cargo;
+        funcionario.email = request.body.funcionario.email;
+        funcionario.recebeValeTransporte = request.body.funcionario.recebeValeTransporte;
+        funcionario.senha = request.body.funcionario.senha;
 
-            console.log( request.body.funcionario.cargo.idCargo.toString());
-            const funcionario = new Funcionario();
-            funcionario.nomeFuncionario = request.body.funcionario.nomeFuncionario;
-            funcionario.cargo.idCargo = request.body.funcionario.cargo.idCargo.toString();
-            funcionario.email = request.body.funcionario.email;
-            funcionario.recebeValeTransporte = request.body.funcionario.recebeValeTransporte;
-            funcionario.senha = request.body.funcionario.senha;
-            console.log(funcionario)
-            const resultado = await this._funcionarioService.create(funcionario);
+        const resultado = await this._funcionarioService.create(funcionario);
 
-            response.status(200).json({
-                success: true,
-                message: "Cadastro realizado com sucesso",
-                data: { funcionario: resultado }
-            });
-        } catch (error) {
-            next(error);
-        }
+        StandardResponse.created("Cadastro realizado com sucesso", { funcionario: resultado }).send(response);
     };
 
     /**
      * Lista todos os funcionários cadastrados.
-     * @param {Request} _request - Objeto da requisição Express.js.
-     * @param {Response} response - Objeto da resposta Express.js.
-     * @param {NextFunction} next - Middleware de tratamento de erros.
-     * 
-     * Retorna JSON com array de funcionários.
      */
-    findAll = async (_request: Request, response: Response, next: NextFunction): Promise<void> => {
-        console.log("🔵 FuncionarioControl.index()");
-        try {
-            const listaFuncionarios = await this._funcionarioService.findAll();
-
-            response.status(200).json({
-                success: true,
-                message: "Executado com sucesso",
-                data: { funcionarios: listaFuncionarios }
-            });
-        } catch (error) {
-            next(error);
-        }
+    findAll = async (_request: Request, response: Response): Promise<void> => {
+        console.log("🔵 FuncionarioController.findAll()");
+        const listaFuncionarios = await this._funcionarioService.findAll();
+        StandardResponse.success("Executado com sucesso", { funcionarios: listaFuncionarios }).send(response);
     };
 
     /**
      * Busca um funcionário pelo ID.
-     * @param {Request} request - Objeto da requisição Express.js.
-     * @param {Response} response - Objeto da resposta Express.js.
-     * @param {NextFunction} next - Middleware de tratamento de erros.
-     * 
-     * Retorna JSON com os dados do funcionário encontrado.
      */
-    findById = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
-        console.log("🔵 FuncionarioControl.show()");
-        try {
-            const idFuncionario = request.params.idFuncionario.toString();
-            const funcionario = await this._funcionarioService.findById(idFuncionario);
-
-            response.status(200).json({
-                success: true,
-                message: "Executado com sucesso",
-                data: funcionario
-            });
-        } catch (error) {
-            next(error);
-        }
+    findById = async (request: Request, response: Response): Promise<void> => {
+        console.log("🔵 FuncionarioController.findById()");
+        const idFuncionario = request.params.idFuncionario.toString();
+        const funcionario = await this._funcionarioService.findById(idFuncionario);
+        StandardResponse.success("Executado com sucesso", funcionario).send(response);
     };
 
     /**
      * Atualiza os dados de um funcionário existente.
-     * @param {Request} request - Objeto da requisição Express.js com os dados atualizados.
-     * @param {Response} response - Objeto da resposta Express.js.
-     * @param {NextFunction} next - Middleware de tratamento de erros.
-     * 
-     * Retorna JSON com os dados atualizados do funcionário ou encaminha o erro.
      */
-    update = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
-        console.log("🔵 FuncionarioControl.update()");
-        try {
-            const idFuncionario = request.params.idFuncionario.toString();
-            const funcionario = new Funcionario();
-            funcionario.idFuncionario = idFuncionario;
-            funcionario.nomeFuncionario = request.body.funcionario.nomeFuncionario;
-            funcionario.cargo.idCargo = request.body.funcionario.cargo.idCargo;
-            funcionario.email = request.body.funcionario.email;
-            funcionario.recebeValeTransporte = request.body.funcionario.recebeValeTransporte;
-            funcionario.senha = request.body.funcionario.senha;
-            console.log(funcionario)
+    update = async (request: Request, response: Response): Promise<void> => {
+        console.log("🔵 FuncionarioController.update()");
 
-            await this._funcionarioService.updateFuncionario(funcionario);
+        const idFuncionario = request.params.idFuncionario.toString();
+        const funcionario = new Funcionario();
+        funcionario.idFuncionario = idFuncionario;
+        funcionario.nomeFuncionario = request.body.funcionario.nomeFuncionario;
+        // ✅ garantir que cargo seja criado antes de atribuir
+        const cargo = new Cargo();
+        cargo.idCargo = request.body.funcionario.cargo.idCargo;
+        funcionario.cargo = cargo;
+        funcionario.email = request.body.funcionario.email;
+        funcionario.recebeValeTransporte = request.body.funcionario.recebeValeTransporte;
+        funcionario.senha = request.body.funcionario.senha;
 
-            response.status(200).json({
-                success: true,
-                message: "Atualizado com sucesso",
-                data: {
-                    funcionario: {
-                        idFuncionario: idFuncionario,
-                        nomeFuncionario: request.body.funcionario.nomeFuncionario
-                    }
-                }
-            });
-        } catch (error) {
-            next(error);
-        }
+        await this._funcionarioService.updateFuncionario(funcionario);
+
+        StandardResponse.success("Atualizado com sucesso", {
+            funcionario: {
+                idFuncionario: idFuncionario,
+                nomeFuncionario: request.body.funcionario.nomeFuncionario
+            }
+        }).send(response);
     };
 
     /**
      * Remove um funcionário pelo ID.
-     * @param {Request} request - Objeto da requisição Express.js.
-     * @param {Response} response - Objeto da resposta Express.js.
-     * @param {NextFunction} next - Middleware de tratamento de erros.
-     * 
-     * Retorna status 204 se excluído com sucesso ou 404 se o funcionário não existir.
      */
-    delete = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
-        console.log("🔵 FuncionarioControl.delete(" + request.params.idFuncionario.toString() + ")");
-        try {
-            const idFuncionario = request.params.idFuncionario.toString();
-            const funcionario = new Funcionario();
-            funcionario.idFuncionario = idFuncionario;
-            const excluiu = await this._funcionarioService.deleteFuncionario(funcionario);
+    delete = async (request: Request, response: Response): Promise<void> => {
+        console.log("🔵 FuncionarioController.delete(" + request.params.idFuncionario.toString() + ")");
+        const idFuncionario = request.params.idFuncionario.toString();
+        const funcionario = new Funcionario();
+        funcionario.idFuncionario = idFuncionario;
+        const excluiu = await this._funcionarioService.deleteFuncionario(funcionario);
 
-            if (!excluiu) {
-                response.status(404).json({
-                    success: false,
-                    message: "Funcionário não encontrado",
-                    error: { message: `Não existe funcionário com id ${idFuncionario}` }
-                });
-                return;
-            }
-
-            response.status(204).json({
-                success: true,
-                message: "Excluído com sucesso"
-            });
-        } catch (error) {
-            next(error);
+        if (!excluiu) {
+            StandardResponse.notFound("Funcionário não encontrado", {
+                message: `Não existe funcionário com id ${idFuncionario}`
+            }).send(response);
+            return;
         }
+
+        StandardResponse.noContent().send(response);
     };
 }
