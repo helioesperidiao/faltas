@@ -1,7 +1,7 @@
 import { CargoDAO } from "../dao/CargoDAO";
 import { Cargo } from "../models/Cargo";
 import { ErrorResponse } from "../http/ErrorResponse";
-
+import { Funcionario } from "@/models/Funcionario";
 
 /**
  * Classe responsável pela camada de serviço para a entidade Cargo.
@@ -15,95 +15,106 @@ export class CargoService {
     private _cargoDAO: CargoDAO;
 
     /**
-     * Construtor da classe CargoService
-     * @param {CargoDAO} cargoDAODependency - Instância de CargoDAO
+     * Construtor da classe CargoService.
+     * @param cargoDAODependency - Instância de CargoDAO injetada.
      */
     constructor(cargoDAODependency: CargoDAO) {
         console.log("⬆️  CargoService.constructor()");
-        this._cargoDAO = cargoDAODependency; // injeção de dependência
+        this._cargoDAO = cargoDAODependency;
     }
 
     /**
-     * Cria um novo cargo
-     * @param {Object} cargoJson - Dados do cargo { nomeCargo }
-     * @returns {Promise<number>} - ID do novo cargo criado
+     * Cria um novo cargo.
      * 
-     * Validações:
-     * - nomeCargo não pode estar vazio
-     * - Não pode existir outro cargo com mesmo nome
+     * 🔹 Regra de negócio: apenas usuários com cargo "Administrador" podem criar novos cargos.
+     * 🔹 Regra de negócio: não pode existir outro cargo com o mesmo nome.
+     * 
+     * @param cargo - Objeto Cargo a ser criado.
+     * @param funcionarioLogado - Funcionário autenticado que está realizando a operação.
+     * @returns O cargo criado com o ID preenchido.
+     * @throws {ErrorResponse} Se o usuário não for Administrador ou se o cargo já existir.
      */
-    createCargo = async (cargo: Cargo): Promise<Cargo> => {
+   public create = async (cargo: Cargo, funcionarioLogado: Funcionario): Promise<Cargo> => {
         console.log("🟣 CargoService.createCargo()");
 
+        if (funcionarioLogado.cargo.nomeCargo !== "Administrador") {
+            throw new ErrorResponse(
+                403,
+                "Não autorizado",
+                { message: `O cargo "${funcionarioLogado.cargo.nomeCargo}" não é autorizado a criar cargos.` }
+            );
+        }
 
-        //valida regra de negócio
+        // Verifica se já existe um cargo com o mesmo nome
         const resultado = await this._cargoDAO.findByField("nomeCargo", cargo.nomeCargo);
-
         if (resultado.length > 0) {
             throw new ErrorResponse(
                 400,
                 "Cargo já existe",
-                { message: `O cargo ${cargo.nomeCargo} já existe` }
+                { message: `O cargo "${cargo.nomeCargo}" já existe.` }
             );
         }
 
-        return this._cargoDAO.create(cargo);
+        return await this._cargoDAO.create(cargo);
     };
 
     /**
-     * Retorna todos os cargos
+     * Retorna todos os cargos cadastrados.
+     * 
+     * @param _funcionarioLogado - Funcionário autenticado (não utilizado, mas mantido por consistência).
+     * @returns Lista de cargos.
      */
-    findAll = async (): Promise<Cargo[]> => {
+    public findAll = async (_funcionarioLogado: Funcionario): Promise<Cargo[]> => {
         console.log("🟣 CargoService.findAll()");
-        return this._cargoDAO.findAll();
+        return await this._cargoDAO.findAll();
     };
 
     /**
-     * Retorna um cargo por ID
-     * @param {string} idCargo - ID do cargo (string hex do MongoDB)
+     * Busca um cargo pelo ID.
+     * 
+     * @param idCargo - ID do cargo (string hexadecimal do MongoDB).
+     * @param _funcionarioLogado - Funcionário autenticado (não utilizado, mantido por consistência).
+     * @returns O cargo encontrado ou null se não existir.
      */
-    findById = async (idCargo: string): Promise<Cargo | null> => {
+   public findById = async (idCargo: string, _funcionarioLogado: Funcionario): Promise<Cargo | null> => {
         console.log("🟣 CargoService.findById()");
         const cargo = new Cargo();
-
-        //passa pela validação de regra de dominio.
-        cargo.idCargo = idCargo;
-
-        return this._cargoDAO.findById(cargo.idCargo);
+        cargo.idCargo = idCargo; // validação de formato é feita no setter
+        return await this._cargoDAO.findById(cargo.idCargo);
     };
 
     /**
      * Atualiza um cargo existente.
-     *
-
-     *
-     * @param {string} idCargo - Identificador do cargo a ser atualizado.
-     * @param {string} nomeCargo - Nome do cargo (deve ser string não vazia).
-     *
-     * @returns {Promise<boolean>} - true se atualizado com sucesso.
-     * @throws {Error} - Se idCargo for inválido ou nomeCargo não atender às regras de domínio.
-     *
-     * @example
-     * const cargoAtualizado = await cargoService.updateCargo("507f1f77bcf86cd799439011", "Gerente");
+     * 
+     * @param cargo - Objeto Cargo com o ID e o novo nome.
+     * @param _funcionarioLogado - Funcionário autenticado (não utilizado, mantido por consistência).
+     * @returns true se a atualização foi bem-sucedida, false caso contrário.
      */
-    updateCargo = async (cargo: Cargo): Promise<boolean> => {
+   public update = async (cargo: Cargo, _funcionarioLogado: Funcionario): Promise<boolean> => {
         console.log("🟣 CargoService.updateCargo()");
-
-   
-
-        return this._cargoDAO.update(cargo);
+        return await this._cargoDAO.update(cargo);
     };
 
     /**
-     * Deleta um cargo por ID
-     * @param {string} idCargo - ID do cargo (string hex)
+     * Deleta um cargo pelo ID.
+     * 
+     * @param cargo - Objeto Cargo contendo o ID a ser removido.
+     * @param _funcionarioLogado - Funcionário autenticado (não utilizado, mantido por consistência).
+     * @returns true se a exclusão foi bem-sucedida, false caso contrário.
      */
-    delete = async (cargo: Cargo): Promise<boolean> => {
-        console.log("🟣 CargoService.deleteCargo()");
+  public  delete = async (cargo: Cargo, _funcionarioLogado: Funcionario): Promise<boolean> => {
+        console.log("🟣 CargoService.delete()");
+        return await this._cargoDAO.delete(cargo);
+    };
 
-        
-
-        //passa como parametro objeto que será excluido
-        return this._cargoDAO.delete(cargo);
+    /**
+     * Retorna a quantidade total de cargos cadastrados.
+     * 
+     * @param _funcionarioLogado - Funcionário autenticado (não utilizado, mantido por consistência).
+     * @returns Número total de cargos.
+     */
+    public count = async (_funcionarioLogado: Funcionario): Promise<number> => {
+        console.log("🟣 CargoService.countCargos()");
+        return await this._cargoDAO.count();
     };
 }

@@ -30,8 +30,6 @@ export class Server {
         this._app.use(express.json());  
         this._app.use(express.static(path.resolve(__dirname, "public")));  
 
-        //await this._mongoDB.connect();
-
         // Rotas da API (os routers já têm seus prefixos internos)
         this._app.use(this._cargoRouter.getRouter());
         this._app.use(this._funcionarioRouter.getRouter());

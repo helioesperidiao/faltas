@@ -1,25 +1,54 @@
+// ============================================================================
 // src/index.ts
+// PONTO DE ENTRADA DA APLICAÇÃO
+// ============================================================================
+
+// Carrega as variáveis de ambiente do arquivo .env antes de qualquer outro módulo
+import dotenv from 'dotenv';
+dotenv.config(); // Deve ser o primeiro comando para garantir que process.env esteja populado
+
+// Importa a classe principal do servidor (depende de process.env)
 import { Server } from "./Server";
 
 /**
- * Ponto de entrada da aplicação.
+ * Função assíncrona que inicializa e inicia o servidor.
  * 
- * Inicializa o servidor Express com todas as dependências
- * e começa a escutar na porta definida.
+ * Este é o ponto de entrada da aplicação. Ela:
+ * 1. Define a porta com base na variável de ambiente PORT ou fallback para 3000.
+ * 2. Instancia o servidor com a porta definida.
+ * 3. Aguarda a inicialização completa do servidor (conexão com banco, middlewares, rotas).
+ * 4. Inicia a escuta HTTP.
+ * 
+ * Caso ocorra qualquer erro durante a inicialização, a função captura a exceção,
+ * exibe uma mensagem no console e encerra o processo com código de erro (1).
+ * 
+ * @example
+ * // Execução padrão
+ * await startServer();
+ * 
+ * @returns {Promise<void>} Não retorna valor.
+ * 
+ * @throws {Error} Em caso de falha na inicialização, o processo é encerrado.
  */
 const startServer = async (): Promise<void> => {
     try {
-        // Porta definida por variável de ambiente ou padrão 8080
+        // Define a porta: prioriza a variável de ambiente PORT, senão usa 3000
         const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
-        
+
+        // Instancia o servidor com a porta configurada
         const server = new Server(PORT);
-        await server.init(); // Conecta ao banco e configura middlewares/rotas
-        server.run(); // Inicia o servidor HTTP
+
+        // Inicializa o servidor (conecta ao banco, configura middlewares, rotas, etc.)
+        await server.init();
+
+        // Inicia o servidor HTTP na porta definida
+        server.run();
     } catch (error) {
+        // Em caso de erro, exibe mensagem e encerra o processo
         console.error("❌ Falha ao iniciar o servidor:", error);
-        process.exit(1); // Encerra o processo com erro
+        process.exit(1); // Código 1 indica erro
     }
 };
 
-// Executa a inicialização
+// Executa a função de inicialização (top-level await em módulos ES é permitido)
 startServer();

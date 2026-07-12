@@ -6,6 +6,19 @@
  * - Informações adicionais sobre o erro (error)
  * 
  * Pode ser utilizada em middlewares ou serviços para padronizar respostas de erro.
+ * 
+ * @example
+ * // Lançando um erro 404 com detalhes adicionais
+ * throw new ErrorResponse(404, "Recurso não encontrado", { id: 123, type: "Cargo" });
+ * 
+ * // Capturando no middleware de erro
+ * if (error instanceof ErrorResponse) {
+ *   return response.status(error.httpCode).json({
+ *     success: false,
+ *     message: error.message,
+ *     error: error.error
+ *   });
+ * }
  */
 export class ErrorResponse extends Error {
     private _httpCode: number;
@@ -13,16 +26,20 @@ export class ErrorResponse extends Error {
     private _name: string;
 
     /**
-     * Construtor da classe ErrorResponse
-     * @param {number} httpCode - Código de status HTTP (ex: 400, 404, 500)
-     * @param {string} message - Mensagem de erro descritiva
-     * @param {any} error - Objeto adicional com detalhes do erro (opcional)
+     * Construtor da classe ErrorResponse.
+     * 
+     * @param {number} httpCode - Código de status HTTP (ex: 400, 404, 500).
+     * @param {string} message - Mensagem de erro descritiva.
+     * @param {any} [error=null] - Objeto adicional com detalhes do erro (opcional).
+     * 
+     * @example
+     * const erro = new ErrorResponse(400, "Dados inválidos", { campo: "email", motivo: "formato incorreto" });
      */
     constructor(httpCode: number, message: string, error: any = null) {
-        super(message); // Chama o construtor da classe Error
+        super(message);
         this._name = "ErrorResponse";
-        this._httpCode = httpCode; // Código HTTP
-        this._error = error;       // Informações adicionais
+        this._httpCode = httpCode;
+        this._error = error;
 
         // Mantém o stack trace adequado para instâncias de ErrorResponse
         Object.setPrototypeOf(this, ErrorResponse.prototype);
@@ -30,7 +47,8 @@ export class ErrorResponse extends Error {
 
     /**
      * Retorna o código HTTP associado ao erro.
-     * @returns {number} Código HTTP
+     * 
+     * @returns {number} Código HTTP (ex: 400, 404, 500).
      */
     get httpCode(): number {
         return this._httpCode;
@@ -38,7 +56,8 @@ export class ErrorResponse extends Error {
 
     /**
      * Retorna informações adicionais sobre o erro.
-     * @returns {any} Objeto JSON ou string com detalhes do erro
+     * 
+     * @returns {any} Objeto JSON ou string com detalhes do erro, ou null se não informado.
      */
     get error(): any {
         return this._error;
@@ -46,7 +65,8 @@ export class ErrorResponse extends Error {
 
     /**
      * Retorna o nome do erro.
-     * @returns {string} Nome do erro
+     * 
+     * @returns {string} Nome da classe de erro ("ErrorResponse").
      */
     get name(): string {
         return this._name;
