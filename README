@@ -1,0 +1,120 @@
+SISTEMA DE GESTÃO DE FALTAS E FUNCIONÁRIOS
+
+1. APRESENTAÇÃO
+
+O ERP Escolar é um sistema de gestão desenvolvido para controle de faltas e funcionários, utilizando tecnologias modernas como Node.js, Express, TypeScript e MongoDB, com Nginx como proxy reverso.
+
+Tecnologias utilizadas:
+
+Backend: Node.js + Express (TypeScript)
+
+Banco de Dados: MongoDB (driver nativo)
+
+Autenticação: JWT (JSON Web Token)
+
+Proxy Reverso: Nginx
+
+Gerenciamento de Pacotes: npm
+
+Desenvolvimento: Nodemon + ts-node
+
+2. PRÉ-REQUISITOS
+
+Antes de iniciar, certifique-se de ter instalado:
+
+Node.js (versão 18 ou superior)
+
+npm (gerenciador de pacotes do Node)
+
+MongoDB (local ou remoto)
+
+Nginx (disponível no PATH ou na pasta nginx/ do projeto)
+
+3. CONFIGURAÇÃO DO AMBIENTE
+
+3.1. Clonar o repositório
+git clone <https://github.com/helioesperidiao/faltas_cti>
+cd faltas_cti
+
+3.2. Criar o arquivo .env
+
+Na raiz do projeto, crie um arquivo .env com o seguinte conteúdo:
+# Servidor
+PORT=3000
+
+# MongoDB
+MONGO_URI=mongodb://localhost:27017
+MONGO_DATABASE=faltas_cti
+MONGO_MAX_POOL_SIZE=50
+MONGO_MIN_POOL_SIZE=10
+MONGO_CONNECT_TIMEOUT_MS=5000
+MONGO_SOCKET_TIMEOUT_MS=45000
+
+# JWT
+JWT_SECRET="7a1b2c3d4e5f6789a0b1c2d3e4f567890a1b2c3d4e5f6789a0b1c2d3e4f567890"
+JWT_ALGORITHM=HS256
+JWT_TYPE=JWT
+JWT_ISSUER=http://localhost
+JWT_AUDIENCE=http://localhost
+JWT_SUBJECT=acesso_sistema
+JWT_EXPIRES_IN_SECONDS=5184000
+
+# Administrador padrão
+DEFAULT_ADMIN_NAME=Hélio Esperidião
+DEFAULT_ADMIN_EMAIL=helioesperidiao@gmail.com
+DEFAULT_ADMIN_PASSWORD=@Helio123456
+DEFAULT_ADMIN_VALE_TRANSPORTE=0
+
+3.3. Instalar dependências
+
+npm install
+
+3.4. Iniciar o MongoDB
+
+Certifique-se de que o MongoDB esteja em execução:
+
+mongod --dbpath /caminho/para/dados
+
+4. EXECUÇÃO DO PROJETO
+
+npm run dev
+
+O comando npm run dev irá:
+
+Iniciar o servidor Node.js na porta 3000 (definida no .env).
+
+Subir e configurar automaticamente o Nginx na porta 8080.
+
+O Nginx atuará como proxy reverso, redirecionando as requisições para o Node.
+
+Atenção: Utilize sempre a porta 8080 para testar a aplicação. Não acesse diretamente a porta 3000, pois ela não possui as configurações de proxy e arquivos estáticos.
+
+5. ACESSO À APLICAÇÃO
+
+Após a inicialização, abra o navegador e acesse:
+http://localhost:8080/faltas/login.html
+
+6. ESTRUTURA DO PROJETO
+
+faltas_cti/
+├── nginx/                     # Configuração e binário do Nginx
+│   ├── conf/nginx.conf
+│   └── nginx.exe
+├── src/
+│   ├── controllers/           # Controladores (Cargo, Funcionario)
+│   ├── dao/                   # Data Access Objects (MongoDB)
+│   ├── database/              # Conexão com MongoDB
+│   ├── http/                  # Classes HTTP (JWT, ErrorResponse, StandardResponse)
+│   ├── middlewares/           # Middlewares (JWT, validações)
+│   ├── models/                # Modelos de domínio (Cargo, Funcionario)
+│   ├── public/                # Arquivos estáticos (HTML, CSS, JS)
+│   ├── routers/               # Roteadores (Cargo, Funcionario)
+│   ├── services/              # Regras de negócio
+│   ├── utils/                 # Utilitários (RequestUtils, etc.)
+│   ├── Server.ts              # Configuração principal do Express
+│   └── index.ts               # Ponto de entrada da aplicação
+├── .env                       # Variáveis de ambiente
+├── nodemon.json               # Configuração do Nodemon
+├── package.json
+├── tsconfig.json
+└── README.md

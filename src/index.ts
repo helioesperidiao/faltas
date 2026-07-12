@@ -33,7 +33,10 @@ import { Server } from "./Server";
 const startServer = async (): Promise<void> => {
     try {
         // Define a porta: prioriza a variável de ambiente PORT, senão usa 3000
-        const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+        // Garante que PORT seja um number (ou fallback para 3000 se inválido)
+        const rawPort = process.env.PORT;
+        const parsedPort = rawPort ? parseInt(rawPort, 10) : NaN;
+        const PORT: number = !Number.isNaN(parsedPort) ? parsedPort : 3000;
 
         // Instancia o servidor com a porta configurada
         const server = new Server(PORT);
