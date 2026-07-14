@@ -36,47 +36,53 @@ export class FuncionarioService {
     }
 
     /**
-     * Inicializa o administrador padrão se não houver funcionários cadastrados.
-     * 
-     * 🔹 Cria o cargo "Administrador" se não existir.
-     * 🔹 Cria o funcionário administrador com credenciais padrão.
-     * 
-     * @returns O Funcionario criado ou void se já existirem funcionários.
-     * 
-     * @example
-     * // Chamado automaticamente no construtor
-     * await funcionarioService.initializeDefaultAdmin();
+     * Inicializa o administrador padrão e os cargos essenciais.
+     *
+     * 🔹 Cria o cargo "Administrador" (usando um funcionário sistema para auditoria).
+     * 🔹 Cria o funcionário administrador com credenciais do .env (ou fallback).
+     * 🔹 Utiliza o administrador recém-criado para criar os demais cargos padrão.
+     *
+     * @returns O Funcionario administrador criado, ou void se já houver funcionários.
      */
     initializeDefaultAdmin = async (): Promise<Funcionario | void> => {
         console.log("🟣 FuncionarioService.initializeDefaultAdmin()");
 
-        const funcionarios = await this._funcionarioDAO.count();
-        if (funcionarios > 0) {
+        // 1. Verifica se já existem funcionários
+        const totalFuncionarios = await this._funcionarioDAO.count();
+        if (totalFuncionarios > 0) {
             console.log("✅ Já existem funcionários cadastrados. Pulando criação do admin padrão.");
             return;
         }
 
-        // Busca ou cria o cargo "Administrador"
-        const cargoAdmin = await this._cargoDAO.findByField("nomeCargo", "Administrador");
-        let cargoId: string;
-        if (cargoAdmin && cargoAdmin.length > 0) {
-            cargoId = cargoAdmin[0].idCargo;
-            console.log(`🔍 Cargo "Administrador" encontrado com ID: ${cargoId}`);
+        // 2. Cria um funcionário "Sistema" para registrar a auditoria na criação do cargo Admin
+        const funcionarioSistema = new Funcionario();
+        funcionarioSistema.idFuncionario = "000000000000000000000000";
+        funcionarioSistema.nomeFuncionario = "Sistema";
+        funcionarioSistema.email = "sistema@empresa.com";
+
+        // 3. Cria o cargo "Administrador" (se não existir)
+        console.log("🔧 Criando/verificando cargo Administrador...");
+        const cargoAdminExistente = await this._cargoDAO.findByField("nomeCargo", "Administrador");
+        let idCargoAdmin: string;
+        if (cargoAdminExistente && cargoAdminExistente.length > 0) {
+            idCargoAdmin = cargoAdminExistente[0].idCargo;
+            console.log(`🔍 Cargo "Administrador" já existe com ID: ${idCargoAdmin}`);
         } else {
-            const cargo = new Cargo();
-            cargo.nomeCargo = "Administrador";
-            const cargoCriado = await this._cargoDAO.create(cargo);
-            cargoId = cargoCriado.idCargo;
-            console.log(`🆕 Cargo "Administrador" criado com ID: ${cargoId}`);
+            const cargoAdmin = new Cargo();
+            cargoAdmin.nomeCargo = "Administrador";
+            const cargoCriado = await this._cargoDAO.create(cargoAdmin, funcionarioSistema);
+            idCargoAdmin = cargoCriado.idCargo;
+            console.log(`🆕 Cargo "Administrador" criado com ID: ${idCargoAdmin}`);
         }
 
-        // Carrega dados do admin a partir das variáveis de ambiente (com fallbacks)
+        // 4. Carrega dados do administrador a partir das variáveis de ambiente (ou fallback)
         const adminName = process.env.DEFAULT_ADMIN_NAME || "Hélio Esperidião";
         const adminEmail = process.env.DEFAULT_ADMIN_EMAIL || "helioesperidiao@gmail.com";
         const adminPassword = process.env.DEFAULT_ADMIN_PASSWORD || "@Helio123456";
-        const adminValeTransporte = parseInt(process.env.DEFAULT_ADMIN_VALE_TRANSPORTE || "0");
+        const adminValeTransporte = parseInt(process.env.DEFAULT_ADMIN_VALE_TRANSPORTE || "0", 10);
 
-        // Cria o funcionário administrador
+        // 5. Cria o funcionário administrador
+        console.log(`👤 Criando administrador: ${adminName} (${adminEmail})`);
         const funcionarioAdmin = new Funcionario();
         funcionarioAdmin.nomeFuncionario = adminName;
         funcionarioAdmin.email = adminEmail;
@@ -84,13 +90,41 @@ export class FuncionarioService {
         funcionarioAdmin.recebeValeTransporte = adminValeTransporte;
 
         const cargo = new Cargo();
-        cargo.idCargo = cargoId;
+        cargo.idCargo = idCargoAdmin;
         funcionarioAdmin.cargo = cargo;
 
-        const novoAdmin = await this._funcionarioDAO.create(funcionarioAdmin);
-        console.log(`✅ Administrador padrão criado com ID: ${novoAdmin.idFuncionario}`);
+        // Marca a auditoria do admin: criado pelo sistema (ID simbólico)
+        funcionarioAdmin.marcarCriadoPor(funcionarioSistema.idFuncionario);
 
-        return novoAdmin;
+        // Persiste o administrador
+        const adminCriado = await this._funcionarioDAO.create(funcionarioAdmin,funcionarioAdmin);
+        console.log(`✅ Administrador criado com ID: ${adminCriado.idFuncionario}`);
+
+        // 6. Agora, com o administrador criado, criamos os demais cargos usando-o como logado
+        const cargosParaCriar = [
+            "Professor",
+            "Inspetor",
+            "Secretaria",
+            "Processos Pedagógicos",
+            "Coordenador",
+            "Diretor"
+        ];
+
+        console.log("🔄 Criando cargos adicionais com o administrador...");
+        for (const nomeCargo of cargosParaCriar) {
+            const cargoExistente = await this._cargoDAO.findByField("nomeCargo", nomeCargo);
+            if (cargoExistente && cargoExistente.length > 0) {
+                console.log(`🔍 Cargo "${nomeCargo}" já existe.`);
+                continue;
+            }
+            const cargo = new Cargo();
+            cargo.nomeCargo = nomeCargo;
+            await this._cargoDAO.create(cargo, adminCriado);
+            console.log(`🆕 Cargo "${nomeCargo}" criado pelo administrador.`);
+        }
+
+        console.log("✅ Inicialização concluída.");
+        return adminCriado;
     };
 
     /**
@@ -99,13 +133,14 @@ export class FuncionarioService {
      * 🔹 Regra de negócio: verifica se o cargo existe.
      * 🔹 Regra de negócio: verifica se o email já está cadastrado.
      * 🔹 A senha é hashada com bcrypt antes da persistência.
+     * 🔹 Registra auditoria: quem criou (funcionário logado).
      * 
      * @param funcionario - Objeto Funcionario a ser criado.
-     * @param _funcionarioLogado - Funcionário autenticado (não utilizado).
+     * @param funcionarioLogado - Funcionário autenticado que está realizando a operação.
      * @returns O funcionário criado com o ID preenchido.
      * @throws {ErrorResponse} Se o cargo não existir ou se o email já estiver em uso.
      */
-    create = async (funcionario: Funcionario, _funcionarioLogado: Funcionario): Promise<Funcionario> => {
+    create = async (funcionario: Funcionario, funcionarioLogado: Funcionario): Promise<Funcionario> => {
         console.log("🟣 FuncionarioService.create()");
 
         // Verifica se o cargo existe
@@ -124,8 +159,11 @@ export class FuncionarioService {
         const senhaHash = await bcrypt.hash(funcionario.senha, 12);
         funcionario.senha = senhaHash;
 
+        // Registra auditoria: quem criou
+        funcionario.marcarCriadoPor(funcionarioLogado.idFuncionario);
+
         // Persiste no banco
-        const novoFuncionario = await this._funcionarioDAO.create(funcionario);
+        const novoFuncionario = await this._funcionarioDAO.create(funcionario, funcionarioLogado);
         return novoFuncionario;
     };
 
@@ -173,7 +211,7 @@ export class FuncionarioService {
     /**
      * Retorna todos os funcionários cadastrados.
      * 
-     * @param _funcionarioLogado - Funcionário autenticado (não utilizado).
+     * @param _funcionarioLogado - Funcionário autenticado (não utilizado, mantido por consistência).
      * @returns Lista de funcionários.
      */
     findAll = async (_funcionarioLogado: Funcionario): Promise<Funcionario[]> => {
@@ -202,13 +240,14 @@ export class FuncionarioService {
      * 
      * 🔹 Regra de negócio: se o email for alterado, verifica se já está em uso.
      * 🔹 Regra de negócio: se o cargo for alterado, verifica se ele existe.
+     * 🔹 Registra auditoria: quem alterou (funcionário logado).
      * 
      * @param funcionario - Objeto com os dados atualizados (deve conter `idFuncionario`).
-     * @param _funcionarioLogado - Funcionário autenticado (não utilizado).
+     * @param funcionarioLogado - Funcionário autenticado que está realizando a operação.
      * @returns true se a atualização foi bem-sucedida, false caso contrário.
      * @throws {ErrorResponse} Se o email já estiver em uso ou o cargo não existir.
      */
-    updateFuncionario = async (funcionario: Funcionario, _funcionarioLogado: Funcionario): Promise<boolean> => {
+    updateFuncionario = async (funcionario: Funcionario, funcionarioLogado: Funcionario): Promise<boolean> => {
         console.log(`🟣 FuncionarioService.updateFuncionario(${funcionario.idFuncionario})`);
 
         // Valida se o email já está em uso por outro funcionário
@@ -227,19 +266,26 @@ export class FuncionarioService {
             }
         }
 
+        // Registra auditoria: quem alterou
+        funcionario.marcarAlteradoPor(funcionarioLogado.idFuncionario);
+
         // Persiste a atualização
-        return await this._funcionarioDAO.update(funcionario);
+        return await this._funcionarioDAO.update(funcionario, funcionarioLogado);
     };
 
     /**
-     * Remove um funcionário pelo ID.
+     * Remove um funcionário (soft delete) pelo ID.
+     * 
+     * 🔹 Marca o funcionário como deletado, registrando quem realizou a exclusão.
      * 
      * @param funcionario - Objeto Funcionario contendo o ID a ser removido.
-     * @param _funcionarioLogado - Funcionário autenticado (não utilizado).
+     * @param funcionarioLogado - Funcionário autenticado que está realizando a operação.
      * @returns true se a exclusão foi bem-sucedida, false caso contrário.
      */
-    deleteFuncionario = async (funcionario: Funcionario, _funcionarioLogado: Funcionario): Promise<boolean> => {
-        return await this._funcionarioDAO.delete(funcionario);
+    deleteFuncionario = async (funcionario: Funcionario, funcionarioLogado: Funcionario): Promise<boolean> => {
+        // Registra auditoria: quem deletou (soft delete)
+        funcionario.marcarDeletadoPor(funcionarioLogado.idFuncionario);
+        return await this._funcionarioDAO.delete(funcionario, funcionarioLogado);
     };
 
     /**

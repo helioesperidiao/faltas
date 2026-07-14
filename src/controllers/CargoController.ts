@@ -64,16 +64,16 @@ export class CargoController extends BaseController {
      * Lista todos os cargos cadastrados.
      * 
      * @route GET /api/v1/cargos
-     * @param request - Requisição (sem parâmetros).
+     * @param _request - Requisição (sem parâmetros).
      * @param response - Resposta HTTP.
      * @returns 200 OK com array de cargos.
      */
-    public findAll = async (request: Request, response: Response): Promise<void> => {
+    public findAll = async (_request: Request, response: Response): Promise<void> => {
         console.log("🔵 CargoController.findAll()");
 
-        const funcionarioLogado: Funcionario = this.getFuncionarioLogado(request);
+        //const _funcionarioLogado: Funcionario = this.getFuncionarioLogado(request);
 
-        const arrayCargos = await this._cargoService.findAll(funcionarioLogado);
+        const arrayCargos = await this._cargoService.findAll();
 
         StandardResponse.success("Busca realizada com sucesso", {
             cargos: arrayCargos
@@ -84,17 +84,17 @@ export class CargoController extends BaseController {
      * Busca um cargo pelo ID.
      * 
      * @route GET /api/v1/cargos/:idCargo
-     * @param request - Requisição com parâmetro `idCargo`.
+     * @param _request - Requisição com parâmetro `idCargo`.
      * @param response - Resposta HTTP.
      * @returns 200 OK com os dados do cargo encontrado.
      */
-    public findById = async (request: Request, response: Response): Promise<void> => {
+    public findById = async (_request: Request, response: Response): Promise<void> => {
         console.log("🔵 CargoController.findById()");
 
-        const funcionarioLogado: Funcionario = this.getFuncionarioLogado(request);
+        //const _funcionarioLogado: Funcionario = this.getFuncionarioLogado(request);
 
-        const cargoId = request.params.idCargo.toString();
-        const cargo = await this._cargoService.findById(cargoId, funcionarioLogado);
+        const cargoId = _request.params.idCargo.toString();
+        const cargo = await this._cargoService.findById(cargoId);
 
         StandardResponse.success("Executado com sucesso", {
             cargos: cargo
@@ -175,17 +175,17 @@ export class CargoController extends BaseController {
      * 🔹 Rota pública (não requer autenticação JWT).
      * 
      * @route GET /api/v1/cargos/count
-     * @param request - Requisição (sem parâmetros).
+     * @param _request - Requisição (sem parâmetros).
      * @param response - Resposta HTTP.
      * @returns 200 OK com o total de cargos.
      */
-    public count = async (request: Request, response: Response): Promise<void> => {
+    public count = async (_request: Request, response: Response): Promise<void> => {
         console.log("🔵 CargoController.count()");
 
         // Nota: esta rota é pública, o funcionário logado pode ser undefined
-        const funcionarioLogado: Funcionario = this.getFuncionarioLogado(request);
+        //const _funcionarioLogado: Funcionario = this.getFuncionarioLogado(request);
 
-        const total = await this._cargoService.count(funcionarioLogado);
+        const total = await this._cargoService.count();
 
         StandardResponse.success("Total de cargos obtido", { total }).send(response);
     };

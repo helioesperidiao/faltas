@@ -1,7 +1,10 @@
 import { Collection, ObjectId, Filter, UpdateFilter, Document, OptionalId } from "mongodb";
-import { Funcionario } from "../models/Funcionario";
+
 import { Cargo } from "../models/Cargo";
 import { MongoDatabase } from "../database/MongoDatabase";
+
+import { Auditoria } from "@/models/Auditoria";
+import { Funcionario } from "@/models/Funcionario";
 
 /**
  * Data Access Object para a entidade Funcionario.
@@ -9,6 +12,10 @@ import { MongoDatabase } from "../database/MongoDatabase";
  * Responsável por todas as operações de banco de dados relacionadas a funcionários,
  * incluindo CRUD, busca por campos específicos, autenticação (email) e contagens.
  * Utiliza injeção de dependência do MongoDatabase para obter a conexão com o MongoDB.
+ * 
+ * As operações de escrita (create, update, delete) registram auditoria
+ * com o ID do funcionário logado. As consultas filtram automaticamente
+ * registros deletados (soft delete).
  * 
  * @example
  * const db = new MongoDatabase();
@@ -45,6 +52,7 @@ export class FuncionarioDAO {
      * O ID do cargo é convertido para ObjectId.
      * 
      * @param objFuncionarioModel - Instância de Funcionario com os dados a serem inseridos.
+     * @param funcionarioLogado - Funcionário autenticado realizando a operação (para auditoria).
      * @returns O mesmo objeto Funcionario com o `idFuncionario` preenchido.
      * @throws {Error} Se o cargo não estiver informado ou se a inserção falhar.
      * 
@@ -52,15 +60,18 @@ export class FuncionarioDAO {
      * const funcionario = new Funcionario();
      * funcionario.nomeFuncionario = "João";
      * (funcionario as any)._senha = hash;
-     * const criado = await funcionarioDAO.create(funcionario);
+     * const criado = await funcionarioDAO.create(funcionario, funcionarioLogado);
      */
-    public async create(objFuncionarioModel: Funcionario): Promise<Funcionario> {
+    public async create(objFuncionarioModel: Funcionario, funcionarioLogado: Funcionario): Promise<Funcionario> {
         console.log("🟢 FuncionarioDAO.create()");
         const collection = await this.getCollection();
 
         if (!objFuncionarioModel.cargo) {
             throw new Error("Cargo não informado");
         }
+
+        // Registra auditoria: quem criou
+        objFuncionarioModel.marcarCriadoPor(funcionarioLogado.idFuncionario);
 
         // Obtém a senha diretamente do campo privado (caso o getter tenha validação)
         const senha = (objFuncionarioModel as any)._senha || objFuncionarioModel.senha || '';
@@ -71,6 +82,7 @@ export class FuncionarioDAO {
             senha: senha,
             recebeValeTransporte: objFuncionarioModel.recebeValeTransporte,
             cargoId: new ObjectId(objFuncionarioModel.cargo.idCargo),
+            auditoria: objFuncionarioModel.auditoria
         };
 
         const result = await collection.insertOne(doc);
@@ -83,22 +95,35 @@ export class FuncionarioDAO {
     }
 
     /**
-     * Remove um funcionário do banco de dados pelo ID.
+     * Remove um funcionário do banco de dados pelo ID (soft delete).
+     * 
+     * Em vez de deletar fisicamente, marca o registro como deletado,
+     * registrando o ID do funcionário que realizou a exclusão.
      * 
      * @param objFuncionarioModel - Instância de Funcionario contendo o `idFuncionario`.
-     * @returns `true` se o documento foi deletado, `false` caso contrário.
+     * @param funcionarioLogado - Funcionário autenticado realizando a operação.
+     * @returns `true` se o documento foi atualizado (marcado como deletado), `false` caso contrário.
      * 
      * @example
      * const funcionario = new Funcionario();
      * funcionario.idFuncionario = "67a1b2c3d4e5f6789a0b1c2d";
-     * const deletado = await funcionarioDAO.delete(funcionario);
+     * const deletado = await funcionarioDAO.delete(funcionario, funcionarioLogado);
      */
-    public async delete(objFuncionarioModel: Funcionario): Promise<boolean> {
+    public async delete(objFuncionarioModel: Funcionario, funcionarioLogado: Funcionario): Promise<boolean> {
         console.log(`🟢 FuncionarioDAO.delete(${objFuncionarioModel.idFuncionario})`);
         const collection = await this.getCollection();
+
+        // Marca soft delete na auditoria
+        objFuncionarioModel.marcarDeletadoPor(funcionarioLogado.idFuncionario);
+
         const filter: Filter<Document> = { _id: new ObjectId(objFuncionarioModel.idFuncionario) };
-        const result = await collection.deleteOne(filter);
-        return result.deletedCount > 0;
+        const update: UpdateFilter<Document> = {
+            $set: { 
+                auditoria: objFuncionarioModel.auditoria 
+            }
+        };
+        const result = await collection.updateOne(filter, update);
+        return result.modifiedCount > 0;
     }
 
     /**
@@ -109,23 +134,29 @@ export class FuncionarioDAO {
      * Se uma nova senha for fornecida (já hashada em `_senha`), ela é atualizada.
      * 
      * @param objFuncionarioModel - Instância de Funcionario com os dados atualizados (deve conter `idFuncionario`).
+     * @param funcionarioLogado - Funcionário autenticado realizando a operação.
      * @returns `true` se o documento foi atualizado, `false` caso contrário.
      * 
      * @example
      * const funcionario = new Funcionario();
      * funcionario.idFuncionario = "67a1b2c3d4e5f6789a0b1c2d";
      * funcionario.nomeFuncionario = "João Silva";
-     * const atualizado = await funcionarioDAO.update(funcionario);
+     * const atualizado = await funcionarioDAO.update(funcionario, funcionarioLogado);
      */
-    public async update(objFuncionarioModel: Funcionario): Promise<boolean> {
+    public async update(objFuncionarioModel: Funcionario, funcionarioLogado: Funcionario): Promise<boolean> {
         console.log(`🟢 FuncionarioDAO.update(${objFuncionarioModel.idFuncionario})`);
         const collection = await this.getCollection();
+
+        // Registra auditoria: quem alterou
+        objFuncionarioModel.marcarAlteradoPor(funcionarioLogado.idFuncionario);
+
         const filter: Filter<Document> = { _id: new ObjectId(objFuncionarioModel.idFuncionario) };
 
         const updateData: any = {
             nomeFuncionario: objFuncionarioModel.nomeFuncionario,
             email: objFuncionarioModel.email,
             recebeValeTransporte: objFuncionarioModel.recebeValeTransporte,
+            auditoria: objFuncionarioModel.auditoria
         };
 
         // Obtém a senha do campo privado
@@ -147,6 +178,7 @@ export class FuncionarioDAO {
 
     /**
      * Retorna todos os funcionários cadastrados, com os dados do cargo populados via `$lookup`.
+     * Filtra automaticamente registros deletados (soft delete).
      * 
      * @returns Lista de instâncias de Funcionario.
      * 
@@ -159,6 +191,7 @@ export class FuncionarioDAO {
         const collection = await this.getCollection();
 
         const pipeline = [
+            { $match: { "auditoria.deletadoEm": { $exists: false } } },
             {
                 $lookup: {
                     from: "cargo",
@@ -181,6 +214,7 @@ export class FuncionarioDAO {
                     email: 1,
                     senha: 1,
                     recebeValeTransporte: 1,
+                    auditoria: 1,
                     cargo: {
                         idCargo: "$cargoInfo._id",
                         nomeCargo: "$cargoInfo.nomeCargo"
@@ -196,6 +230,7 @@ export class FuncionarioDAO {
 
     /**
      * Busca um funcionário pelo ID, com os dados do cargo populados via `$lookup`.
+     * Filtra automaticamente registros deletados (soft delete).
      * 
      * @param idFuncionario - ID do funcionário (string hexadecimal).
      * @returns O funcionário encontrado ou `null` se não existir.
@@ -206,7 +241,10 @@ export class FuncionarioDAO {
     public async findById(idFuncionario: string): Promise<Funcionario | null> {
         console.log(`🟢 FuncionarioDAO.findById(${idFuncionario})`);
         const collection = await this.getCollection();
-        const filter: Filter<Document> = { _id: new ObjectId(idFuncionario) };
+        const filter: Filter<Document> = { 
+            _id: new ObjectId(idFuncionario),
+            "auditoria.deletadoEm": { $exists: false } 
+        };
 
         const pipeline = [
             { $match: filter },
@@ -232,6 +270,7 @@ export class FuncionarioDAO {
                     email: 1,
                     senha: 1,
                     recebeValeTransporte: 1,
+                    auditoria: 1,
                     cargo: {
                         idCargo: "$cargoInfo._id",
                         nomeCargo: "$cargoInfo.nomeCargo"
@@ -248,6 +287,7 @@ export class FuncionarioDAO {
 
     /**
      * Busca funcionários por um campo específico, com os dados do cargo populados via `$lookup`.
+     * Filtra automaticamente registros deletados (soft delete).
      * 
      * @param field - Nome do campo (permitidos: "_id", "nomeFuncionario", "email", "recebeValeTransporte", "cargoId").
      * @param value - Valor a ser buscado.
@@ -267,9 +307,15 @@ export class FuncionarioDAO {
         const collection = await this.getCollection();
         let filter: Filter<Document> = {};
         if (field === "_id") {
-            filter = { _id: new ObjectId(value) };
+            filter = { 
+                _id: new ObjectId(value),
+                "auditoria.deletadoEm": { $exists: false } 
+            };
         } else {
-            filter = { [field]: value };
+            filter = { 
+                [field]: value,
+                "auditoria.deletadoEm": { $exists: false } 
+            };
         }
 
         const pipeline = [
@@ -296,6 +342,7 @@ export class FuncionarioDAO {
                     email: 1,
                     senha: 1,
                     recebeValeTransporte: 1,
+                    auditoria: 1,
                     cargo: {
                         idCargo: "$cargoInfo._id",
                         nomeCargo: "$cargoInfo.nomeCargo"
@@ -313,6 +360,7 @@ export class FuncionarioDAO {
      * Busca um funcionário pelo email, com os dados do cargo populados via `$lookup`.
      * 
      * Especificamente usado para autenticação (login), pois inclui a senha no retorno.
+     * Retorna também registros deletados (para permitir reativação, por exemplo).
      * 
      * @param email - Email do funcionário.
      * @returns O funcionário encontrado (com senha) ou `null` se não existir.
@@ -348,6 +396,7 @@ export class FuncionarioDAO {
                     email: 1,
                     senha: 1,
                     recebeValeTransporte: 1,
+                    auditoria: 1,
                     cargo: {
                         idCargo: "$cargoInfo._id",
                         nomeCargo: "$cargoInfo.nomeCargo"
@@ -370,6 +419,7 @@ export class FuncionarioDAO {
 
     /**
      * Retorna o número total de funcionários cadastrados.
+     * Filtra automaticamente registros deletados (soft delete).
      * 
      * @returns Total de funcionários.
      * 
@@ -379,11 +429,12 @@ export class FuncionarioDAO {
     public async count(): Promise<number> {
         console.log("🟢 FuncionarioDAO.count()");
         const collection = await this.getCollection();
-        return await collection.countDocuments();
+        return await collection.countDocuments({ "auditoria.deletadoEm": { $exists: false } });
     }
 
     /**
      * Conta quantos funcionários possuem um determinado cargo (pelo ID do cargo).
+     * Filtra automaticamente registros deletados (soft delete).
      * 
      * Utiliza `countDocuments` com filtro no `cargoId` (recomenda-se índice para performance).
      * 
@@ -396,7 +447,10 @@ export class FuncionarioDAO {
     public async countByCargoId(cargoId: string): Promise<number> {
         console.log(`🟢 FuncionarioDAO.countByCargoId(${cargoId})`);
         const collection = await this.getCollection();
-        return await collection.countDocuments({ cargoId: new ObjectId(cargoId) });
+        return await collection.countDocuments({ 
+            cargoId: new ObjectId(cargoId),
+            "auditoria.deletadoEm": { $exists: false } 
+        });
     }
 
     // ======================== MÉTODOS AUXILIARES ========================
@@ -407,7 +461,7 @@ export class FuncionarioDAO {
      * A senha é atribuída diretamente ao campo privado `_senha` para evitar
      * a validação do setter, que pode não permitir o hash do bcrypt.
      * 
-     * @param doc - Documento do MongoDB (deve conter os campos: idFuncionario, nomeFuncionario, email, senha, recebeValeTransporte, cargo).
+     * @param doc - Documento do MongoDB (deve conter os campos: idFuncionario, nomeFuncionario, email, senha, recebeValeTransporte, cargo, auditoria).
      * @returns Instância de Funcionario.
      * @private
      */
@@ -424,6 +478,18 @@ export class FuncionarioDAO {
         (funcionario as any)._senha = doc.senha || '';
         funcionario.recebeValeTransporte = doc.recebeValeTransporte;
         funcionario.cargo = cargo;
+
+        // Restaura a auditoria
+        if (doc.auditoria) {
+            const auditoria = new Auditoria();
+            auditoria.criadoPor = doc.auditoria.criadoPor || '';
+            auditoria.criadoEm = doc.auditoria.criadoEm ? new Date(doc.auditoria.criadoEm) : new Date();
+            auditoria.alteradoPor = doc.auditoria.alteradoPor || '';
+            auditoria.alteradoEm = doc.auditoria.alteradoEm ? new Date(doc.auditoria.alteradoEm) : null;
+            auditoria.deletadoPor = doc.auditoria.deletadoPor || '';
+            auditoria.deletadoEm = doc.auditoria.deletadoEm ? new Date(doc.auditoria.deletadoEm) : null;
+            funcionario.auditoria = auditoria;
+        }
 
         return funcionario;
     }

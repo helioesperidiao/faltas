@@ -55,7 +55,7 @@ export class CargoService {
             );
         }
 
-        return await this._cargoDAO.create(cargo);
+        return await this._cargoDAO.create(cargo, funcionarioLogado);
     };
 
     /**
@@ -64,7 +64,7 @@ export class CargoService {
      * @param _funcionarioLogado - Funcionário autenticado (não utilizado, mas mantido por consistência).
      * @returns Lista de cargos.
      */
-    public findAll = async (_funcionarioLogado: Funcionario): Promise<Cargo[]> => {
+    public findAll = async (): Promise<Cargo[]> => {
         console.log("🟣 CargoService.findAll()");
         return await this._cargoDAO.findAll();
     };
@@ -76,7 +76,7 @@ export class CargoService {
      * @param _funcionarioLogado - Funcionário autenticado (não utilizado, mantido por consistência).
      * @returns O cargo encontrado ou null se não existir.
      */
-   public findById = async (idCargo: string, _funcionarioLogado: Funcionario): Promise<Cargo | null> => {
+   public findById = async (idCargo: string,): Promise<Cargo | null> => {
         console.log("🟣 CargoService.findById()");
         const cargo = new Cargo();
         cargo.idCargo = idCargo; // validação de formato é feita no setter
@@ -90,9 +90,9 @@ export class CargoService {
      * @param _funcionarioLogado - Funcionário autenticado (não utilizado, mantido por consistência).
      * @returns true se a atualização foi bem-sucedida, false caso contrário.
      */
-   public update = async (cargo: Cargo, _funcionarioLogado: Funcionario): Promise<boolean> => {
+   public update = async (cargo: Cargo, funcionarioLogado: Funcionario): Promise<boolean> => {
         console.log("🟣 CargoService.updateCargo()");
-        return await this._cargoDAO.update(cargo);
+        return await this._cargoDAO.update(cargo, funcionarioLogado );
     };
 
     /**
@@ -102,9 +102,9 @@ export class CargoService {
      * @param _funcionarioLogado - Funcionário autenticado (não utilizado, mantido por consistência).
      * @returns true se a exclusão foi bem-sucedida, false caso contrário.
      */
-  public  delete = async (cargo: Cargo, _funcionarioLogado: Funcionario): Promise<boolean> => {
+  public  delete = async (cargo: Cargo, funcionarioLogado: Funcionario): Promise<boolean> => {
         console.log("🟣 CargoService.delete()");
-        return await this._cargoDAO.delete(cargo);
+        return await this._cargoDAO.delete(cargo, funcionarioLogado);
     };
 
     /**
@@ -113,7 +113,7 @@ export class CargoService {
      * @param _funcionarioLogado - Funcionário autenticado (não utilizado, mantido por consistência).
      * @returns Número total de cargos.
      */
-    public count = async (_funcionarioLogado: Funcionario): Promise<number> => {
+    public count = async (): Promise<number> => {
         console.log("🟣 CargoService.countCargos()");
         return await this._cargoDAO.count();
     };

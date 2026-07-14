@@ -1,5 +1,6 @@
 import { ObjectId } from "mongodb";
 import { Cargo } from "./Cargo";
+import { Auditoria } from "./Auditoria";
 
 /**
  * Representa a entidade Funcionario do sistema.
@@ -8,6 +9,7 @@ import { Cargo } from "./Cargo";
  * - Encapsular os dados de um funcionário.
  * - Garantir integridade dos atributos via getters e setters.
  * - Associar corretamente um funcionário a um Cargo.
+ * - Incluir dados de auditoria (criação, alteração, soft delete).
  * 
  * @example
  * const funcionario = new Funcionario();
@@ -19,6 +21,9 @@ import { Cargo } from "./Cargo";
  * const cargo = new Cargo();
  * cargo.idCargo = "67a1b2c3d4e5f6789a0b1c2d";
  * funcionario.cargo = cargo;
+ * 
+ * // Auditoria
+ * funcionario.marcarCriadoPor("67a1b2c3d4e5f6789a0b1c2d");
  */
 export class Funcionario {
     private _idFuncionario: string = '';
@@ -27,6 +32,7 @@ export class Funcionario {
     private _email: string = '';
     private _senha: string = '';
     private _recebeValeTransporte: number = 0; // 0 = não, 1 = sim
+    private _auditoria: Auditoria = new Auditoria();
 
     /**
      * Construtor da classe Funcionario.
@@ -217,15 +223,65 @@ export class Funcionario {
         this._recebeValeTransporte = value;
     }
 
+    // ======================== MÉTODOS DE AUDITORIA ========================
+
+    /**
+     * Obtém o objeto de auditoria associado ao funcionário.
+     * @returns {Auditoria} Instância de Auditoria.
+     */
+    get auditoria(): Auditoria {
+        return this._auditoria;
+    }
+
+    /**
+     * Define o objeto de auditoria completo.
+     * @param {Auditoria} value - Instância de Auditoria.
+     */
+    set auditoria(value: Auditoria) {
+        this._auditoria = value;
+    }
+
+    /**
+     * Marca o funcionário como criado por um determinado usuário.
+     * @param {string} idFuncionario - ID do funcionário que criou o registro.
+     */
+    public marcarCriadoPor(idFuncionario: string): void {
+        this._auditoria.marcarCriadoPor(idFuncionario);
+    }
+
+    /**
+     * Marca o funcionário como alterado por um determinado usuário.
+     * @param {string} idFuncionario - ID do funcionário que alterou o registro.
+     */
+    public marcarAlteradoPor(idFuncionario: string): void {
+        this._auditoria.marcarAlteradoPor(idFuncionario);
+    }
+
+    /**
+     * Marca o funcionário como deletado (soft delete) por um determinado usuário.
+     * @param {string} idFuncionario - ID do funcionário que deletou o registro.
+     */
+    public marcarDeletadoPor(idFuncionario: string): void {
+        this._auditoria.marcarDeletadoPor(idFuncionario);
+    }
+
+    /**
+     * Verifica se o funcionário foi deletado (soft delete).
+     * @returns {boolean} true se deletado, false caso contrário.
+     */
+    public isDeletado(): boolean {
+        return this._auditoria.isDeletado();
+    }
+
     // ======================== SERIALIZAÇÃO ========================
 
     /**
      * Controla a serialização para JSON.
      * 
-     * Remove os underlines dos campos e inclui o cargo serializado.
+     * Remove os underlines dos campos e inclui o cargo e a auditoria serializados.
      * 
      * @returns {Object} Objeto com os campos: idFuncionario, nomeFuncionario,
-     *                   email, recebeValeTransporte, cargo (objeto).
+     *                   email, recebeValeTransporte, cargo (objeto), auditoria (objeto).
      * 
      * @example
      * const json = funcionario.toJSON();
@@ -234,7 +290,8 @@ export class Funcionario {
      * //   nomeFuncionario: "Ana Silva",
      * //   email: "ana@empresa.com",
      * //   recebeValeTransporte: 1,
-     * //   cargo: { idCargo: "...", nomeCargo: "..." }
+     * //   cargo: { idCargo: "...", nomeCargo: "..." },
+     * //   auditoria: { criadoPor: "...", criadoEm: "...", ... }
      * // }
      */
     toJSON() {
@@ -243,7 +300,8 @@ export class Funcionario {
             nomeFuncionario: this._nomeFuncionario,
             email: this._email,
             recebeValeTransporte: this._recebeValeTransporte,
-            cargo: this._cargo
+            cargo: this._cargo,
+            auditoria: this._auditoria
         };
     }
 }

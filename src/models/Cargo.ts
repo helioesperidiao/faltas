@@ -1,4 +1,5 @@
 import { ObjectId } from "mongodb";
+import { Auditoria } from "./Auditoria";
 
 /**
  * Representa a entidade Cargo do sistema.
@@ -22,6 +23,7 @@ import { ObjectId } from "mongodb";
 export class Cargo {
     private _idCargo: string = '';
     private _nomeCargo: string = '';
+    private _auditoria: Auditoria = new Auditoria();
 
     /**
      * Construtor da classe Cargo.
@@ -109,11 +111,69 @@ export class Cargo {
         this._nomeCargo = nome;
     }
 
+    // ======================== MÉTODOS DE AUDITORIA ========================
+
+    /**
+     * Obtém o objeto de auditoria associado ao cargo.
+     * 
+     * @returns {Auditoria} Instância de Auditoria contendo os registros de criação, alteração e exclusão.
+     */
+    get auditoria(): Auditoria {
+        return this._auditoria;
+    }
+
+    /**
+     * Define o objeto de auditoria completo.
+     * 
+     * @param {Auditoria} value - Instância de Auditoria a ser atribuída.
+     */
+    set auditoria(value: Auditoria) {
+        this._auditoria = value;
+    }
+
+    /**
+     * Define o ID do funcionário que criou o cargo.
+     * 
+     * @param {string} idFuncionario - ID do funcionário que realizou a criação.
+     */
+    public marcarCriadoPor(idFuncionario: string): void {
+        this._auditoria.marcarCriadoPor(idFuncionario);
+    }
+
+    /**
+     * Define o ID do funcionário que alterou o cargo pela última vez.
+     * 
+     * @param {string} idFuncionario - ID do funcionário que realizou a alteração.
+     */
+    public marcarAlteradoPor(idFuncionario: string): void {
+        this._auditoria.marcarAlteradoPor(idFuncionario);
+    }
+
+    /**
+     * Define o ID do funcionário que realizou a exclusão lógica (soft delete).
+     * 
+     * @param {string} idFuncionario - ID do funcionário que realizou a exclusão.
+     */
+    public marcarDeletadoPor(idFuncionario: string): void {
+        this._auditoria.marcarDeletadoPor(idFuncionario);
+    }
+
+    /**
+     * Verifica se o cargo foi deletado (soft delete).
+     * 
+     * @returns {boolean} true se foi deletado, false caso contrário.
+     */
+    public isDeletado(): boolean {
+        return this._auditoria.isDeletado();
+    }
+
+    // ======================== SERIALIZAÇÃO ========================
+
     /**
      * Controla a serialização da instância para JSON.
      * 
      * Remove os underlines dos campos privados, retornando um objeto
-     * com as chaves `idCargo` e `nomeCargo`.
+     * com as chaves `idCargo`, `nomeCargo` e `auditoria`.
      * 
      * Este método é chamado automaticamente pelo `JSON.stringify()`.
      * 
@@ -129,7 +189,8 @@ export class Cargo {
     toJSON() {
         return {
             idCargo: this._idCargo,
-            nomeCargo: this._nomeCargo
+            nomeCargo: this._nomeCargo,
+            auditoria: this._auditoria
         };
     }
 }
