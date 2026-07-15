@@ -81,6 +81,28 @@ export class CargoController extends BaseController {
     };
 
     /**
+ * Lista todos os cargos que foram deletados (soft delete).
+ * 
+ * 🔹 Requer autenticação e permissão (Apenas Administradores ou Gerentes).
+ * 
+ * @route GET /api/v1/cargos/deleted
+ * @param request - Requisição (sem parâmetros).
+ * @param response - Resposta HTTP.
+ * @returns 200 OK com array de cargos deletados.
+ */
+    public findAllDeleted = async (request: Request, response: Response): Promise<void> => {
+        console.log("🔵 CargoController.findAllDeleted()");
+
+        const funcionarioLogado: Funcionario = this.getFuncionarioLogado(request);
+
+        const cargosDeletados = await this._cargoService.findAllDeleted(funcionarioLogado);
+
+        StandardResponse.success("Busca de cargos deletados realizada com sucesso", {
+            cargos: cargosDeletados
+        }).send(response);
+    };
+
+    /**
      * Busca um cargo pelo ID.
      * 
      * @route GET /api/v1/cargos/:idCargo

@@ -6,6 +6,7 @@ import { CargoRouter } from "./routers/CargoRouter";
 import { FuncionarioRouter } from "./routers/FuncionarioRouter";
 import { ErrorResponse } from "./http/ErrorResponse";
 import { StandardResponse } from "./http/StandardResponse";
+import { MongoDatabase } from "./database/MongoDatabase";
 
 export class Server {
     private _porta: number;
@@ -13,18 +14,22 @@ export class Server {
 
     private _cargoRouter: CargoRouter;
     private _funcionarioRouter: FuncionarioRouter;
+    private _dataBase: MongoDatabase;
 
     constructor(porta?: number) {
         console.log("⬆️ Server.constructor()");
+        this._dataBase = new MongoDatabase();
+
         this._porta = porta ?? 8080;
         this._app = express();
 
-        this._cargoRouter = new CargoRouter();
-        this._funcionarioRouter = new FuncionarioRouter();
+        this._cargoRouter = new CargoRouter(this._dataBase);
+        this._funcionarioRouter = new FuncionarioRouter(this._dataBase);
     }
 
     async init(): Promise<void> {
         console.log("⬆️ Server.init()");
+
 
         this._app.use(cors({ origin: "*" }));
         this._app.use(express.json());

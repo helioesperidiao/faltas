@@ -34,7 +34,7 @@ export class CargoService {
      * @returns O cargo criado com o ID preenchido.
      * @throws {ErrorResponse} Se o usuário não for Administrador ou se o cargo já existir.
      */
-   public create = async (cargo: Cargo, funcionarioLogado: Funcionario): Promise<Cargo> => {
+    public create = async (cargo: Cargo, funcionarioLogado: Funcionario): Promise<Cargo> => {
         console.log("🟣 CargoService.createCargo()");
 
         if (funcionarioLogado.cargo.nomeCargo !== "Administrador") {
@@ -69,6 +69,34 @@ export class CargoService {
         return await this._cargoDAO.findAll();
     };
 
+
+    /**
+     * Retorna todos os cargos que foram deletados (soft delete).
+     * 
+     * 🔹 Requer autenticação: apenas funcionários com cargo "Administrador" ou "Gerente" podem visualizar registros deletados.
+     * 
+     * @param funcionarioLogado - Funcionário autenticado que está realizando a operação.
+     * @returns Lista de cargos deletados.
+     */
+    public findAllDeleted = async (funcionarioLogado: Funcionario): Promise<Cargo[]> => {
+        console.log("🟣 CargoService.findAllDeleted()");
+
+        // Cargos autorizados a visualizar registros deletados
+        const cargosPermitidos = ["Administrador", "Gerente"];
+        const cargoFuncionario = funcionarioLogado.cargo.nomeCargo;
+
+        if (!cargosPermitidos.includes(cargoFuncionario)) {
+            throw new ErrorResponse(
+                403,
+                "Não autorizado",
+                { message: `Apenas ${cargosPermitidos.join(" ou ")} podem visualizar cargos deletados.` }
+            );
+        }
+
+        return await this._cargoDAO.findAllDeleted();
+    };
+
+
     /**
      * Busca um cargo pelo ID.
      * 
@@ -76,7 +104,7 @@ export class CargoService {
      * @param _funcionarioLogado - Funcionário autenticado (não utilizado, mantido por consistência).
      * @returns O cargo encontrado ou null se não existir.
      */
-   public findById = async (idCargo: string,): Promise<Cargo | null> => {
+    public findById = async (idCargo: string,): Promise<Cargo | null> => {
         console.log("🟣 CargoService.findById()");
         const cargo = new Cargo();
         cargo.idCargo = idCargo; // validação de formato é feita no setter
@@ -90,9 +118,9 @@ export class CargoService {
      * @param _funcionarioLogado - Funcionário autenticado (não utilizado, mantido por consistência).
      * @returns true se a atualização foi bem-sucedida, false caso contrário.
      */
-   public update = async (cargo: Cargo, funcionarioLogado: Funcionario): Promise<boolean> => {
+    public update = async (cargo: Cargo, funcionarioLogado: Funcionario): Promise<boolean> => {
         console.log("🟣 CargoService.updateCargo()");
-        return await this._cargoDAO.update(cargo, funcionarioLogado );
+        return await this._cargoDAO.update(cargo, funcionarioLogado);
     };
 
     /**
@@ -102,7 +130,7 @@ export class CargoService {
      * @param _funcionarioLogado - Funcionário autenticado (não utilizado, mantido por consistência).
      * @returns true se a exclusão foi bem-sucedida, false caso contrário.
      */
-  public  delete = async (cargo: Cargo, funcionarioLogado: Funcionario): Promise<boolean> => {
+    public delete = async (cargo: Cargo, funcionarioLogado: Funcionario): Promise<boolean> => {
         console.log("🟣 CargoService.delete()");
         return await this._cargoDAO.delete(cargo, funcionarioLogado);
     };

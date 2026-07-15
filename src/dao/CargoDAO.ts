@@ -59,10 +59,10 @@ export class CargoDAO {
     public async create(cargo: Cargo, funcionarioLogado: Funcionario): Promise<Cargo> {
         console.log("🟢 CargoDAO.create()");
         const collection = await this.getCollection();
-        
+
         // Registra auditoria: quem criou
         cargo.marcarCriadoPor(funcionarioLogado.idFuncionario);
-        
+
         const doc: OptionalId<Document> = {
             nomeCargo: cargo.nomeCargo,
             auditoria: cargo.auditoria
@@ -94,14 +94,14 @@ export class CargoDAO {
     public async delete(objCargoModel: Cargo, funcionarioLogado: Funcionario): Promise<boolean> {
         console.log("🟢 CargoDAO.delete(" + objCargoModel.idCargo + ")");
         const collection = await this.getCollection();
-        
+
         // Marca soft delete na auditoria
         objCargoModel.marcarDeletadoPor(funcionarioLogado.idFuncionario);
-        
+
         const filter: Filter<Document> = { _id: new ObjectId(objCargoModel.idCargo) };
         const update: UpdateFilter<Document> = {
-            $set: { 
-                auditoria: objCargoModel.auditoria 
+            $set: {
+                auditoria: objCargoModel.auditoria
             }
         };
         const result = await collection.updateOne(filter, update);
@@ -126,15 +126,15 @@ export class CargoDAO {
     public async update(objCargoModel: Cargo, funcionarioLogado: Funcionario): Promise<boolean> {
         console.log("🟢 CargoDAO.update()");
         const collection = await this.getCollection();
-        
+
         // Registra auditoria: quem alterou
         objCargoModel.marcarAlteradoPor(funcionarioLogado.idFuncionario);
-        
+
         const filter: Filter<Document> = { _id: new ObjectId(objCargoModel.idCargo) };
         const update: UpdateFilter<Document> = {
-            $set: { 
+            $set: {
                 nomeCargo: objCargoModel.nomeCargo,
-                auditoria: objCargoModel.auditoria 
+                auditoria: objCargoModel.auditoria
             }
         };
         const result = await collection.updateOne(filter, update);
@@ -155,7 +155,27 @@ export class CargoDAO {
     public async findAll(): Promise<Cargo[]> {
         console.log("🟢 CargoDAO.findAll()");
         const collection = await this.getCollection();
-        const cursor = collection.find({ "auditoria.deletadoEm": { $exists: false } });
+        const cursor = collection.find({ "auditoria._deletadoEm": null })
+        const docs = await cursor.toArray();
+        return docs.map(doc => this.toCargo(doc));
+    }
+
+    /**
+ * Retorna todos os cargos que foram deletados (soft delete).
+ * 
+ * Útil para restaurar registros ou auditoria de exclusões.
+ * 
+ * @returns Array de instâncias de Cargo que estão deletados.
+ * 
+ * @example
+ * const cargosDeletados = await cargoDAO.findAllDeleted();
+ * cargosDeletados.forEach(c => console.log(c.nomeCargo, c.auditoria.deletadoEm));
+ */
+    public async findAllDeleted(): Promise<Cargo[]> {
+        console.log("🟢 CargoDAO.findAllDeleted()");
+        const collection = await this.getCollection();
+        // O campo no banco é "auditoria._deletadoEm" (com underline)
+        const cursor = collection.find({ "auditoria._deletadoEm": { $ne: null } });
         const docs = await cursor.toArray();
         return docs.map(doc => this.toCargo(doc));
     }
@@ -175,9 +195,9 @@ export class CargoDAO {
     public async findById(idCargo: string): Promise<Cargo | null> {
         console.log("🟢 CargoDAO.findById()");
         const collection = await this.getCollection();
-        const filter: Filter<Document> = { 
+        const filter: Filter<Document> = {
             _id: new ObjectId(idCargo),
-            "auditoria.deletadoEm": { $exists: false } 
+            "auditoria.deletadoEm": { $exists: false }
         };
         const doc = await collection.findOne(filter);
         return doc ? this.toCargo(doc) : null;
@@ -205,14 +225,14 @@ export class CargoDAO {
         const collection = await this.getCollection();
         let filter: Filter<Document> = {};
         if (field === "_id") {
-            filter = { 
+            filter = {
                 _id: new ObjectId(value),
-                "auditoria.deletadoEm": { $exists: false } 
+                "auditoria.deletadoEm": { $exists: false }
             };
         } else {
-            filter = { 
+            filter = {
                 [field]: value,
-                "auditoria.deletadoEm": { $exists: false } 
+                "auditoria.deletadoEm": { $exists: false }
             };
         }
         const cursor = collection.find(filter);

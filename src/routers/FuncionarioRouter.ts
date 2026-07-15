@@ -41,17 +41,16 @@ export class FuncionarioRouter {
      * Inicializa as dependências (MongoDatabase, DAOs, Service, Controller, JwtMiddleware)
      * e configura todas as rotas da entidade Funcionario.
      */
-    constructor() {
+    constructor(private _dataBase: MongoDatabase) {
         console.log("⬆️ FuncionarioRouter.constructor()");
 
         // Cria um router principal e um sub-router para aplicar o prefixo
-        const mainRouter = Router();
-        const subRouter = Router();
+        this._router = Router();
+        this._dataBase = _dataBase;
 
-        // Instancia dependências
-        const mongoDB = new MongoDatabase();
-        const funcionarioDAO = new FuncionarioDAO(mongoDB);
-        const cargoDAO = new CargoDAO(mongoDB);
+     
+        const funcionarioDAO = new FuncionarioDAO(this._dataBase);
+        const cargoDAO = new CargoDAO(this._dataBase);
         const funcionarioService = new FuncionarioService(funcionarioDAO, cargoDAO);
         const funcionarioController = new FuncionarioController(funcionarioService);
         const jwtMiddleware = new JwtMiddleware();
@@ -59,65 +58,54 @@ export class FuncionarioRouter {
         // ======================== ROTAS PÚBLICAS ========================
 
         // POST /login - Autenticação (não requer JWT)
-        subRouter.post(
-            "/login",
+        this._router.post(FuncionarioRouter.PREFIX + "/login",
             funcionarioController.login
         );
 
         // ======================== ROTAS PROTEGIDAS POR JWT ========================
 
         // POST / - Criar um novo funcionário
-        subRouter.post(
-            "/",
+        this._router.post(FuncionarioRouter.PREFIX + "/",
             jwtMiddleware.validateToken,
             funcionarioController.create
         );
 
         // GET / - Listar todos os funcionários
-        subRouter.get(
-            "/",
+        this._router.get(FuncionarioRouter.PREFIX + "/",
             jwtMiddleware.validateToken,
             funcionarioController.findAll
         );
 
         // GET /count - Total de funcionários
-        subRouter.get(
-            "/count",
+        this._router.get(FuncionarioRouter.PREFIX + "/count",
             jwtMiddleware.validateToken,
             funcionarioController.count
         );
 
         // GET /count/:idCargo - Total de funcionários por cargo
-        subRouter.get(
-            "/count/:idCargo",
+        this._router.get(FuncionarioRouter.PREFIX + "/count/:idCargo",
             jwtMiddleware.validateToken,
             funcionarioController.countByCargoId
         );
 
         // GET /:idFuncionario - Buscar funcionário por ID
-        subRouter.get(
-            "/:idFuncionario",
+        this._router.get(FuncionarioRouter.PREFIX + "/:idFuncionario",
             jwtMiddleware.validateToken,
             funcionarioController.findById
         );
 
         // PUT /:idFuncionario - Atualizar funcionário
-        subRouter.put(
-            "/:idFuncionario",
+        this._router.put(FuncionarioRouter.PREFIX + "/:idFuncionario",
             jwtMiddleware.validateToken,
             funcionarioController.update
         );
 
         // DELETE /:idFuncionario - Deletar funcionário
-        subRouter.delete(
-            "/:idFuncionario",
+        this._router.delete(FuncionarioRouter.PREFIX + "/:idFuncionario",
             jwtMiddleware.validateToken,
             funcionarioController.delete
         );
 
-        // Aplica o prefixo no router principal
-        mainRouter.use(FuncionarioRouter.PREFIX, subRouter);
-        this._router = mainRouter;
     }
 
     /**

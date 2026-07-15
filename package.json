@@ -2,7 +2,7 @@
   "name": "faltas_cti",
   "version": "1.0.0",
   "scripts": {
-    "dev": "taskkill /IM nginx.exe /F 2>nul & cd nginx && start /B nginx && cd .. && nodemon",
+    "dev": "kill-port 3000 && taskkill /IM nginx.exe /F 2>nul & cd nginx && start /B nginx && cd .. && nodemon",
     "build": "tsc",
     "start": "node dist/server.js",
     "test": "jest",
@@ -36,6 +36,7 @@
     "@types/node": "^26.0.0",
     "@types/uuid": "^10.0.0",
     "jest": "^30.4.2",
+    "kill-port": "^2.0.1",
     "nodemon": "^3.1.14",
     "ts-jest": "^29.4.11",
     "ts-node": "^10.9.2",

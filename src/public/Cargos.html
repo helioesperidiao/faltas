@@ -21,8 +21,18 @@
   <div class="card mb-3">
     <div class="card-header">Filtro de Cargo</div>
     <div class="card-body">
-      <label for="txtFiltroCargo" class="form-label">Nome do Cargo</label>
-      <input type="text" id="txtFiltroCargo" class="form-control" placeholder="Digite o nome do cargo">
+      <div class="row">
+        <div class="col-md-6">
+          <label for="txtFiltroCargo" class="form-label">Nome do Cargo</label>
+          <input type="text" id="txtFiltroCargo" class="form-control" placeholder="Digite o nome do cargo">
+        </div>
+        <div class="col-md-6 d-flex align-items-end">
+          <div class="form-check">
+            <input type="checkbox" class="form-check-input" id="chkMostrarInativos">
+            <label class="form-check-label" for="chkMostrarInativos">Mostrar cargos inativos (deletados)</label>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -77,10 +87,12 @@
     const api = new ApiService(token);
 
     let API_DATA;
+    let endpointAtual = "api/v1/cargos"; // padrão: ativos
 
     const txtId = document.getElementById("txtId");
     const txtNomeCargo = document.getElementById("txtNomeCargo");
     const txtFiltroCargo = document.getElementById("txtFiltroCargo");
+    const chkMostrarInativos = document.getElementById("chkMostrarInativos");
     const divBotoes = document.getElementById("divBotoes");
     const divResposta = document.getElementById("divResposta");
 
@@ -112,6 +124,7 @@
       const resposta = await api.post("api/v1/cargos", objeto);
       if (resposta.success) {
         mostrarMensagem(resposta.message || "Cargo criado com sucesso", "success");
+        // Após criar, recarrega a lista mantendo o estado atual (inativos ou ativos)
         listAll();
         txtNomeCargo.value = "";
       } else {
@@ -159,7 +172,6 @@
       const btnConfirmDelete = document.getElementById("btnConfirmDelete");
       btnConfirmDelete.onclick = async () => {
         const resposta = await api.delete("api/v1/cargos", id);
-        // Trata a resposta (que já está normalizada pelo ApiService)
         if (resposta.success) {
           mostrarMensagem(resposta.message || "Cargo excluído com sucesso", "success");
           listAll();
@@ -174,9 +186,12 @@
     };
     divBotoes.appendChild(btnExcluir);
 
-    // ---------- LISTAR ----------
+    // ---------- LISTAR (com suporte a inativos) ----------
     async function listAll() {
-      const resposta = await api.get("api/v1/cargos");
+      const endpoint = chkMostrarInativos.checked ? "api/v1/cargos/deleted" : "api/v1/cargos";
+      endpointAtual = endpoint;
+
+      const resposta = await api.get(endpoint);
       if (resposta.success) {
         API_DATA = resposta.data;
         renderTable(API_DATA);
@@ -249,6 +264,14 @@
       };
       renderTable(filtrados);
       txtId.value = "";
+    });
+
+    // ---------- CHECKBOX INATIVOS ----------
+    chkMostrarInativos.addEventListener("change", function () {
+      // Recarrega a lista com o novo estado (ativos ou inativos)
+      listAll();
+      // Limpa o filtro de nome ao trocar a visualização
+      txtFiltroCargo.value = "";
     });
 
     // ---------- INICIALIZAR ----------

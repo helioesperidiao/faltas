@@ -21,6 +21,7 @@ export class CargoRouter {
     public static readonly PREFIX = "/api/v1/cargos";
 
     private _router: Router;
+    private _dataBase: MongoDatabase;
 
     /**
      * Construtor do CargoRouter.
@@ -28,16 +29,14 @@ export class CargoRouter {
      * Inicializa as dependências (MongoDatabase, CargoDAO, CargoService, CargoController, JwtMiddleware)
      * e configura todas as rotas da entidade Cargo.
      */
-    constructor() {
+    constructor(dataBase: MongoDatabase) {
         console.log("⬆️ CargoRouter.constructor()");
-
-        // Cria um router principal e um sub-router para aplicar o prefixo
-        const mainRouter = Router();
-        const subRouter = Router();
+        this._router = Router();
+        this._dataBase = dataBase;
 
         // Instancia as dependências
-        const mongoDB = new MongoDatabase();
-        const cargoDAO = new CargoDAO(mongoDB);
+        ///const mongoDB = new MongoDatabase();
+        const cargoDAO = new CargoDAO(this._dataBase);
         const cargoService = new CargoService(cargoDAO);
         const cargoController = new CargoController(cargoService);
         const jwtMiddleware = new JwtMiddleware();
@@ -45,50 +44,47 @@ export class CargoRouter {
         // ======================== ROTAS ========================
 
         // POST / - Criar um novo cargo (requer autenticação)
-        subRouter.post(
-            "/",
+        this._router.post(CargoRouter.PREFIX + "/",
             jwtMiddleware.validateToken,
             cargoController.create
         );
 
         // GET / - Listar todos os cargos (requer autenticação)
-        subRouter.get(
-            "/",
+        this._router.get(CargoRouter.PREFIX + "/",
             jwtMiddleware.validateToken,
             cargoController.findAll
         );
 
         // GET /count - Obter total de cargos (público)
-        subRouter.get(
-            "/count",
+        this._router.get(CargoRouter.PREFIX + "/count",
             jwtMiddleware.validateToken,
             cargoController.count
         );
 
+        this._router.get(CargoRouter.PREFIX + "/deleted",
+            jwtMiddleware.validateToken,
+            cargoController.findAllDeleted
+        );
+
         // GET /:idCargo - Buscar cargo por ID (requer autenticação)
-        subRouter.get(
-            "/:idCargo",
+        this._router.get(CargoRouter.PREFIX + "/:idCargo",
             jwtMiddleware.validateToken,
             cargoController.findById
         );
 
         // PUT /:idCargo - Atualizar cargo por ID (requer autenticação)
-        subRouter.put(
-            "/:idCargo",
+        this._router.put(CargoRouter.PREFIX + "/:idCargo",
             jwtMiddleware.validateToken,
             cargoController.update
         );
 
         // DELETE /:idCargo - Deletar cargo por ID (requer autenticação)
-        subRouter.delete(
-            "/:idCargo",
+        this._router.delete(CargoRouter.PREFIX + "/:idCargo",
             jwtMiddleware.validateToken,
             cargoController.delete
         );
 
-        // Aplica o prefixo no router principal
-        mainRouter.use(CargoRouter.PREFIX, subRouter);
-        this._router = mainRouter;
+
     }
 
     /**
