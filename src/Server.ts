@@ -4,6 +4,7 @@ import path from "path";
 
 import { CargoRouter } from "./routers/CargoRouter";
 import { FuncionarioRouter } from "./routers/FuncionarioRouter";
+import { RegistroRouter } from "./routers/RegistroRouter";
 import { ErrorResponse } from "./http/ErrorResponse";
 import { StandardResponse } from "./http/StandardResponse";
 import { MongoDatabase } from "./database/MongoDatabase";
@@ -14,6 +15,7 @@ export class Server {
 
     private _cargoRouter: CargoRouter;
     private _funcionarioRouter: FuncionarioRouter;
+    private _registroRouter: RegistroRouter;
     private _dataBase: MongoDatabase;
 
     constructor(porta?: number) {
@@ -25,6 +27,7 @@ export class Server {
 
         this._cargoRouter = new CargoRouter(this._dataBase);
         this._funcionarioRouter = new FuncionarioRouter(this._dataBase);
+        this._registroRouter = new RegistroRouter(this._dataBase);
     }
 
     async init(): Promise<void> {
@@ -38,7 +41,7 @@ export class Server {
         // Rotas da API (os routers já têm seus prefixos internos)
         this._app.use(this._cargoRouter.getRouter());
         this._app.use(this._funcionarioRouter.getRouter());
-
+        this._app.use(this._registroRouter.getRouter());
 
 
         this.setupErrorMiddleware();

@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chamada de Turma | Portal Administrativo</title>
+<style>
+  body {
+    margin: 0;
+    background: #eef2f8;
+    color: #1f2937;
+    font-family: Arial, Helvetica, sans-serif;
+  }
+
+  /* ---------- CABEÇALHO ---------- */
+  .topbar {
+    background: #163b6b;
+    color: #ffffff;
+    padding: 14px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+  }
+  .brand-mark {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #ffffff;
+    color: #163b6b;
+    font-weight: bold;
+    font-size: 18px;
+    text-align: center;
+    line-height: 40px;
+    margin-right: 14px;
+  }
+  .brand-text {
+    font-size: 20px;
+    font-weight: bold;
+  }
+  .brand-sub {
+    font-size: 11px;
+    color: #c9d7ec;
+    margin-top: 2px;
+  }
+  .session-info {
+    text-align: right;
+    font-size: 12px;
+    line-height: 1.5;
+    color: #d7e2f2;
+  }
+  .session-info strong {
+    color: #ffffff;
+  }
+
+  .crumbbar {
+    background: #0f2a4d;
+    color: #d7e2f2;
+    font-size: 13px;
+    padding: 9px 28px;
+  }
+  .crumbbar .current {
+    color: #ffffff;
+    font-weight: bold;
+  }
+
+  /* ---------- LAYOUT ---------- */
+  main {
+    max-width: 820px;
+    margin: 28px auto 60px auto;
+    padding: 0 20px;
+  }
+  .page-title h1 {
+    font-size: 22px;
+    color: #0f2a4d;
+    margin: 0;
+  }
+  .page-title p {
+    margin: 4px 0 18px 0;
+    font-size: 13px;
+    color: #7a7f88;
+  }
+
+  .card {
+    background: #ffffff;
+    border: 1px solid #c7cbd1;
+    border-radius: 6px;
+    margin-bottom: 20px;
+  }
+  .card-header {
+    background: #f1f2f4;
+    border-bottom: 1px solid #c7cbd1;
+    padding: 12px 22px;
+  }
+  .card-header h2 {
+    font-size: 14px;
+    margin: 0;
+    color: #0f2a4d;
+    text-transform: uppercase;
+  }
+  .card-body {
+    padding: 22px;
+  }
+
+  /* ---------- SELETOR DE TURMA ---------- */
+  .field label {
+    display: block;
+    font-size: 12.5px;
+    font-weight: bold;
+    color: #4a4f57;
+    margin-bottom: 6px;
+  }
+  .field select {
+    width: 100%;
+    border: 1px solid #c7cbd1;
+    border-radius: 4px;
+    padding: 10px 12px;
+    font-size: 14px;
+    color: #1f2937;
+    background: #ffffff;
+  }
+
+  .turma-summary {
+    display: none;
+    margin-top: 16px;
+  }
+  .turma-summary table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .turma-summary td {
+    border: 1px solid #c7cbd1;
+    border-radius: 6px;
+    text-align: center;
+    padding: 10px 14px;
+    width: 33%;
+  }
+  .turma-summary .num {
+    display: block;
+    font-size: 20px;
+    font-weight: bold;
+    color: #0f2a4d;
+  }
+  .turma-summary .lbl {
+    display: block;
+    font-size: 11px;
+    color: #7a7f88;
+    text-transform: uppercase;
+  }
+  .turma-summary .num-absent { color: #a6231e; }
+  .turma-summary .num-present { color: #1c7a3e; }
+
+  /* ---------- CHAMADA ---------- */
+  #chamada-wrap {
+    display: none;
+  }
+
+  .student-nav table {
+    width: 100%;
+  }
+  .student-nav td {
+    vertical-align: middle;
+  }
+  .td-arrow {
+    width: 50px;
+  }
+
+  .nav-arrow {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    border: 1px solid #c7cbd1;
+    background: #ffffff;
+    color: #163b6b;
+    font-size: 20px;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  .nav-arrow:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  .student-card {
+    border: 1px solid #c7cbd1;
+    border-radius: 8px;
+    padding: 20px;
+  }
+  .student-card.status-present {
+    background: #e7f4ec;
+    border-color: #bfe3cb;
+  }
+  .student-card.status-absent {
+    background: #fbe9e8;
+    border-color: #f0c4c1;
+  }
+
+  .student-card table {
+    width: 100%;
+  }
+
+  .avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: #163b6b;
+    color: #ffffff;
+    font-weight: bold;
+    font-size: 18px;
+    text-align: center;
+    line-height: 56px;
+  }
+
+  .student-name {
+    font-size: 17px;
+    font-weight: bold;
+    color: #0f2a4d;
+  }
+  .student-meta {
+    font-size: 12px;
+    color: #7a7f88;
+    margin-top: 3px;
+  }
+  .student-count {
+    font-size: 11.5px;
+    color: #7a7f88;
+    margin-top: 6px;
+  }
+
+  .status-badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+    padding: 5px 10px;
+    border-radius: 20px;
+    background: #f1f2f4;
+    color: #7a7f88;
+  }
+  .status-present .status-badge {
+    background: #1c7a3e;
+    color: #ffffff;
+  }
+  .status-absent .status-badge {
+    background: #a6231e;
+    color: #ffffff;
+  }
+
+  .btn {
+    display: block;
+    width: 100%;
+    border-radius: 4px;
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 8px;
+  }
+  .btn-present {
+    background: #ffffff;
+    border: 1.5px solid #1c7a3e;
+    color: #1c7a3e;
+  }
+  .btn-present.active {
+    background: #1c7a3e;
+    color: #ffffff;
+  }
+  .btn-absent {
+    background: #ffffff;
+    border: 1.5px solid #a6231e;
+    color: #a6231e;
+  }
+  .btn-absent.active {
+    background: #a6231e;
+    color: #ffffff;
+  }
+
+  /* ---------- LISTA RESUMO ---------- */
+  .roster-item {
+    display: block;
+    padding: 9px 6px;
+    border-bottom: 1px solid #f1f2f4;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .roster-item:hover {
+    background: #eef2f8;
+  }
+  .roster-item.current {
+    background: #eef2f8;
+    font-weight: bold;
+  }
+  .roster-item table {
+    width: 100%;
+  }
+  .roster-item .idx {
+    display: inline-block;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #f1f2f4;
+    color: #7a7f88;
+    font-size: 11px;
+    font-weight: bold;
+    text-align: center;
+    line-height: 22px;
+  }
+  .rstatus {
+    font-size: 10.5px;
+    font-weight: bold;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 12px;
+  }
+  .st-present .rstatus { background: #e7f4ec; color: #1c7a3e; }
+  .st-absent .rstatus { background: #fbe9e8; color: #a6231e; }
+  .st-pending .rstatus { background: #f1f2f4; color: #7a7f88; }
+
+  .empty-state {
+    text-align: center;
+    padding: 50px 20px;
+    color: #7a7f88;
+  }
+  .empty-state .icon {
+    font-size: 32px;
+    margin-bottom: 10px;
+  }
+
+  .actions-footer {
+    text-align: right;
+    padding: 16px 22px;
+    background: #f1f2f4;
+    border-top: 1px solid #c7cbd1;
+  }
+  .btn-secondary, .btn-primary {
+    display: inline-block;
+    width: auto;
+    border: none;
+    border-radius: 4px;
+    padding: 11px 22px;
+    font-size: 13.5px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-left: 12px;
+  }
+  .btn-secondary {
+    background: #ffffff;
+    border: 1px solid #c7cbd1;
+    color: #4a4f57;
+  }
+  .btn-primary {
+    background: #a6231e;
+    color: #ffffff;
+  }
+
+  .toast {
+    display: none;
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: #0f2a4d;
+    color: #ffffff;
+    padding: 14px 20px;
+    border-radius: 6px;
+    font-size: 13px;
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-mark">U</div>
+    <div>
+      <div class="brand-text">UniVap</div>
+      <div class="brand-sub">Portal Administrativo</div>
+    </div>
+  </div>
+  <div class="session-info">
+    USUÁRIO: <strong>JOSÉ CARLOS SOUZA</strong> · Inspetor<br>
+    <span id="relogio"></span>
+  </div>
+</div>
+
+<div class="crumbbar">
+  ENSINO BÁSICO &rsaquo; <span class="current">CHAMADA DE TURMA</span>
+</div>
+
+<main>
+  <div class="page-title">
+    <h1>Chamada de Turma</h1>
+    <p>Selecione a turma para iniciar o registro de frequência dos alunos.</p>
+  </div>
+
+  <!-- SELEÇÃO DE TURMA -->
+  <div class="card">
+    <div class="card-header"><h2>Turma</h2></div>
+    <div class="card-body">
+      <div class="field">
+        <label>Turma que está acessando</label>
+        <select id="turma-select" onchange="selecionarTurma()">
+          <option value="">Selecione uma turma...</option>
+          <option value="0">1ª Série A - Informática - Paraibuna Manhã</option>
+          <option value="1">2ª Série A - Informática - Paraibuna Manhã</option>
+          <option value="2">3ª Série A - Informática - Paraibuna Tarde</option>
+        </select>
+      </div>
+
+      <div class="turma-summary" id="turma-summary">
+        <table>
+          <tr>
+            <td>
+              <span class="num" id="sum-total">0</span>
+              <span class="lbl">Alunos</span>
+            </td>
+            <td>
+              <span class="num num-present" id="sum-present">0</span>
+              <span class="lbl">Presentes</span>
+            </td>
+            <td>
+              <span class="num num-absent" id="sum-absent">0</span>
+              <span class="lbl">Faltas</span>
+            </td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ESTADO VAZIO -->
+  <div class="card" id="empty-card">
+    <div class="empty-state">
+      <div class="icon">📋</div>
+      <p>Escolha uma turma acima para começar a chamada.</p>
+    </div>
+  </div>
+
+  <!-- CHAMADA -->
+  <div id="chamada-wrap">
+    <div class="card">
+      <div class="card-header"><h2>Registro de Frequência</h2></div>
+      <div class="card-body">
+        <div class="student-nav">
+          <table>
+            <tr>
+              <td class="td-arrow">
+                <button type="button" class="nav-arrow" id="btn-prev" onclick="alunoAnterior()">&lsaquo;</button>
+              </td>
+              <td>
+                <div class="student-card" id="student-card">
+                  <table>
+                    <tr>
+                      <td style="width:70px;">
+                        <div class="avatar" id="student-avatar">--</div>
+                      </td>
+                      <td>
+                        <div class="student-name" id="student-name">—</div>
+                        <div class="student-meta" id="student-meta">—</div>
+                        <div class="student-count" id="student-count">Aluno 0 de 0</div>
+                        <br>
+                        <span class="status-badge" id="student-badge">Pendente</span>
+                      </td>
+                      <td style="width:160px;">
+                        <button type="button" class="btn btn-present" id="btn-present" onclick="marcarPresenca('present')">Presente</button>
+                        <button type="button" class="btn btn-absent" id="btn-absent" onclick="marcarPresenca('absent')">Faltou</button>
+                      </td>
+                    </tr>
+                  </table>
+                </div>
+              </td>
+              <td class="td-arrow">
+                <button type="button" class="nav-arrow" id="btn-next" onclick="proximoAluno()">&rsaquo;</button>
+              </td>
+            </tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- LISTA COMPLETA -->
+    <div class="card">
+      <div class="card-header"><h2>Lista da Turma</h2></div>
+      <div class="card-body">
+        <div id="roster"></div>
+      </div>
+      <div class="actions-footer">
+        <button type="button" class="btn-secondary" onclick="limparChamada()">Limpar chamada</button>
+        <button type="button" class="btn-primary" onclick="salvarChamada()">Salvar chamada</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div class="toast" id="toast">Chamada salva com sucesso.</div>
+
+<script>
+  // ---------- RELÓGIO ----------
+  function atualizarRelogio() {
+    var d = new Date();
+    var dia = String(d.getDate()).padStart(2, '0');
+    var mes = String(d.getMonth() + 1).padStart(2, '0');
+    var ano = d.getFullYear();
+    var hora = String(d.getHours()).padStart(2, '0');
+    var min = String(d.getMinutes()).padStart(2, '0');
+    document.getElementById('relogio').innerHTML = dia + '/' + mes + '/' + ano + ' - ' + hora + ':' + min;
+  }
+  atualizarRelogio();
+  setInterval(atualizarRelogio, 30000);
+
+  // ---------- DADOS DAS TURMAS (lista simples) ----------
+  var nomesTurmas = [
+    "1ª Série A - Informática - Paraibuna Manhã",
+    "2ª Série A - Informática - Paraibuna Manhã",
+    "3ª Série A - Informática - Paraibuna Tarde"
+  ];
+
+  var alunosPorTurma = [
+    ["Luana Pinheiro Cruz", "Bruno Almeida Santos", "Carla Fernandes Lima", "Diego Souza Rocha", "Elisa Martins Alves", "Felipe Costa Reis"],
+    ["Gabriel Oliveira Nunes", "Helena Barros Dias", "Igor Teixeira Farias", "Julia Ramos Pinto", "Kevin Andrade Melo"],
+    ["Larissa Gomes Neves", "Marcos Vinícius Paz", "Natália Duarte Silva", "Otávio Cardoso Lopes", "Patrícia Nogueira Cunha", "Rafael Tavares Moura", "Sabrina Freitas Xavier"]
+  ];
+
+  var turmaAtual = -1;
+  var alunoAtual = 0;
+  var statusAlunos = [];
+
+  // ---------- SELECIONAR TURMA ----------
+  function selecionarTurma() {
+    var select = document.getElementById('turma-select');
+    var valor = select.value;
+
+    if (valor === "") {
+      document.getElementById('empty-card').style.display = 'block';
+      document.getElementById('chamada-wrap').style.display = 'none';
+      document.getElementById('turma-summary').style.display = 'none';
+      return;
+    }
+
+    turmaAtual = parseInt(valor);
+    alunoAtual = 0;
+
+    statusAlunos = [];
+    for (var i = 0; i < alunosPorTurma[turmaAtual].length; i++) {
+      statusAlunos.push('pending');
+    }
+
+    document.getElementById('empty-card').style.display = 'none';
+    document.getElementById('chamada-wrap').style.display = 'block';
+    document.getElementById('turma-summary').style.display = 'block';
+
+    montarLista();
+    mostrarAluno();
+  }
+
+  // ---------- INICIAIS DO NOME (avatar) ----------
+  function pegarIniciais(nome) {
+    var partes = nome.split(' ');
+    var iniciais = partes[0].charAt(0);
+    if (partes.length > 1) {
+      iniciais = iniciais + partes[1].charAt(0);
+    }
+    return iniciais.toUpperCase();
+  }
+
+  // ---------- MOSTRAR ALUNO ATUAL ----------
+  function mostrarAluno() {
+    var listaAlunos = alunosPorTurma[turmaAtual];
+    var nome = listaAlunos[alunoAtual];
+    var status = statusAlunos[alunoAtual];
+
+    document.getElementById('student-avatar').innerHTML = pegarIniciais(nome);
+    document.getElementById('student-name').innerHTML = nome;
+    document.getElementById('student-meta').innerHTML = nomesTurmas[turmaAtual];
+    document.getElementById('student-count').innerHTML = 'Aluno ' + (alunoAtual + 1) + ' de ' + listaAlunos.length;
+
+    var card = document.getElementById('student-card');
+    card.className = 'student-card';
+    var badge = document.getElementById('student-badge');
+    var btnPresente = document.getElementById('btn-present');
+    var btnFaltou = document.getElementById('btn-absent');
+    btnPresente.className = 'btn btn-present';
+    btnFaltou.className = 'btn btn-absent';
+
+    if (status === 'present') {
+      card.className = 'student-card status-present';
+      badge.innerHTML = 'Presente';
+      btnPresente.className = 'btn btn-present active';
+    } else if (status === 'absent') {
+      card.className = 'student-card status-absent';
+      badge.innerHTML = 'Faltou';
+      btnFaltou.className = 'btn btn-absent active';
+    } else {
+      badge.innerHTML = 'Pendente';
+    }
+
+    document.getElementById('btn-prev').disabled = (alunoAtual === 0);
+    document.getElementById('btn-next').disabled = (alunoAtual === listaAlunos.length - 1);
+
+    atualizarResumo();
+    atualizarListaVisual();
+  }
+
+  // ---------- CONTADORES ----------
+  function atualizarResumo() {
+    var total = statusAlunos.length;
+    var presentes = 0;
+    var faltas = 0;
+
+    for (var i = 0; i < statusAlunos.length; i++) {
+      if (statusAlunos[i] === 'present') { presentes = presentes + 1; }
+      if (statusAlunos[i] === 'absent') { faltas = faltas + 1; }
+    }
+
+    document.getElementById('sum-total').innerHTML = total;
+    document.getElementById('sum-present').innerHTML = presentes;
+    document.getElementById('sum-absent').innerHTML = faltas;
+  }
+
+  // ---------- MONTAR LISTA DA TURMA ----------
+  function montarLista() {
+    var listaAlunos = alunosPorTurma[turmaAtual];
+    var roster = document.getElementById('roster');
+    roster.innerHTML = '';
+
+    for (var i = 0; i < listaAlunos.length; i++) {
+      var linha = document.createElement('div');
+      linha.className = 'roster-item';
+      linha.id = 'roster-item-' + i;
+      linha.setAttribute('onclick', 'irParaAluno(' + i + ')');
+
+      linha.innerHTML =
+        '<table><tr>' +
+        '<td style="width:30px;"><span class="idx">' + (i + 1) + '</span></td>' +
+        '<td>' + listaAlunos[i] + '</td>' +
+        '<td style="width:100px;text-align:right;"><span class="rstatus" id="roster-status-' + i + '">Pendente</span></td>' +
+        '</tr></table>';
+
+      roster.appendChild(linha);
+    }
+    atualizarListaVisual();
+  }
+
+  function atualizarListaVisual() {
+    for (var i = 0; i < statusAlunos.length; i++) {
+      var item = document.getElementById('roster-item-' + i);
+      var statusTexto = document.getElementById('roster-status-' + i);
+      var status = statusAlunos[i];
+
+      item.className = 'roster-item';
+      if (i === alunoAtual) {
+        item.className = 'roster-item current';
+      }
+
+      if (status === 'present') {
+        item.className = item.className + ' st-present';
+        statusTexto.innerHTML = 'Presente';
+      } else if (status === 'absent') {
+        item.className = item.className + ' st-absent';
+        statusTexto.innerHTML = 'Faltou';
+      } else {
+        item.className = item.className + ' st-pending';
+        statusTexto.innerHTML = 'Pendente';
+      }
+    }
+  }
+
+  // ---------- AÇÕES ----------
+  function marcarPresenca(tipo) {
+    statusAlunos[alunoAtual] = tipo;
+    mostrarAluno();
+  }
+
+  function alunoAnterior() {
+    if (alunoAtual > 0) {
+      alunoAtual = alunoAtual - 1;
+      mostrarAluno();
+    }
+  }
+
+  function proximoAluno() {
+    if (alunoAtual < alunosPorTurma[turmaAtual].length - 1) {
+      alunoAtual = alunoAtual + 1;
+      mostrarAluno();
+    }
+  }
+
+  function irParaAluno(indice) {
+    alunoAtual = indice;
+    mostrarAluno();
+  }
+
+  function limparChamada() {
+    statusAlunos = [];
+    for (var i = 0; i < alunosPorTurma[turmaAtual].length; i++) {
+      statusAlunos.push('pending');
+    }
+    mostrarAluno();
+  }
+
+  function salvarChamada() {
+    var toast = document.getElementById('toast');
+    toast.style.display = 'block';
+    setTimeout(function () {
+      toast.style.display = 'none';
+    }, 3000);
+  }
+</script>
+
+</body>
+</html>

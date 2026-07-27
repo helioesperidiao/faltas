@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login | Portal Administrativo</title>
+<style>
+  body {
+    margin: 0;
+    background: #eef2f8;
+    color: #1f2937;
+    font-family: Arial, Helvetica, sans-serif;
+  }
+
+  /* ---------- CABEÇALHO ---------- */
+  .topbar {
+    background: #163b6b;
+    color: #ffffff;
+    padding: 14px 28px;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+  }
+  .brand-mark {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #ffffff;
+    color: #163b6b;
+    font-weight: bold;
+    font-size: 18px;
+    text-align: center;
+    line-height: 40px;
+    margin-right: 14px;
+  }
+  .brand-text {
+    font-size: 20px;
+    font-weight: bold;
+  }
+  .brand-sub {
+    font-size: 11px;
+    color: #c9d7ec;
+    margin-top: 2px;
+  }
+
+  /* ---------- LAYOUT CENTRAL ---------- */
+  .login-wrap {
+    display: flex;
+    justify-content: center;
+    padding: 60px 20px;
+  }
+
+  table.login-outer {
+    width: 100%;
+    max-width: 900px;
+    border-collapse: collapse;
+  }
+  td.login-side {
+    width: 45%;
+    text-align: center;
+    vertical-align: middle;
+    padding: 20px;
+  }
+  .login-logo {
+    width: 190px;
+    height: 190px;
+    border-radius: 50%;
+    background: #163b6b;
+    color: #ffffff;
+    font-size: 80px;
+    font-weight: bold;
+    text-align: center;
+    line-height: 190px;
+    margin: 0 auto 18px auto;
+  }
+  .login-side h1 {
+    font-size: 20px;
+    color: #0f2a4d;
+    margin: 0;
+  }
+  .login-side p {
+    font-size: 13px;
+    color: #7a7f88;
+    margin: 6px 0 0 0;
+  }
+
+  td.login-form-cell {
+    width: 55%;
+    vertical-align: top;
+    padding: 20px;
+  }
+
+  /* ---------- CARTÃO DE LOGIN ---------- */
+  .card {
+    background: #ffffff;
+    border: 1px solid #c7cbd1;
+    border-radius: 6px;
+  }
+  .card-header {
+    background: #f1f2f4;
+    border-bottom: 1px solid #c7cbd1;
+    padding: 14px 24px;
+  }
+  .card-header h2 {
+    font-size: 14px;
+    margin: 0;
+    color: #0f2a4d;
+    text-transform: uppercase;
+  }
+  .card-body {
+    padding: 26px 24px;
+  }
+
+  .field {
+    margin-bottom: 16px;
+  }
+  .field label {
+    display: block;
+    font-size: 12.5px;
+    font-weight: bold;
+    color: #4a4f57;
+    margin-bottom: 6px;
+  }
+  .field input {
+    width: 100%;
+    border: 1px solid #c7cbd1;
+    border-radius: 4px;
+    padding: 11px 12px;
+    font-size: 14px;
+    color: #1f2937;
+    background: #ffffff;
+  }
+  .field input:focus {
+    border-color: #1e4c8c;
+    outline: none;
+  }
+
+  .msg-erro {
+    display: none;
+    background: #fbe9e8;
+    border: 1px solid #f0c4c1;
+    color: #a6231e;
+    font-size: 12.5px;
+    padding: 10px 12px;
+    border-radius: 4px;
+    margin-bottom: 16px;
+  }
+
+  table.opcoes-table {
+    width: 100%;
+    margin-bottom: 20px;
+  }
+  .lembrar {
+    font-size: 12.5px;
+    color: #4a4f57;
+  }
+  .lembrar input {
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+  .link-esqueci {
+    font-size: 12.5px;
+    color: #1e4c8c;
+    text-decoration: none;
+    float: right;
+  }
+  .link-esqueci:hover {
+    text-decoration: underline;
+  }
+
+  .btn-entrar {
+    display: block;
+    width: 100%;
+    border: none;
+    border-radius: 4px;
+    padding: 12px 16px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    background: #a6231e;
+    color: #ffffff;
+  }
+
+  .perfil-titulo {
+    font-size: 12px;
+    font-weight: bold;
+    color: #7a7f88;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  table.perfil-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 8px;
+  }
+  .perfil-opt {
+    display: block;
+    border: 1px solid #c7cbd1;
+    border-radius: 6px;
+    padding: 10px 14px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: bold;
+    color: #4a4f57;
+  }
+  .perfil-opt.ativo {
+    border-color: #1e4c8c;
+    background: #eef2f8;
+    color: #0f2a4d;
+  }
+
+  .rodape-aviso {
+    text-align: center;
+    font-size: 11.5px;
+    color: #7a7f88;
+    margin-top: 18px;
+  }
+
+  .toast {
+    display: none;
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: #0f2a4d;
+    color: #ffffff;
+    padding: 14px 20px;
+    border-radius: 6px;
+    font-size: 13px;
+  }
+
+  @media (max-width: 700px) {
+    table.login-outer, table.login-outer tbody, table.login-outer tr,
+    td.login-side, td.login-form-cell {
+      display: block;
+      width: 100%;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-mark">U</div>
+    <div>
+      <div class="brand-text">UniVap</div>
+      <div class="brand-sub">Portal Administrativo</div>
+    </div>
+  </div>
+</div>
+
+<div class="login-wrap">
+  <table class="login-outer">
+    <tr>
+      <td class="login-side">
+        <div class="login-logo">U</div>
+        <h1>Portal Administrativo</h1>
+        <p>Acesse com seu usuário e senha para gerenciar o sistema.</p>
+      </td>
+
+      <td class="login-form-cell">
+        <div class="card">
+          <div class="card-header"><h2>Entrar</h2></div>
+          <div class="card-body">
+
+            <div class="perfil-titulo">Eu sou</div>
+            <table class="perfil-table">
+              <tr>
+                <td>
+                  <span class="perfil-opt ativo" id="perfil-administrador" onclick="escolherPerfil('administrador')">Administrador</span>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <span class="perfil-opt" id="perfil-inspetor" onclick="escolherPerfil('inspetor')">Inspetor</span>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <span class="perfil-opt" id="perfil-funcionario" onclick="escolherPerfil('funcionario')">Funcionário</span>
+                </td>
+              </tr>
+            </table>
+
+            <br>
+
+            <form id="form-login" onsubmit="return entrar();">
+              <div class="msg-erro" id="msg-erro">Usuário ou senha inválidos. Tente novamente.</div>
+
+              <div class="field">
+                <label>Usuário</label>
+                <input type="text" id="campo-usuario" placeholder="Digite seu usuário" required>
+              </div>
+
+              <div class="field">
+                <label>Senha</label>
+                <input type="password" id="campo-senha" placeholder="Digite sua senha" required>
+              </div>
+
+              <table class="opcoes-table">
+                <tr>
+                  <td>
+                    <label class="lembrar">
+                      <input type="checkbox" id="campo-lembrar">
+                      Lembrar usuário
+                    </label>
+                  </td>
+                  <td>
+                    <a href="#" class="link-esqueci" onclick="esqueciSenha(); return false;">Esqueci minha senha</a>
+                  </td>
+                </tr>
+              </table>
+
+              <button type="submit" class="btn-entrar">Entrar</button>
+            </form>
+
+          </div>
+        </div>
+        <div class="rodape-aviso">Acesso restrito a colaboradores autorizados da UniVap.</div>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<div class="toast" id="toast">Login realizado com sucesso.</div>
+
+<script>
+  // ---------- PERFIL SELECIONADO ----------
+  var perfilAtual = 'administrador';
+
+  function escolherPerfil(perfil) {
+    var perfis = ['administrador', 'inspetor', 'funcionario'];
+    for (var i = 0; i < perfis.length; i++) {
+      var elemento = document.getElementById('perfil-' + perfis[i]);
+      if (perfis[i] === perfil) {
+        elemento.className = 'perfil-opt ativo';
+      } else {
+        elemento.className = 'perfil-opt';
+      }
+    }
+    perfilAtual = perfil;
+  }
+
+  // ---------- ENVIO DO LOGIN ----------
+  function entrar() {
+    var usuario = document.getElementById('campo-usuario').value;
+    var senha = document.getElementById('campo-senha').value;
+    var msgErro = document.getElementById('msg-erro');
+
+    // validação simples só pra exemplo (sem backend ainda)
+    if (usuario === '' || senha === '') {
+      msgErro.style.display = 'block';
+      return false;
+    }
+
+    msgErro.style.display = 'none';
+
+    var toast = document.getElementById('toast');
+    toast.innerHTML = 'Login realizado como ' + perfilAtual + '.';
+    toast.style.display = 'block';
+    setTimeout(function () {
+      toast.style.display = 'none';
+    }, 3000);
+
+    return false; // evita recarregar a página (ainda não há backend)
+  }
+
+  function esqueciSenha() {
+    var toast = document.getElementById('toast');
+    toast.innerHTML = 'Instruções de recuperação enviadas para o seu e-mail cadastrado.';
+    toast.style.display = 'block';
+    setTimeout(function () {
+      toast.style.display = 'none';
+    }, 3000);
+  }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel do Administrador | Portal Administrativo</title>
+<style>
+  body {
+    margin: 0;
+    background: #eef2f8;
+    color: #1f2937;
+    font-family: Arial, Helvetica, sans-serif;
+  }
+
+  /* ---------- CABEÇALHO ---------- */
+  .topbar {
+    background: #163b6b;
+    color: #ffffff;
+    padding: 14px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+  }
+  .brand-mark {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #ffffff;
+    color: #163b6b;
+    font-weight: bold;
+    font-size: 18px;
+    text-align: center;
+    line-height: 40px;
+    margin-right: 14px;
+  }
+  .brand-text {
+    font-size: 20px;
+    font-weight: bold;
+  }
+  .brand-sub {
+    font-size: 11px;
+    color: #c9d7ec;
+    margin-top: 2px;
+  }
+  .session-info {
+    text-align: right;
+    font-size: 12px;
+    line-height: 1.5;
+    color: #d7e2f2;
+  }
+  .session-info strong {
+    color: #ffffff;
+  }
+
+  /* ---------- NAVBAR ---------- */
+  .navbar {
+    background: #0f2a4d;
+    padding: 0 28px;
+  }
+  .navbar table {
+    border-collapse: collapse;
+  }
+  .navbar td {
+    padding: 0;
+  }
+  .navbar a {
+    display: block;
+    padding: 13px 16px;
+    color: #d7e2f2;
+    text-decoration: none;
+    font-size: 12.5px;
+    font-weight: bold;
+    letter-spacing: .3px;
+    border-bottom: 3px solid transparent;
+  }
+  .navbar a:hover {
+    color: #ffffff;
+    background: #163b6b;
+  }
+  .navbar a.ativo {
+    color: #ffffff;
+    border-bottom: 3px solid #a6231e;
+    background: #163b6b;
+  }
+
+  /* ---------- LAYOUT ---------- */
+  main {
+    max-width: 1080px;
+    margin: 28px auto 60px auto;
+    padding: 0 20px;
+  }
+  .page-title h1 {
+    font-size: 22px;
+    color: #0f2a4d;
+    margin: 0;
+  }
+  .page-title p {
+    margin: 4px 0 20px 0;
+    font-size: 13px;
+    color: #7a7f88;
+  }
+
+  /* ---------- CARDS DE RESUMO ---------- */
+  table.resumo-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 14px 0;
+    margin: 0 -14px 20px -14px;
+  }
+  .resumo-card {
+    border: 1px solid #c7cbd1;
+    border-radius: 6px;
+    background: #ffffff;
+    padding: 16px 18px;
+  }
+  .resumo-lbl {
+    font-size: 11.5px;
+    color: #7a7f88;
+    text-transform: uppercase;
+    font-weight: bold;
+  }
+  .resumo-num {
+    font-size: 26px;
+    font-weight: bold;
+    color: #0f2a4d;
+    margin-top: 4px;
+  }
+  .resumo-num.cor-vermelha { color: #a6231e; }
+  .resumo-num.cor-verde { color: #1c7a3e; }
+
+  /* ---------- CARD PRINCIPAL ---------- */
+  .card {
+    background: #ffffff;
+    border: 1px solid #c7cbd1;
+    border-radius: 6px;
+    margin-bottom: 22px;
+  }
+  .card-header {
+    background: #f1f2f4;
+    border-bottom: 1px solid #c7cbd1;
+    padding: 12px 22px;
+  }
+  .card-header h2 {
+    font-size: 14px;
+    margin: 0;
+    color: #0f2a4d;
+    text-transform: uppercase;
+  }
+  .card-body {
+    padding: 22px;
+  }
+
+  .field label {
+    display: block;
+    font-size: 12.5px;
+    font-weight: bold;
+    color: #4a4f57;
+    margin-bottom: 6px;
+  }
+  .field select,
+  .field input {
+    border: 1px solid #c7cbd1;
+    border-radius: 4px;
+    padding: 9px 11px;
+    font-size: 13.5px;
+    color: #1f2937;
+    background: #ffffff;
+  }
+
+  table.filtro-table {
+    width: 100%;
+    border-spacing: 14px 0;
+  }
+  table.filtro-table select,
+  table.filtro-table input {
+    width: 100%;
+  }
+
+  /* ---------- TABELA DE ALUNOS ---------- */
+  table.alunos-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 18px;
+  }
+  .alunos-table th {
+    text-align: left;
+    font-size: 11.5px;
+    text-transform: uppercase;
+    color: #7a7f88;
+    border-bottom: 2px solid #c7cbd1;
+    padding: 8px 10px;
+  }
+  .alunos-table td {
+    padding: 10px;
+    border-bottom: 1px solid #f1f2f4;
+    font-size: 13.5px;
+  }
+  .alunos-table tr:hover td {
+    background: #eef2f8;
+  }
+
+  .avatar-mini {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #163b6b;
+    color: #ffffff;
+    font-weight: bold;
+    font-size: 12px;
+    text-align: center;
+    line-height: 32px;
+    display: inline-block;
+    margin-right: 10px;
+    vertical-align: middle;
+  }
+
+  .badge {
+    display: inline-block;
+    font-size: 10.5px;
+    font-weight: bold;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 12px;
+  }
+  .badge-presente { background: #e7f4ec; color: #1c7a3e; }
+  .badge-falta { background: #fbe9e8; color: #a6231e; }
+  .badge-pendente { background: #f1f2f4; color: #7a7f88; }
+
+  .faltas-total {
+    font-weight: bold;
+  }
+  .faltas-total.alerta {
+    color: #a6231e;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 50px 20px;
+    color: #7a7f88;
+  }
+  .empty-state .icon {
+    font-size: 32px;
+    margin-bottom: 10px;
+  }
+
+  #tabela-wrap {
+    display: none;
+  }
+
+  @media (max-width: 700px) {
+    .navbar { overflow-x: auto; }
+    table.resumo-table, table.resumo-table tbody, table.resumo-table tr, table.resumo-table td {
+      display: block;
+      width: 100%;
+      margin-bottom: 12px;
+    }
+    table.filtro-table, table.filtro-table tbody, table.filtro-table tr, table.filtro-table td {
+      display: block;
+      width: 100%;
+      margin-bottom: 10px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-mark">U</div>
+    <div>
+      <div class="brand-text">UniVap</div>
+      <div class="brand-sub">Portal Administrativo</div>
+    </div>
+  </div>
+  <div class="session-info">
+    USUÁRIO: <strong>ADMINISTRADOR DO SISTEMA</strong><br>
+    <span id="relogio"></span>
+  </div>
+</div>
+
+<div class="navbar">
+  <table>
+    <tr>
+      <td><a href="#" class="ativo">Painel</a></td>
+      <td><a href="#">Turmas</a></td>
+      <td><a href="#">Alunos</a></td>
+      <td><a href="#">Faltas</a></td>
+      <td><a href="#">Funcionários</a></td>
+      <td><a href="#">Relatórios</a></td>
+      <td><a href="#">Configurações</a></td>
+    </tr>
+  </table>
+</div>
+
+<main>
+  <div class="page-title">
+    <h1>Painel de Faltas</h1>
+    <p>Escolha uma turma para ver a lista de alunos e a situação de frequência de cada um.</p>
+  </div>
+
+  <!-- CARDS DE RESUMO -->
+  <table class="resumo-table">
+    <tr>
+      <td style="width:25%;">
+        <div class="resumo-card">
+          <div class="resumo-lbl">Alunos no sistema</div>
+          <div class="resumo-num" id="resumo-total-alunos">0</div>
+        </div>
+      </td>
+      <td style="width:25%;">
+        <div class="resumo-card">
+          <div class="resumo-lbl">Turmas ativas</div>
+          <div class="resumo-num" id="resumo-turmas">0</div>
+        </div>
+      </td>
+      <td style="width:25%;">
+        <div class="resumo-card">
+          <div class="resumo-lbl">Faltas hoje</div>
+          <div class="resumo-num cor-vermelha" id="resumo-faltas-hoje">0</div>
+        </div>
+      </td>
+      <td style="width:25%;">
+        <div class="resumo-card">
+          <div class="resumo-lbl">Frequência média</div>
+          <div class="resumo-num cor-verde" id="resumo-frequencia">0%</div>
+        </div>
+      </td>
+    </tr>
+  </table>
+
+  <!-- FILTRO -->
+  <div class="card">
+    <div class="card-header"><h2>Selecionar Turma</h2></div>
+    <div class="card-body">
+      <table class="filtro-table">
+        <tr>
+          <td style="width:60%;">
+            <div class="field">
+              <label>Turma</label>
+              <select id="turma-select" onchange="selecionarTurma()">
+                <option value="">Selecione uma turma...</option>
+              </select>
+            </div>
+          </td>
+          <td style="width:40%;">
+            <div class="field">
+              <label>Data de referência</label>
+              <input type="date" id="data-referencia" onchange="mostrarTurma()">
+            </div>
+          </td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- ESTADO VAZIO -->
+  <div class="card" id="empty-card">
+    <div class="empty-state">
+      <div class="icon">🎓</div>
+      <p>Escolha uma turma acima para ver a lista de alunos e as faltas.</p>
+    </div>
+  </div>
+
+  <!-- TABELA DE ALUNOS -->
+  <div class="card" id="tabela-wrap">
+    <div class="card-header"><h2 id="titulo-turma">Alunos da Turma</h2></div>
+    <div class="card-body">
+      <table class="alunos-table">
+        <thead>
+          <tr>
+            <th>Aluno</th>
+            <th>Situação na data</th>
+            <th>Faltas no bimestre</th>
+          </tr>
+        </thead>
+        <tbody id="corpo-tabela"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<script>
+  // ---------- RELÓGIO ----------
+  function atualizarRelogio() {
+    var d = new Date();
+    var dia = String(d.getDate()).padStart(2, '0');
+    var mes = String(d.getMonth() + 1).padStart(2, '0');
+    var ano = d.getFullYear();
+    var hora = String(d.getHours()).padStart(2, '0');
+    var min = String(d.getMinutes()).padStart(2, '0');
+    document.getElementById('relogio').innerHTML = dia + '/' + mes + '/' + ano + ' - ' + hora + ':' + min;
+
+    // já deixa a data de referência preenchida com hoje
+    var campoData = document.getElementById('data-referencia');
+    if (campoData.value === '') {
+      var anoIso = d.getFullYear();
+      var mesIso = String(d.getMonth() + 1).padStart(2, '0');
+      var diaIso = String(d.getDate()).padStart(2, '0');
+      campoData.value = anoIso + '-' + mesIso + '-' + diaIso;
+    }
+  }
+  atualizarRelogio();
+  setInterval(atualizarRelogio, 30000);
+
+  // ---------- DADOS MOCK ----------
+  // cada aluno: nome, situação na data escolhida, total de faltas no bimestre
+  var nomesTurmas = [
+    "1ª Série A - Informática - Paraibuna Manhã",
+    "2ª Série A - Informática - Paraibuna Manhã",
+    "3ª Série A - Informática - Paraibuna Tarde"
+  ];
+
+  var alunosPorTurma = [
+    [
+      { nome: "Luana Pinheiro Cruz", situacao: "presente", faltas: 2 },
+      { nome: "Bruno Almeida Santos", situacao: "falta", faltas: 6 },
+      { nome: "Carla Fernandes Lima", situacao: "presente", faltas: 0 },
+      { nome: "Diego Souza Rocha", situacao: "falta", faltas: 4 },
+      { nome: "Elisa Martins Alves", situacao: "presente", faltas: 1 },
+      { nome: "Felipe Costa Reis", situacao: "pendente", faltas: 3 }
+    ],
+    [
+      { nome: "Gabriel Oliveira Nunes", situacao: "presente", faltas: 1 },
+      { nome: "Helena Barros Dias", situacao: "presente", faltas: 0 },
+      { nome: "Igor Teixeira Farias", situacao: "falta", faltas: 5 },
+      { nome: "Julia Ramos Pinto", situacao: "pendente", faltas: 2 },
+      { nome: "Kevin Andrade Melo", situacao: "presente", faltas: 3 }
+    ],
+    [
+      { nome: "Larissa Gomes Neves", situacao: "falta", faltas: 7 },
+      { nome: "Marcos Vinícius Paz", situacao: "presente", faltas: 0 },
+      { nome: "Natália Duarte Silva", situacao: "presente", faltas: 1 },
+      { nome: "Otávio Cardoso Lopes", situacao: "pendente", faltas: 0 },
+      { nome: "Patrícia Nogueira Cunha", situacao: "presente", faltas: 2 },
+      { nome: "Rafael Tavares Moura", situacao: "falta", faltas: 4 },
+      { nome: "Sabrina Freitas Xavier", situacao: "presente", faltas: 1 }
+    ]
+  ];
+
+  var turmaAtual = -1;
+
+  // preencher o seletor de turmas
+  var select = document.getElementById('turma-select');
+  for (var i = 0; i < nomesTurmas.length; i++) {
+    var opcao = document.createElement('option');
+    opcao.value = i;
+    opcao.innerHTML = nomesTurmas[i];
+    select.appendChild(opcao);
+  }
+
+  // preencher os cards de resumo (considerando todas as turmas)
+  function montarResumoGeral() {
+    var totalAlunos = 0;
+    var totalFaltasHoje = 0;
+
+    for (var i = 0; i < alunosPorTurma.length; i++) {
+      for (var j = 0; j < alunosPorTurma[i].length; j++) {
+        totalAlunos = totalAlunos + 1;
+        if (alunosPorTurma[i][j].situacao === 'falta') {
+          totalFaltasHoje = totalFaltasHoje + 1;
+        }
+      }
+    }
+
+    var frequencia = 100;
+    if (totalAlunos > 0) {
+      frequencia = Math.round(((totalAlunos - totalFaltasHoje) / totalAlunos) * 100);
+    }
+
+    document.getElementById('resumo-total-alunos').innerHTML = totalAlunos;
+    document.getElementById('resumo-turmas').innerHTML = nomesTurmas.length;
+    document.getElementById('resumo-faltas-hoje').innerHTML = totalFaltasHoje;
+    document.getElementById('resumo-frequencia').innerHTML = frequencia + '%';
+  }
+  montarResumoGeral();
+
+  // ---------- SELECIONAR TURMA ----------
+  function selecionarTurma() {
+    var valor = document.getElementById('turma-select').value;
+
+    if (valor === '') {
+      turmaAtual = -1;
+      document.getElementById('empty-card').style.display = 'block';
+      document.getElementById('tabela-wrap').style.display = 'none';
+      return;
+    }
+
+    turmaAtual = parseInt(valor);
+    mostrarTurma();
+  }
+
+  function pegarIniciais(nome) {
+    var partes = nome.split(' ');
+    var iniciais = partes[0].charAt(0);
+    if (partes.length > 1) {
+      iniciais = iniciais + partes[1].charAt(0);
+    }
+    return iniciais.toUpperCase();
+  }
+
+  function mostrarTurma() {
+    if (turmaAtual === -1) {
+      return;
+    }
+
+    document.getElementById('empty-card').style.display = 'none';
+    document.getElementById('tabela-wrap').style.display = 'block';
+    document.getElementById('titulo-turma').innerHTML = nomesTurmas[turmaAtual];
+
+    var alunos = alunosPorTurma[turmaAtual];
+    var corpo = document.getElementById('corpo-tabela');
+    corpo.innerHTML = '';
+
+    for (var i = 0; i < alunos.length; i++) {
+      var aluno = alunos[i];
+
+      var textoBadge = 'Pendente';
+      var classeBadge = 'badge-pendente';
+      if (aluno.situacao === 'presente') {
+        textoBadge = 'Presente';
+        classeBadge = 'badge-presente';
+      } else if (aluno.situacao === 'falta') {
+        textoBadge = 'Falta';
+        classeBadge = 'badge-falta';
+      }
+
+      var classeFaltas = 'faltas-total';
+      if (aluno.faltas >= 5) {
+        classeFaltas = 'faltas-total alerta';
+      }
+
+      var linha = document.createElement('tr');
+      linha.innerHTML =
+        '<td><span class="avatar-mini">' + pegarIniciais(aluno.nome) + '</span>' + aluno.nome + '</td>' +
+        '<td><span class="badge ' + classeBadge + '">' + textoBadge + '</span></td>' +
+        '<td><span class="' + classeFaltas + '">' + aluno.faltas + '</span></td>';
+
+      corpo.appendChild(linha);
+    }
+  }
+</script>
+
+</body>
+</html>
