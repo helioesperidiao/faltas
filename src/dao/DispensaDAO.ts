@@ -37,7 +37,7 @@ export class DispensaDAO {
         disciplina: dispensa.disciplina,
         motivo: dispensa.motivo,
         nomeArquivo: dispensa.nomeArquivo,
-        auditoria: dispensa.auditoria
+        auditoria: dispensa.auditoria.toJSON()
     };
 
     const result = await collection.insertOne(doc);
@@ -80,7 +80,7 @@ export class DispensaDAO {
                 disciplina: dispensa.disciplina,
                 motivo: dispensa.motivo,
                 nomeArquivo: dispensa.nomeArquivo,
-                auditoria: dispensa.auditoria
+                auditoria: dispensa.auditoria.toJSON()
             }
         };
         const result = await collection.updateOne(filter, update);
@@ -95,7 +95,7 @@ export class DispensaDAO {
         dispensa.turma = doc.turma;
         dispensa.horaInicio = doc.horaInicio;
         dispensa.horaFim = doc.horaFim;
-        dispensa.dia = doc.dia;
+        dispensa.dia = new Date(doc.dia);
         dispensa.cod = doc.cod;
         dispensa.disciplina = doc.disciplina;
         dispensa.motivo = doc.motivo;

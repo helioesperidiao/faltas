@@ -8,7 +8,7 @@ export class Dispensa {
     private _turma: string = '';
     private _horaInicio: number = 0;
     private _horaFim: number = 0;
-    private _dia: string = '';
+    private _dia: Date = new Date;
     private _cod: string = '';
     private _disciplina: string = '';
     private _motivo: string = '';
@@ -117,15 +117,15 @@ export class Dispensa {
     }
 
     //dia
-    get dia(): string{
+    get dia(): Date {
         return this._dia;
     }
-    set dia(value: string){
-        if (!value) {
-            throw new Error("Dia é obrigatório.");
+    set dia(value: Date) {
+        if (!(value instanceof Date)) {
+            throw new Error("dia deve ser um objeto Date.");
         }
-        if (value.length > 20) {
-            throw new Error(`Dia pode ter no máximo 20 caracteres.`);
+        if (isNaN(value.getTime())) {
+            throw new Error(`dia inválido: "${value}".`);
         }
         this._dia = value;
     }
@@ -180,8 +180,8 @@ export class Dispensa {
         if (typeof value !== "string") {
             throw new Error("nomeArquivo deve ser uma string.");
         }
-        if (value.trim().length > 20) {
-            throw new Error("nomeArquivo deve ter no máximo 20 caracteres.");
+        if (value.trim().length > 50) {
+            throw new Error("nomeArquivo deve ter no máximo 50 caracteres.");
         }
         this._nomeArquivo = value.trim();
     }
