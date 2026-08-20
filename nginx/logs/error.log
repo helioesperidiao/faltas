@@ -171,3 +171,7 @@
 2026/08/19 19:16:49 [emerg] 6120#31884: CreateDirectory() "C:\Users\luana\OneDrive\Documentos\GitHub\faltas\nginx/temp/client_body_temp" failed (3: The system cannot find the path specified)
 2026/08/19 19:17:11 [emerg] 14148#19324: CreateDirectory() "C:\Users\luana\OneDrive\Documentos\GitHub\faltas\nginx/temp/client_body_temp" failed (3: The system cannot find the path specified)
 2026/08/19 19:19:29 [emerg] 13732#26212: CreateDirectory() "C:\Users\luana\OneDrive\Documentos\GitHub\faltas\nginx/temp/client_body_temp" failed (3: The system cannot find the path specified)
+2026/08/20 18:11:59 [emerg] 14952#30736: CreateDirectory() "C:\Users\belli\faltas\nginx/temp/client_body_temp" failed (3: The system cannot find the path specified)
+2026/08/20 18:12:25 [emerg] 27708#5468: CreateDirectory() "C:\Users\belli\faltas\nginx/temp/client_body_temp" failed (3: The system cannot find the path specified)
+2026/08/20 18:20:39 [error] 32404#32412: *5 CreateFile() "C:\Users\belli\faltas\nginx/html/favicon.ico" failed (2: The system cannot find the file specified), client: 127.0.0.1, server: localhost, request: "GET /favicon.ico HTTP/1.1", host: "localhost:8080", referrer: "http://localhost:8080/faltas/Login.html"
+2026/08/20 18:20:49 [error] 32404#32412: *5 CreateFile() "C:\Users\belli\faltas\nginx/html/css/bootstrap.min.css" failed (3: The system cannot find the path specified), client: 127.0.0.1, server: localhost, request: "GET /css/bootstrap.min.css HTTP/1.1", host: "localhost:8080", referrer: "http://localhost:8080/faltas/dashboard.html"
