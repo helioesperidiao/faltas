@@ -57,7 +57,8 @@ export class DispensaDAO {
         const filter: Filter<Document> = { _id: new ObjectId(dispensa.idDispensa) };
         const update: UpdateFilter<Document> = {
             $set: {
-                auditoria: dispensa.auditoria
+                "auditoria.deletadoPor": dispensa.auditoria.deletadoPor,
+                "auditoria.deletadoEm": dispensa.auditoria.deletadoEm
             }
         };
         const result = await collection.updateOne(filter, update);
@@ -80,13 +81,13 @@ export class DispensaDAO {
                 disciplina: dispensa.disciplina,
                 motivo: dispensa.motivo,
                 nomeArquivo: dispensa.nomeArquivo,
-                auditoria: dispensa.auditoria.toJSON()
+                "auditoria.alteradoPor": dispensa.auditoria.alteradoPor,
+                "auditoria.alteradoEm": dispensa.auditoria.alteradoEm
             }
         };
         const result = await collection.updateOne(filter, update);
         return result.modifiedCount > 0;
     }
-
     //toDispensa
     private toDispensa(doc: any): Dispensa {
         const dispensa = new Dispensa();
@@ -119,7 +120,7 @@ export class DispensaDAO {
         const collection = await this.getCollection();
         const filter: Filter<Document> = {
             _id: new ObjectId(idDispensa),
-            "auditoria.deletadoEm": { $exists: false }
+            "auditoria.deletadoEm": null
         };
         const doc = await collection.findOne(filter);
         return doc ? this.toDispensa(doc) : null;
@@ -145,7 +146,7 @@ export class DispensaDAO {
     public async count(): Promise<number> {
         console.log("🟢 DispensaDAO.count()");
         const collection = await this.getCollection();
-        return await collection.countDocuments({ "auditoria.deletadoEm": { $exists: false } });
+        return await collection.countDocuments({ "auditoria.deletadoEm": null });
     }
 
     //se quiser buscar pelo aluno, disciplina ou código da disciplina
@@ -160,12 +161,12 @@ export class DispensaDAO {
         if (field === "_id") {
             filter = {
                 _id: new ObjectId(value),
-                "auditoria.deletadoEm": { $exists: false }
+                "auditoria.deletadoEm": null
             };
         } else {
             filter = {
                 [field]: value,
-                "auditoria.deletadoEm": { $exists: false }
+                "auditoria.deletadoEm": null
             };
         }
         const cursor = collection.find(filter);

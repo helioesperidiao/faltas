@@ -4,8 +4,6 @@ import { MongoDatabase } from "../database/MongoDatabase";
 import { Funcionario } from "@/models/Funcionario";
 import { Auditoria } from "@/models/Auditoria";
 
-
-//auditoria._deletado em está sem underline, talvez dê problema
 export class RegistroDAO {
     private _database: MongoDatabase;
 
@@ -21,37 +19,36 @@ export class RegistroDAO {
         return db.collection("registro");
     }
 
-
     //create
     public async create(registro: Registro, funcionarioLogado: Funcionario): Promise<Registro> {
-    console.log("🟢 RegistroDAO.create()");
-    const collection = await this.getCollection();
+        console.log("🟢 RegistroDAO.create()");
+        const collection = await this.getCollection();
 
-    //quem criou
-    registro.marcarCriadoPor(funcionarioLogado.idFuncionario);
+        //quem criou
+        registro.marcarCriadoPor(funcionarioLogado.idFuncionario);
 
-    const doc: OptionalId<Document> = {
-        ano: registro.ano,
-        codDisciplina: registro.codDisciplina,
-        horaInicio: registro.horaInicio,
-        horaFim: registro.horaFim,
-        matricula: registro.matricula,
-        falta: registro.falta,
-        dia: registro.dia,
-        atrasado: registro.atrasado,
-        nomeAcompanhante: registro.nomeAcompanhante,
-        auditoria: registro.auditoria
-    };
+        const doc: OptionalId<Document> = {
+            ano: registro.ano,
+            codDisciplina: registro.codDisciplina,
+            horaInicio: registro.horaInicio,
+            horaFim: registro.horaFim,
+            matricula: registro.matricula,
+            falta: registro.falta,
+            dia: registro.dia,
+            atrasado: registro.atrasado,
+            nomeAcompanhante: registro.nomeAcompanhante,
+            auditoria: registro.auditoria.toJSON()
+        };
 
-    const result = await collection.insertOne(doc);
-    if (!result.insertedId) {
-        throw new Error("Falha ao inserir registro");
+        const result = await collection.insertOne(doc);
+        if (!result.insertedId) {
+            throw new Error("Falha ao inserir registro");
+        }
+
+        registro.idRegistro = result.insertedId.toString();
+        return registro;
     }
 
-    registro.idRegistro = result.insertedId.toString();
-        return registro;
-    } 
-    
     //delete
     public async delete (registro: Registro, funcionarioLogado: Funcionario): Promise<boolean>{
         console.log("🟢 RegistroDAO.delete(" + registro.idRegistro + ")");
@@ -60,7 +57,8 @@ export class RegistroDAO {
         const filter: Filter<Document> = { _id: new ObjectId(registro.idRegistro) };
         const update: UpdateFilter<Document> = {
             $set: {
-                auditoria: registro.auditoria
+                "auditoria.deletadoPor": registro.auditoria.deletadoPor,
+                "auditoria.deletadoEm": registro.auditoria.deletadoEm
             }
         };
         const result = await collection.updateOne(filter, update);
@@ -75,11 +73,11 @@ export class RegistroDAO {
         const filter: Filter<Document> = { _id: new ObjectId(registro.idRegistro) };
         const update: UpdateFilter<Document> = {
             $set: {
-                auditoria: registro.auditoria,
                 falta: registro.falta,
                 atrasado: registro.atrasado,
-                nomeAcompanhante: registro.nomeAcompanhante
-                //podemos adicionar outros campos talvez?
+                nomeAcompanhante: registro.nomeAcompanhante,
+                "auditoria.alteradoPor": registro.auditoria.alteradoPor,
+                "auditoria.alteradoEm": registro.auditoria.alteradoEm
             }
         };
         const result = await collection.updateOne(filter, update);
@@ -118,7 +116,7 @@ export class RegistroDAO {
         const collection = await this.getCollection();
         const filter: Filter<Document> = {
             _id: new ObjectId(idRegistro),
-            "auditoria.deletadoEm": { $exists: false }
+            "auditoria.deletadoEm": null
         };
         const doc = await collection.findOne(filter);
         return doc ? this.toRegistro(doc) : null;
@@ -135,7 +133,7 @@ export class RegistroDAO {
     //"select" deletados
     public async findAllDeleted(): Promise<Registro[]> {
         const collection = await this.getCollection();
-        const cursor = collection.find({ "auditoria.deletadoEm": { $ne: null } }); //esse $ne é not equal, entao é o oposto da condição do findAll
+        const cursor = collection.find({ "auditoria.deletadoEm": { $ne: null } });
         const docs = await cursor.toArray();
         return docs.map(doc => this.toRegistro(doc));
     }
@@ -144,7 +142,7 @@ export class RegistroDAO {
     public async count(): Promise<number> {
         console.log("🟢 RegistroDAO.count()");
         const collection = await this.getCollection();
-        return await collection.countDocuments({ "auditoria.deletadoEm": { $exists: false } });
+        return await collection.countDocuments({ "auditoria.deletadoEm": null });
     }
 
     //se quiser buscar pela matricula do aluno ou pela disciplina
@@ -159,12 +157,12 @@ export class RegistroDAO {
         if (field === "_id") {
             filter = {
                 _id: new ObjectId(value),
-                "auditoria.deletadoEm": { $exists: false }
+                "auditoria.deletadoEm": null
             };
         } else {
             filter = {
                 [field]: value,
-                "auditoria.deletadoEm": { $exists: false }
+                "auditoria.deletadoEm": null
             };
         }
         const cursor = collection.find(filter);
