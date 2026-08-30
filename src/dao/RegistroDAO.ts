@@ -37,6 +37,7 @@ export class RegistroDAO {
             dia: registro.dia,
             atrasado: registro.atrasado,
             nomeAcompanhante: registro.nomeAcompanhante,
+            situacao: registro.situacao,
             auditoria: registro.auditoria.toJSON()
         };
 
@@ -76,12 +77,34 @@ export class RegistroDAO {
                 falta: registro.falta,
                 atrasado: registro.atrasado,
                 nomeAcompanhante: registro.nomeAcompanhante,
+                situacao: registro.situacao,
                 "auditoria.alteradoPor": registro.auditoria.alteradoPor,
                 "auditoria.alteradoEm": registro.auditoria.alteradoEm
             }
         };
         const result = await collection.updateOne(filter, update);
         return result.modifiedCount > 0;
+    }
+
+    //atualiza em massa a situação (Abonada/Dispensada) de registros de um aluno num período
+    public async updateSituacaoPorMatriculaEPeriodo(matricula: string, dataInicio: Date, dataFim: Date, situacao: string, funcionarioLogado: Funcionario): Promise<number> {
+        console.log(`🟢 RegistroDAO.updateSituacaoPorMatriculaEPeriodo(${matricula}, ${situacao})`);
+        const collection = await this.getCollection();
+        const filter: Filter<Document> = {
+            matricula,
+            dia: { $gte: dataInicio, $lte: dataFim },
+            falta: true,
+            "auditoria.deletadoEm": null
+        };
+        const update: UpdateFilter<Document> = {
+            $set: {
+                situacao,
+                "auditoria.alteradoPor": funcionarioLogado.idFuncionario,
+                "auditoria.alteradoEm": new Date()
+            }
+        };
+        const result = await collection.updateMany(filter, update);
+        return result.modifiedCount;
     }
 
     //toRegistro
@@ -97,6 +120,7 @@ export class RegistroDAO {
         registro.dia = new Date(doc.dia);
         registro.atrasado = doc.atrasado;
         registro.nomeAcompanhante = doc.nomeAcompanhante || '';
+        registro.situacao = doc.situacao || 'Normal';
         if (doc.auditoria) {
             const auditoria = new Auditoria();
             auditoria.criadoPor = doc.auditoria.criadoPor || '';

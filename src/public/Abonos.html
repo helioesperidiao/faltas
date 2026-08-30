@@ -6,14 +6,17 @@
   <title>CRUD Abonos com ApiService</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link href="css/bootstrap.min.css" rel="stylesheet" />
+  <link href="css/univap-theme.css" rel="stylesheet" />
   <script src="js/bootstrap.bundle.min.js"></script>
   <style>
-    body { padding: 2em; }
+    body { margin: 0; }
     table { margin-top: 1em; }
   </style>
 </head>
 
-<body class="container">
+<body>
+  <div id="app-topbar"></div>
+  <main class="container conteudo-pagina" id="conteudo-principal">
 
   <h1 class="mb-4">Gerenciamento de Abonos</h1>
 
@@ -35,20 +38,28 @@
     </div>
   </div>
 
+  <!-- Solicitar abono: upload de atestado + definição de período -->
   <div class="card mb-3">
-    <div class="card-header">Cadastro de Abono</div>
+    <div class="card-header">Solicitação de Abono</div>
     <div class="card-body">
       <div class="mb-3">
-        <input type="text" id="txtId" class="form-control mb-2" disabled placeholder="ID (para update ou delete)" />
-        <input type="text" id="txtIdRegistro" class="form-control mb-2" placeholder="ID do Registro" />
-        <input type="text" id="txtMatricula" class="form-control mb-2" placeholder="Matrícula" />
-        <input type="text" id="txtCodDisciplina" class="form-control mb-2" placeholder="Código da Disciplina" />
-        <input type="date" id="txtDia" class="form-control mb-2" />
-        <input type="number" id="txtHorasAbonadas" class="form-control mb-2" min="0" max="24" placeholder="Horas Abonadas" />
-        <textarea id="txtMotivo" class="form-control mb-2" rows="3" placeholder="Motivo"></textarea>
+        <input type="text" id="txtId" class="form-control mb-2" disabled placeholder="ID (para update)" aria-label="ID do abono selecionado" />
+        <input type="text" id="txtMatricula" class="form-control mb-2" placeholder="Matrícula do aluno" aria-label="Matrícula do aluno" />
+        <label class="form-label">Período da falta abonada</label>
+        <div class="row mb-2">
+          <div class="col-md-6">
+            <input type="date" id="txtDataInicio" class="form-control" aria-label="Data de início da falta abonada" />
+          </div>
+          <div class="col-md-6">
+            <input type="date" id="txtDataFim" class="form-control" aria-label="Data de fim da falta abonada" />
+          </div>
+        </div>
+        <textarea id="txtMotivo" class="form-control mb-2" rows="3" placeholder="Motivo" aria-label="Motivo do abono"></textarea>
+        <label class="form-label">Atestado (PDF ou imagem)</label>
+        <input type="file" id="fileAtestado" class="form-control mb-2" accept=".pdf,.jpg,.jpeg" />
       </div>
       <div class="mb-3 d-flex gap-2" id="divBotoes"></div>
-      <div id="divResposta"></div>
+      <div id="divResposta" role="status" aria-live="polite"></div>
     </div>
   </div>
 
@@ -75,7 +86,10 @@
     </div>
   </div>
 
+  </main>
+
   <script type="module">
+    import { montarTopbar } from './js/Topbar.js';
     import ApiService from './ApiService.js';
 
     let userData = localStorage.getItem("userData");
@@ -87,16 +101,16 @@
 
     const token = userData.data.token;
     const api = new ApiService(token);
+    montarTopbar('abonos');
 
     let API_DATA;
 
     const txtId = document.getElementById("txtId");
-    const txtIdRegistro = document.getElementById("txtIdRegistro");
     const txtMatricula = document.getElementById("txtMatricula");
-    const txtCodDisciplina = document.getElementById("txtCodDisciplina");
-    const txtDia = document.getElementById("txtDia");
-    const txtHorasAbonadas = document.getElementById("txtHorasAbonadas");
+    const txtDataInicio = document.getElementById("txtDataInicio");
+    const txtDataFim = document.getElementById("txtDataFim");
     const txtMotivo = document.getElementById("txtMotivo");
+    const fileAtestado = document.getElementById("fileAtestado");
     const txtFiltroMatricula = document.getElementById("txtFiltroMatricula");
     const chkMostrarInativos = document.getElementById("chkMostrarInativos");
 
@@ -117,46 +131,31 @@
 
     function limparFormulario() {
       txtId.value = "";
-      txtIdRegistro.value = "";
       txtMatricula.value = "";
-      txtCodDisciplina.value = "";
-      txtDia.value = "";
-      txtHorasAbonadas.value = "";
+      txtDataInicio.value = "";
+      txtDataFim.value = "";
       txtMotivo.value = "";
+      fileAtestado.value = "";
     }
 
     function montarObjeto() {
       return {
         abono: {
-          idRegistro: txtIdRegistro.value.trim(),
           matricula: txtMatricula.value.trim(),
-          codDisciplina: txtCodDisciplina.value.trim(),
-          dia: txtDia.value,
-          horasAbonadas: Number(txtHorasAbonadas.value),
+          dataInicio: txtDataInicio.value,
+          dataFim: txtDataFim.value,
           motivo: txtMotivo.value.trim()
         }
       };
     }
 
     function validarCampos() {
-      if (!txtIdRegistro.value.trim()) {
-        mostrarMensagem("Informe o ID do registro", "warning");
-        return false;
-      }
       if (!txtMatricula.value.trim()) {
         mostrarMensagem("Informe a matrícula", "warning");
         return false;
       }
-      if (!txtCodDisciplina.value.trim()) {
-        mostrarMensagem("Informe o código da disciplina", "warning");
-        return false;
-      }
-      if (!txtDia.value) {
-        mostrarMensagem("Informe a data", "warning");
-        return false;
-      }
-      if (txtHorasAbonadas.value === "") {
-        mostrarMensagem("Informe as horas abonadas", "warning");
+      if (!txtDataInicio.value || !txtDataFim.value) {
+        mostrarMensagem("Informe o período (data início e data fim)", "warning");
         return false;
       }
       if (!txtMotivo.value.trim()) {
@@ -166,11 +165,23 @@
       return true;
     }
 
+    // envia o atestado via multipart/form-data diretamente (fora do ApiService, que só trabalha com JSON)
+    async function enviarAtestado(idAbono, arquivo) {
+      const formData = new FormData();
+      formData.append("arquivo", arquivo);
+      const response = await fetch(`api/v1/abonos/${idAbono}/arquivo`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` },
+        body: formData
+      });
+      return await response.json();
+    }
+
     const btnListar = createButton("Listar", "btn-primary");
     btnListar.onclick = () => listAll();
     divBotoes.appendChild(btnListar);
 
-    const btnCriar = createButton("Criar", "btn-success");
+    const btnCriar = createButton("Solicitar Abono", "btn-success");
     btnCriar.onclick = async () => {
       if (!validarCampos()) {
         return;
@@ -178,11 +189,15 @@
 
       const resposta = await api.post("api/v1/abonos", montarObjeto());
       if (resposta.success) {
-        mostrarMensagem(resposta.message || "Abono criado com sucesso", "success");
+        const idAbono = resposta.data.abonos[0].idAbono;
+        if (fileAtestado.files.length > 0) {
+          await enviarAtestado(idAbono, fileAtestado.files[0]);
+        }
+        mostrarMensagem(resposta.message || "Abono solicitado com sucesso", "success");
         limparFormulario();
         listAll();
       } else {
-        mostrarMensagem(resposta.message || "Erro ao criar abono", "danger");
+        mostrarMensagem(resposta.message || "Erro ao solicitar abono", "danger");
       }
     };
     divBotoes.appendChild(btnCriar);
@@ -200,6 +215,9 @@
 
       const resposta = await api.put("api/v1/abonos", id, montarObjeto());
       if (resposta.success) {
+        if (fileAtestado.files.length > 0) {
+          await enviarAtestado(id, fileAtestado.files[0]);
+        }
         mostrarMensagem(resposta.message || "Abono atualizado com sucesso", "success");
         limparFormulario();
         listAll();
@@ -234,6 +252,26 @@
     };
     divBotoes.appendChild(btnExcluir);
 
+    async function aprovarAbono(idAbono) {
+      const resposta = await api.put("api/v1/abonos", `${idAbono}/aprovar`, {});
+      if (resposta.success) {
+        mostrarMensagem("Abono aprovado. Faltas do período convertidas em Abonada.", "success");
+        listAll();
+      } else {
+        mostrarMensagem(resposta.message || "Erro ao aprovar abono", "danger");
+      }
+    }
+
+    async function rejeitarAbono(idAbono) {
+      const resposta = await api.put("api/v1/abonos", `${idAbono}/rejeitar`, {});
+      if (resposta.success) {
+        mostrarMensagem("Abono rejeitado.", "success");
+        listAll();
+      } else {
+        mostrarMensagem(resposta.message || "Erro ao rejeitar abono", "danger");
+      }
+    }
+
     async function listAll() {
       const endpoint = chkMostrarInativos.checked ? "api/v1/abonos/deleted" : "api/v1/abonos";
       const resposta = await api.get(endpoint);
@@ -247,6 +285,11 @@
       }
     }
 
+    function badgeStatus(status) {
+      const cores = { Pendente: "warning", Aprovado: "success", Rejeitado: "danger" };
+      return `<span class="badge bg-${cores[status] || 'secondary'}">${status}</span>`;
+    }
+
     function renderTable(dados) {
       const divTabela = document.getElementById("divTabela");
       divTabela.innerHTML = "";
@@ -257,7 +300,7 @@
       const thead = document.createElement("thead");
       thead.className = "table-light";
       const trHead = document.createElement("tr");
-      ["ID", "ID Registro", "Matrícula", "Código", "Data", "Horas", "Motivo", "Ações"].forEach(text => {
+      ["ID", "Matrícula", "Início", "Fim", "Motivo", "Atestado", "Status", "Ações"].forEach(text => {
         const th = document.createElement("th");
         th.textContent = text;
         trHead.appendChild(th);
@@ -275,29 +318,29 @@
         tdId.textContent = abono.idAbono;
         tr.appendChild(tdId);
 
-        const tdIdRegistro = document.createElement("td");
-        tdIdRegistro.textContent = abono.idRegistro;
-        tr.appendChild(tdIdRegistro);
-
         const tdMatricula = document.createElement("td");
         tdMatricula.textContent = abono.matricula;
         tr.appendChild(tdMatricula);
 
-        const tdCod = document.createElement("td");
-        tdCod.textContent = abono.codDisciplina;
-        tr.appendChild(tdCod);
+        const tdInicio = document.createElement("td");
+        tdInicio.textContent = new Date(abono.dataInicio).toLocaleDateString("pt-BR");
+        tr.appendChild(tdInicio);
 
-        const tdDia = document.createElement("td");
-        tdDia.textContent = new Date(abono.dia).toLocaleDateString("pt-BR");
-        tr.appendChild(tdDia);
-
-        const tdHoras = document.createElement("td");
-        tdHoras.textContent = String(abono.horasAbonadas);
-        tr.appendChild(tdHoras);
+        const tdFim = document.createElement("td");
+        tdFim.textContent = new Date(abono.dataFim).toLocaleDateString("pt-BR");
+        tr.appendChild(tdFim);
 
         const tdMotivo = document.createElement("td");
         tdMotivo.textContent = abono.motivo;
         tr.appendChild(tdMotivo);
+
+        const tdArquivo = document.createElement("td");
+        tdArquivo.textContent = abono.nomeArquivo || "-";
+        tr.appendChild(tdArquivo);
+
+        const tdStatus = document.createElement("td");
+        tdStatus.innerHTML = badgeStatus(abono.status);
+        tr.appendChild(tdStatus);
 
         const tdAcoes = document.createElement("td");
         const divBtns = document.createElement("div");
@@ -306,17 +349,25 @@
         const btnSel = createButton("Selecionar", "btn-info");
         btnSel.onclick = () => {
           txtId.value = abono.idAbono;
-          txtIdRegistro.value = abono.idRegistro;
           txtMatricula.value = abono.matricula;
-          txtCodDisciplina.value = abono.codDisciplina;
-          txtDia.value = new Date(abono.dia).toISOString().split("T")[0];
-          txtHorasAbonadas.value = abono.horasAbonadas;
+          txtDataInicio.value = new Date(abono.dataInicio).toISOString().split("T")[0];
+          txtDataFim.value = new Date(abono.dataFim).toISOString().split("T")[0];
           txtMotivo.value = abono.motivo;
           divResposta.className = "";
           divResposta.textContent = "";
         };
-
         divBtns.appendChild(btnSel);
+
+        if (abono.status === "Pendente") {
+          const btnAprovar = createButton("Aprovar", "btn-success");
+          btnAprovar.onclick = () => aprovarAbono(abono.idAbono);
+          divBtns.appendChild(btnAprovar);
+
+          const btnRejeitar = createButton("Rejeitar", "btn-danger");
+          btnRejeitar.onclick = () => rejeitarAbono(abono.idAbono);
+          divBtns.appendChild(btnRejeitar);
+        }
+
         tdAcoes.appendChild(divBtns);
         tr.appendChild(tdAcoes);
 

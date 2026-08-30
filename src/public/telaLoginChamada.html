@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Login | Portal Administrativo</title>
+<title>Login | UNIVAP - Controle de Faltas</title>
+<link href="css/univap-theme.css" rel="stylesheet">
 <style>
   body {
     margin: 0;
@@ -235,6 +236,8 @@
       display: block;
       width: 100%;
     }
+    .topbar { padding: 12px 16px; }
+    .login-wrap { padding: 30px 14px; }
   }
 </style>
 </head>
@@ -244,7 +247,7 @@
   <div class="brand">
     <div class="brand-mark">U</div>
     <div>
-      <div class="brand-text">UniVap</div>
+      <div class="brand-text">UNIVAP</div>
       <div class="brand-sub">Portal Administrativo</div>
     </div>
   </div>
@@ -317,7 +320,7 @@
 
           </div>
         </div>
-        <div class="rodape-aviso">Acesso restrito a colaboradores autorizados da UniVap.</div>
+        <div class="rodape-aviso">Acesso restrito a colaboradores autorizados da UNIVAP.</div>
       </td>
     </tr>
   </table>
@@ -325,7 +328,10 @@
 
 <div class="toast" id="toast">Login realizado com sucesso.</div>
 
-<script>
+<script type="module">
+  import ApiService from './ApiService.js';
+  const api = new ApiService();
+
   // ---------- PERFIL SELECIONADO ----------
   var perfilAtual = 'administrador';
 
@@ -343,27 +349,36 @@
   }
 
   // ---------- ENVIO DO LOGIN ----------
-  function entrar() {
+  async function entrar() {
     var usuario = document.getElementById('campo-usuario').value;
     var senha = document.getElementById('campo-senha').value;
     var msgErro = document.getElementById('msg-erro');
 
-    // validação simples só pra exemplo (sem backend ainda)
     if (usuario === '' || senha === '') {
+      msgErro.textContent = 'Usuário ou senha inválidos. Tente novamente.';
+      msgErro.style.display = 'block';
+      return false;
+    }
+
+    const resposta = await api.post('api/v1/funcionarios/login', {
+      funcionario: { email: usuario, senha: senha }
+    });
+
+    if (!resposta.success) {
+      msgErro.textContent = resposta.message || 'Usuário ou senha inválidos. Tente novamente.';
       msgErro.style.display = 'block';
       return false;
     }
 
     msgErro.style.display = 'none';
+    localStorage.setItem('userData', JSON.stringify(resposta));
 
     var toast = document.getElementById('toast');
     toast.innerHTML = 'Login realizado como ' + perfilAtual + '.';
     toast.style.display = 'block';
-    setTimeout(function () {
-      toast.style.display = 'none';
-    }, 3000);
 
-    return false; // evita recarregar a página (ainda não há backend)
+    window.location.href = 'dashboard.html';
+    return false;
   }
 
   function esqueciSenha() {
@@ -374,6 +389,10 @@
       toast.style.display = 'none';
     }, 3000);
   }
+
+  window.escolherPerfil = escolherPerfil;
+  window.entrar = entrar;
+  window.esqueciSenha = esqueciSenha;
 </script>
 
 </body>

@@ -1,20 +1,23 @@
 import { AbonoDAO } from "../dao/AbonoDAO";
+import { RegistroDAO } from "../dao/RegistroDAO";
 import { Abono } from "../models/Abono";
 import { ErrorResponse } from "../http/ErrorResponse";
 import { Funcionario } from "@/models/Funcionario";
 
 export class AbonoService {
     private _abonoDAO: AbonoDAO;
+    private _registroDAO: RegistroDAO;
 
-    constructor(abonoDAODependency: AbonoDAO) {
+    constructor(abonoDAODependency: AbonoDAO, registroDAODependency: RegistroDAO) {
         console.log("⬆️  AbonoService.constructor()");
         this._abonoDAO = abonoDAODependency;
+        this._registroDAO = registroDAODependency;
     }
 
     public create = async (abono: Abono, funcionarioLogado: Funcionario): Promise<Abono> => {
         console.log("🟣 AbonoService.create()");
 
-        const cargosPermitidos = ["Inspetor", "Coordenador"];
+        const cargosPermitidos = ["Inspetor", "Coordenador", "Secretaria"];
         if (!cargosPermitidos.includes(funcionarioLogado.cargo.nomeCargo)) {
             throw new ErrorResponse(
                 403,
@@ -23,6 +26,7 @@ export class AbonoService {
             );
         }
 
+        abono.status = "Pendente";
         return await this._abonoDAO.create(abono, funcionarioLogado);
     };
 
@@ -41,7 +45,7 @@ export class AbonoService {
     public findAllDeleted = async (funcionarioLogado: Funcionario): Promise<Abono[]> => {
         console.log("🟣 AbonoService.findAllDeleted()");
 
-        const cargosPermitidos = ["Inspetor", "Coordenador"];
+        const cargosPermitidos = ["Administrador", "Diretor"];
         const cargoFuncionario = funcionarioLogado.cargo.nomeCargo;
 
         if (!cargosPermitidos.includes(cargoFuncionario)) {
@@ -58,7 +62,7 @@ export class AbonoService {
     public update = async (abono: Abono, funcionarioLogado: Funcionario): Promise<boolean> => {
         console.log("🟣 AbonoService.update()");
 
-        const cargosPermitidos = ["Inspetor", "Coordenador"];
+        const cargosPermitidos = ["Inspetor", "Coordenador", "Secretaria"];
         if (!cargosPermitidos.includes(funcionarioLogado.cargo.nomeCargo)) {
             throw new ErrorResponse(
                 403,
@@ -70,10 +74,74 @@ export class AbonoService {
         return await this._abonoDAO.update(abono, funcionarioLogado);
     };
 
+    //aprovar: exclusivo de Coordenador (orientador). Ao aprovar, converte as faltas do período em Abonada.
+    public aprovar = async (idAbono: string, funcionarioLogado: Funcionario): Promise<Abono> => {
+        console.log("🟣 AbonoService.aprovar()");
+
+        const cargosPermitidos = ["Coordenador"];
+        if (!cargosPermitidos.includes(funcionarioLogado.cargo.nomeCargo)) {
+            throw new ErrorResponse(
+                403,
+                "Não autorizado",
+                { message: `O cargo "${funcionarioLogado.cargo.nomeCargo}" não pode aprovar abonos.` }
+            );
+        }
+
+        const abono = await this._abonoDAO.findById(idAbono);
+        if (!abono) {
+            throw new ErrorResponse(404, "Abono não encontrado");
+        }
+        if (abono.status !== "Pendente") {
+            throw new ErrorResponse(400, "Abono já foi analisado", { status: abono.status });
+        }
+
+        abono.status = "Aprovado";
+        abono.aprovadoPor = funcionarioLogado.idFuncionario;
+        await this._abonoDAO.update(abono, funcionarioLogado);
+
+        await this._registroDAO.updateSituacaoPorMatriculaEPeriodo(
+            abono.matricula,
+            abono.dataInicio,
+            abono.dataFim,
+            "Abonada",
+            funcionarioLogado
+        );
+
+        return abono;
+    };
+
+    //rejeitar: exclusivo de Coordenador (orientador)
+    public rejeitar = async (idAbono: string, funcionarioLogado: Funcionario): Promise<Abono> => {
+        console.log("🟣 AbonoService.rejeitar()");
+
+        const cargosPermitidos = ["Coordenador"];
+        if (!cargosPermitidos.includes(funcionarioLogado.cargo.nomeCargo)) {
+            throw new ErrorResponse(
+                403,
+                "Não autorizado",
+                { message: `O cargo "${funcionarioLogado.cargo.nomeCargo}" não pode rejeitar abonos.` }
+            );
+        }
+
+        const abono = await this._abonoDAO.findById(idAbono);
+        if (!abono) {
+            throw new ErrorResponse(404, "Abono não encontrado");
+        }
+        if (abono.status !== "Pendente") {
+            throw new ErrorResponse(400, "Abono já foi analisado", { status: abono.status });
+        }
+
+        abono.status = "Rejeitado";
+        abono.aprovadoPor = funcionarioLogado.idFuncionario;
+        await this._abonoDAO.update(abono, funcionarioLogado);
+
+        return abono;
+    };
+
     public delete = async (abono: Abono, funcionarioLogado: Funcionario): Promise<boolean> => {
         console.log("🟣 AbonoService.delete()");
 
-        const cargosPermitidos = ["Inspetor", "Coordenador"];
+        const cargosPermitidos = ["Coordenador", "Administrador"];
         if (!cargosPermitidos.includes(funcionarioLogado.cargo.nomeCargo)) {
             throw new ErrorResponse(
                 403,

@@ -3,12 +3,13 @@ import { Auditoria } from "./Auditoria";
 
 export class Abono {
     private _idAbono: string = '';
-    private _idRegistro: string = '';
     private _matricula: string = '';
-    private _codDisciplina: string = '';
-    private _dia: Date = new Date();
-    private _horasAbonadas: number = 0;
+    private _dataInicio: Date = new Date();
+    private _dataFim: Date = new Date();
     private _motivo: string = '';
+    private _nomeArquivo: string = '';
+    private _status: string = 'Pendente';
+    private _aprovadoPor: string = '';
     private _auditoria: Auditoria = new Auditoria();
 
     constructor() {
@@ -29,20 +30,6 @@ export class Abono {
         this._idAbono = value;
     }
 
-    get idRegistro(): string {
-        return this._idRegistro;
-    }
-
-    set idRegistro(value: string) {
-        if (typeof value !== "string" || value.trim().length === 0) {
-            throw new Error("idRegistro é obrigatório.");
-        }
-        if (value.trim().length > 24) {
-            throw new Error("idRegistro pode ter no máximo 24 caracteres.");
-        }
-        this._idRegistro = value.trim();
-    }
-
     get matricula(): string {
         return this._matricula;
     }
@@ -51,52 +38,32 @@ export class Abono {
         if (typeof value !== "string" || value.trim().length === 0) {
             throw new Error("matricula é obrigatória.");
         }
-        if (value.trim().length > 20) {
-            throw new Error("matricula pode ter no máximo 20 caracteres.");
+        if (value.trim().length > 8) {
+            throw new Error("matricula pode ter no máximo 8 caracteres.");
         }
         this._matricula = value.trim();
     }
 
-    get codDisciplina(): string {
-        return this._codDisciplina;
+    get dataInicio(): Date {
+        return this._dataInicio;
     }
 
-    set codDisciplina(value: string) {
-        if (typeof value !== "string" || value.trim().length === 0) {
-            throw new Error("codDisciplina é obrigatório.");
+    set dataInicio(value: Date) {
+        if (!(value instanceof Date) || isNaN(value.getTime())) {
+            throw new Error(`dataInicio inválida: "${value}".`);
         }
-        if (value.trim().length > 20) {
-            throw new Error("codDisciplina pode ter no máximo 20 caracteres.");
-        }
-        this._codDisciplina = value.trim();
+        this._dataInicio = value;
     }
 
-    get dia(): Date {
-        return this._dia;
+    get dataFim(): Date {
+        return this._dataFim;
     }
 
-    set dia(value: Date) {
-        if (!(value instanceof Date)) {
-            throw new Error("dia deve ser um objeto Date.");
+    set dataFim(value: Date) {
+        if (!(value instanceof Date) || isNaN(value.getTime())) {
+            throw new Error(`dataFim inválida: "${value}".`);
         }
-        if (isNaN(value.getTime())) {
-            throw new Error(`dia inválido: "${value}".`);
-        }
-        this._dia = value;
-    }
-
-    get horasAbonadas(): number {
-        return this._horasAbonadas;
-    }
-
-    set horasAbonadas(value: number) {
-        if (typeof value !== "number" || isNaN(value)) {
-            throw new Error("horasAbonadas deve ser um número.");
-        }
-        if (value < 0 || value > 24) {
-            throw new Error(`horasAbonadas inválido: "${value}". Deve ser entre 0 e 24.`);
-        }
-        this._horasAbonadas = value;
+        this._dataFim = value;
     }
 
     get motivo(): string {
@@ -111,6 +78,40 @@ export class Abono {
             throw new Error("motivo pode ter no máximo 512 caracteres.");
         }
         this._motivo = value.trim();
+    }
+
+    get nomeArquivo(): string {
+        return this._nomeArquivo;
+    }
+
+    set nomeArquivo(value: string) {
+        if (typeof value !== "string") {
+            throw new Error("nomeArquivo deve ser uma string.");
+        }
+        if (value.trim().length > 255) {
+            throw new Error("nomeArquivo deve ter no máximo 255 caracteres.");
+        }
+        this._nomeArquivo = value.trim();
+    }
+
+    get status(): string {
+        return this._status;
+    }
+
+    set status(value: string) {
+        const permitidos = ["Pendente", "Aprovado", "Rejeitado"];
+        if (!permitidos.includes(value)) {
+            throw new Error(`status inválido: "${value}". Deve ser uma de: ${permitidos.join(", ")}.`);
+        }
+        this._status = value;
+    }
+
+    get aprovadoPor(): string {
+        return this._aprovadoPor;
+    }
+
+    set aprovadoPor(value: string) {
+        this._aprovadoPor = (value || '').trim();
     }
 
     get auditoria(): Auditoria {
@@ -140,13 +141,15 @@ export class Abono {
     toJSON() {
         return {
             idAbono: this._idAbono,
-            idRegistro: this._idRegistro,
             matricula: this._matricula,
-            codDisciplina: this._codDisciplina,
-            dia: this._dia,
-            horasAbonadas: this._horasAbonadas,
+            dataInicio: this._dataInicio,
+            dataFim: this._dataFim,
             motivo: this._motivo,
+            nomeArquivo: this._nomeArquivo,
+            status: this._status,
+            aprovadoPor: this._aprovadoPor,
             auditoria: this._auditoria
         };
     }
 }
+

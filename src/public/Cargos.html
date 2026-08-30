@@ -6,14 +6,17 @@
   <title>CRUD Cargos com ApiService</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link href="css/bootstrap.min.css" rel="stylesheet" />
+  <link href="css/univap-theme.css" rel="stylesheet" />
   <script src="js/bootstrap.bundle.min.js"></script>
   <style>
-    body { padding: 2em; }
+    body { margin: 0; }
     table { margin-top: 1em; }
   </style>
 </head>
 
-<body class="container">
+<body>
+  <div id="app-topbar"></div>
+  <main class="container conteudo-pagina" id="conteudo-principal">
 
   <h1 class="mb-4">Gerenciamento de Cargos</h1>
 
@@ -41,11 +44,11 @@
     <div class="card-header">Cadastro de Cargo</div>
     <div class="card-body">
       <div class="mb-3">
-        <input type="text" id="txtId" class="form-control mb-2" disabled placeholder="ID (para update ou delete)" />
-        <input type="text" id="txtNomeCargo" class="form-control mb-2" placeholder="Nome" />
+        <input type="text" id="txtId" class="form-control mb-2" disabled placeholder="ID (para update ou delete)" aria-label="ID do cargo selecionado" />
+        <input type="text" id="txtNomeCargo" class="form-control mb-2" placeholder="Nome" aria-label="Nome do cargo" />
       </div>
       <div class="mb-3 d-flex gap-2" id="divBotoes"></div>
-      <div id="divResposta"></div>
+      <div id="divResposta" role="status" aria-live="polite"></div>
     </div>
   </div>
 
@@ -74,7 +77,10 @@
     </div>
   </div>
 
+  </main>
+
   <script type="module">
+    import { montarTopbar } from './js/Topbar.js';
     import ApiService from './ApiService.js';
 
     let userData = localStorage.getItem("userData");
@@ -85,6 +91,7 @@
     }
     const token = userData.data.token;
     const api = new ApiService(token);
+    montarTopbar('cargos');
 
     let API_DATA;
     let endpointAtual = "api/v1/cargos"; // padrão: ativos

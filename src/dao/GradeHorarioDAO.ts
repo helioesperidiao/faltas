@@ -1,100 +1,94 @@
 import { Collection, ObjectId, Filter, UpdateFilter, Document, OptionalId } from "mongodb";
-import { Abono } from "../models/Abono";
+import { GradeHorario } from "../models/GradeHorario";
 import { MongoDatabase } from "../database/MongoDatabase";
 import { Funcionario } from "@/models/Funcionario";
 import { Auditoria } from "@/models/Auditoria";
 
-export class AbonoDAO {
+export class GradeHorarioDAO {
     private _database: MongoDatabase;
 
     constructor(dbInstance: MongoDatabase) {
-        console.log("⬆️ AbonoDAO.constructor()");
+        console.log("⬆️ GradeHorarioDAO.constructor()");
         this._database = dbInstance;
     }
 
     private async getCollection(): Promise<Collection<Document>> {
         const db = await this._database.getDb();
-        return db.collection("abonos");
+        return db.collection("gradeHorario");
     }
 
-    public async create(abono: Abono, funcionarioLogado: Funcionario): Promise<Abono> {
-        console.log("🟢 AbonoDAO.create()");
+    public async create(grade: GradeHorario, funcionarioLogado: Funcionario): Promise<GradeHorario> {
+        console.log("🟢 GradeHorarioDAO.create()");
         const collection = await this.getCollection();
 
-        abono.marcarCriadoPor(funcionarioLogado.idFuncionario);
+        grade.marcarCriadoPor(funcionarioLogado.idFuncionario);
 
         const doc: OptionalId<Document> = {
-            matricula: abono.matricula,
-            dataInicio: abono.dataInicio,
-            dataFim: abono.dataFim,
-            motivo: abono.motivo,
-            nomeArquivo: abono.nomeArquivo,
-            status: abono.status,
-            aprovadoPor: abono.aprovadoPor,
-            auditoria: abono.auditoria.toJSON()
+            turma: grade.turma,
+            horaInicio: grade.horaInicio,
+            horaFim: grade.horaFim,
+            dia: grade.dia,
+            cod: grade.cod,
+            disciplina: grade.disciplina,
+            auditoria: grade.auditoria.toJSON()
         };
 
         const result = await collection.insertOne(doc);
         if (!result.insertedId) {
-            throw new Error("Falha ao inserir abono");
+            throw new Error("Falha ao inserir grade de horário");
         }
 
-        abono.idAbono = result.insertedId.toString();
-        return abono;
+        grade.idGradeHorario = result.insertedId.toString();
+        return grade;
     }
 
-    public async delete(abono: Abono, funcionarioLogado: Funcionario): Promise<boolean> {
-        console.log("🟢 AbonoDAO.delete(" + abono.idAbono + ")");
+    public async delete(grade: GradeHorario, funcionarioLogado: Funcionario): Promise<boolean> {
+        console.log("🟢 GradeHorarioDAO.delete(" + grade.idGradeHorario + ")");
         const collection = await this.getCollection();
-        abono.marcarDeletadoPor(funcionarioLogado.idFuncionario);
+        grade.marcarDeletadoPor(funcionarioLogado.idFuncionario);
 
-        const filter: Filter<Document> = { _id: new ObjectId(abono.idAbono) };
+        const filter: Filter<Document> = { _id: new ObjectId(grade.idGradeHorario) };
         const update: UpdateFilter<Document> = {
             $set: {
-                "auditoria.deletadoPor": abono.auditoria.deletadoPor,
-                "auditoria.deletadoEm": abono.auditoria.deletadoEm
+                "auditoria.deletadoPor": grade.auditoria.deletadoPor,
+                "auditoria.deletadoEm": grade.auditoria.deletadoEm
             }
         };
-
         const result = await collection.updateOne(filter, update);
         return result.modifiedCount > 0;
     }
 
-    public async update(abono: Abono, funcionarioLogado: Funcionario): Promise<boolean> {
-        console.log("🟢 AbonoDAO.update(" + abono.idAbono + ")");
+    public async update(grade: GradeHorario, funcionarioLogado: Funcionario): Promise<boolean> {
+        console.log("🟢 GradeHorarioDAO.update(" + grade.idGradeHorario + ")");
         const collection = await this.getCollection();
-        abono.marcarAlteradoPor(funcionarioLogado.idFuncionario);
+        grade.marcarAlteradoPor(funcionarioLogado.idFuncionario);
 
-        const filter: Filter<Document> = { _id: new ObjectId(abono.idAbono) };
+        const filter: Filter<Document> = { _id: new ObjectId(grade.idGradeHorario) };
         const update: UpdateFilter<Document> = {
             $set: {
-                matricula: abono.matricula,
-                dataInicio: abono.dataInicio,
-                dataFim: abono.dataFim,
-                motivo: abono.motivo,
-                nomeArquivo: abono.nomeArquivo,
-                status: abono.status,
-                aprovadoPor: abono.aprovadoPor,
-                "auditoria.alteradoPor": abono.auditoria.alteradoPor,
-                "auditoria.alteradoEm": abono.auditoria.alteradoEm
+                turma: grade.turma,
+                horaInicio: grade.horaInicio,
+                horaFim: grade.horaFim,
+                dia: grade.dia,
+                cod: grade.cod,
+                disciplina: grade.disciplina,
+                "auditoria.alteradoPor": grade.auditoria.alteradoPor,
+                "auditoria.alteradoEm": grade.auditoria.alteradoEm
             }
         };
-
         const result = await collection.updateOne(filter, update);
         return result.modifiedCount > 0;
     }
 
-    private toAbono(doc: any): Abono {
-        const abono = new Abono();
-        abono.idAbono = doc._id.toHexString();
-        abono.matricula = doc.matricula;
-        abono.dataInicio = new Date(doc.dataInicio);
-        abono.dataFim = new Date(doc.dataFim);
-        abono.motivo = doc.motivo;
-        abono.nomeArquivo = doc.nomeArquivo || '';
-        abono.status = doc.status || 'Pendente';
-        abono.aprovadoPor = doc.aprovadoPor || '';
-
+    private toGradeHorario(doc: any): GradeHorario {
+        const grade = new GradeHorario();
+        grade.idGradeHorario = doc._id.toHexString();
+        grade.turma = doc.turma;
+        grade.horaInicio = doc.horaInicio;
+        grade.horaFim = doc.horaFim;
+        grade.dia = doc.dia;
+        grade.cod = doc.cod;
+        grade.disciplina = doc.disciplina;
         if (doc.auditoria) {
             const auditoria = new Auditoria();
             auditoria.criadoPor = doc.auditoria.criadoPor || '';
@@ -103,53 +97,49 @@ export class AbonoDAO {
             auditoria.alteradoEm = doc.auditoria.alteradoEm ? new Date(doc.auditoria.alteradoEm) : null;
             auditoria.deletadoPor = doc.auditoria.deletadoPor || '';
             auditoria.deletadoEm = doc.auditoria.deletadoEm ? new Date(doc.auditoria.deletadoEm) : null;
-            abono.auditoria = auditoria;
+            grade.auditoria = auditoria;
         }
-
-        return abono;
+        return grade;
     }
 
-    public async findById(idAbono: string): Promise<Abono | null> {
-        console.log("🟢 AbonoDAO.findById()");
+    public async findById(idGradeHorario: string): Promise<GradeHorario | null> {
+        console.log("🟢 GradeHorarioDAO.findById()");
         const collection = await this.getCollection();
         const filter: Filter<Document> = {
-            _id: new ObjectId(idAbono),
+            _id: new ObjectId(idGradeHorario),
             "auditoria.deletadoEm": null
         };
-
         const doc = await collection.findOne(filter);
-        return doc ? this.toAbono(doc) : null;
+        return doc ? this.toGradeHorario(doc) : null;
     }
 
-    public async findAll(): Promise<Abono[]> {
+    public async findAll(): Promise<GradeHorario[]> {
         const collection = await this.getCollection();
         const cursor = collection.find({ "auditoria.deletadoEm": null });
         const docs = await cursor.toArray();
-        return docs.map(doc => this.toAbono(doc));
+        return docs.map(doc => this.toGradeHorario(doc));
     }
 
-    public async findAllDeleted(): Promise<Abono[]> {
+    public async findAllDeleted(): Promise<GradeHorario[]> {
         const collection = await this.getCollection();
         const cursor = collection.find({ "auditoria.deletadoEm": { $ne: null } });
         const docs = await cursor.toArray();
-        return docs.map(doc => this.toAbono(doc));
+        return docs.map(doc => this.toGradeHorario(doc));
     }
 
     public async count(): Promise<number> {
-        console.log("🟢 AbonoDAO.count()");
+        console.log("🟢 GradeHorarioDAO.count()");
         const collection = await this.getCollection();
         return await collection.countDocuments({ "auditoria.deletadoEm": null });
     }
 
-    public async findByField(field: string, value: any): Promise<Abono[]> {
-        console.log(`🟢 AbonoDAO.findByField() - Campo: ${field}, Valor: ${value}`);
-        const allowedFields = ["_id", "matricula", "status"];
+    public async findByField(field: string, value: any): Promise<GradeHorario[]> {
+        console.log(`🟢 GradeHorarioDAO.findByField() - Campo: ${field}, Valor: ${value}`);
+        const allowedFields = ["_id", "turma", "cod", "dia"];
         if (!allowedFields.includes(field)) {
             throw new Error(`Campo inválido para busca: ${field}`);
         }
-
         const collection = await this.getCollection();
-
         let filter: Filter<Document> = {};
         if (field === "_id") {
             filter = {
@@ -162,9 +152,8 @@ export class AbonoDAO {
                 "auditoria.deletadoEm": null
             };
         }
-
         const cursor = collection.find(filter);
         const docs = await cursor.toArray();
-        return docs.map(doc => this.toAbono(doc));
+        return docs.map(doc => this.toGradeHorario(doc));
     }
 }

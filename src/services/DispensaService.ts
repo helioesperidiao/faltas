@@ -46,7 +46,7 @@ export class DispensaService {
     public findAllDeleted = async (funcionarioLogado: Funcionario): Promise<Dispensa[]> => {
         console.log("🟣 DispensaService.findAllDeleted()");
 
-        const cargosPermitidos = ["Inspetor", "Coordenador"];
+        const cargosPermitidos = ["Administrador", "Diretor"];
         const cargoFuncionario = funcionarioLogado.cargo.nomeCargo;
 
         if (!cargosPermitidos.includes(cargoFuncionario)) {

@@ -7,6 +7,9 @@ import { FuncionarioRouter } from "./routers/FuncionarioRouter";
 import { RegistroRouter } from "./routers/RegistroRouter";
 import { DispensaRouter } from "./routers/DispensaRouter";
 import { AbonoRouter } from "./routers/AbonoRouter";
+import { AlunoRouter } from "./routers/AlunoRouter";
+import { GradeHorarioRouter } from "./routers/GradeHorarioRouter";
+import { RelatorioRouter } from "./routers/RelatorioRouter";
 import { ErrorResponse } from "./http/ErrorResponse";
 import { StandardResponse } from "./http/StandardResponse";
 import { MongoDatabase } from "./database/MongoDatabase";
@@ -20,6 +23,9 @@ export class Server {
     private _registroRouter: RegistroRouter;
     private _dispensaRouter: DispensaRouter;
     private _abonoRouter: AbonoRouter;
+    private _alunoRouter: AlunoRouter;
+    private _gradeHorarioRouter: GradeHorarioRouter;
+    private _relatorioRouter: RelatorioRouter;
     private _dataBase: MongoDatabase;
 
     constructor(porta?: number) {
@@ -34,6 +40,9 @@ export class Server {
         this._registroRouter = new RegistroRouter(this._dataBase);
         this._dispensaRouter = new DispensaRouter(this._dataBase);
         this._abonoRouter = new AbonoRouter(this._dataBase);
+        this._alunoRouter = new AlunoRouter(this._dataBase);
+        this._gradeHorarioRouter = new GradeHorarioRouter(this._dataBase);
+        this._relatorioRouter = new RelatorioRouter(this._dataBase);
     }
 
     async init(): Promise<void> {
@@ -50,6 +59,9 @@ export class Server {
         this._app.use(this._registroRouter.getRouter());
         this._app.use(this._dispensaRouter.getRouter());
         this._app.use(this._abonoRouter.getRouter());
+        this._app.use(this._alunoRouter.getRouter());
+        this._app.use(this._gradeHorarioRouter.getRouter());
+        this._app.use(this._relatorioRouter.getRouter());
 
 
         this.setupErrorMiddleware();

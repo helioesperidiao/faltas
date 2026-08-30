@@ -1,8 +1,10 @@
 import { Router } from "express";
 import { JwtMiddleware } from "../middlewares/JwtMiddleware";
+import { uploadAbonoMiddleware } from "../middlewares/UploadMiddleware";
 import { AbonoController } from "../controllers/AbonoController";
 import { AbonoService } from "../services/AbonoService";
 import { AbonoDAO } from "../dao/AbonoDAO";
+import { RegistroDAO } from "../dao/RegistroDAO";
 import { MongoDatabase } from "../database/MongoDatabase";
 
 export class AbonoRouter {
@@ -17,13 +19,30 @@ export class AbonoRouter {
         this._dataBase = dataBase;
 
         const abonoDAO = new AbonoDAO(this._dataBase);
-        const abonoService = new AbonoService(abonoDAO);
+        const registroDAO = new RegistroDAO(this._dataBase);
+        const abonoService = new AbonoService(abonoDAO, registroDAO);
         const abonoController = new AbonoController(abonoService);
         const jwtMiddleware = new JwtMiddleware();
 
         this._router.post(AbonoRouter.PREFIX + "/",
             jwtMiddleware.validateToken,
             abonoController.create
+        );
+
+        this._router.post(AbonoRouter.PREFIX + "/:idAbono/arquivo",
+            jwtMiddleware.validateToken,
+            uploadAbonoMiddleware.single("arquivo"),
+            abonoController.uploadArquivo
+        );
+
+        this._router.put(AbonoRouter.PREFIX + "/:idAbono/aprovar",
+            jwtMiddleware.validateToken,
+            abonoController.aprovar
+        );
+
+        this._router.put(AbonoRouter.PREFIX + "/:idAbono/rejeitar",
+            jwtMiddleware.validateToken,
+            abonoController.rejeitar
         );
 
         this._router.get(AbonoRouter.PREFIX + "/",

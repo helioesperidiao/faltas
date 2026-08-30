@@ -20,23 +20,48 @@ export class AbonoController extends BaseController {
         const funcionarioLogado: Funcionario = this.getFuncionarioLogado(request);
 
         const novoAbono = new Abono();
-        novoAbono.idRegistro = request.body.abono.idRegistro;
         novoAbono.matricula = request.body.abono.matricula;
-        novoAbono.codDisciplina = request.body.abono.codDisciplina;
-        novoAbono.dia = new Date(request.body.abono.dia);
-        novoAbono.horasAbonadas = Number(request.body.abono.horasAbonadas);
+        novoAbono.dataInicio = new Date(request.body.abono.dataInicio);
+        novoAbono.dataFim = new Date(request.body.abono.dataFim);
         novoAbono.motivo = request.body.abono.motivo;
 
         const resultado = await this._abonoService.create(novoAbono, funcionarioLogado);
 
-        if (!resultado) {
-            StandardResponse.error("Falha ao cadastrar novo Abono", null, 500).send(response);
+        StandardResponse.created("Abono cadastrado com sucesso", {
+            abonos: [resultado]
+        }).send(response);
+    };
+
+    //uploadArquivo: anexa o atestado (pdf/imagem) ao abono já criado
+    public uploadArquivo = async (request: Request, response: Response): Promise<void> => {
+        console.log("🔵 AbonoController.uploadArquivo()");
+
+        const funcionarioLogado: Funcionario = this.getFuncionarioLogado(request);
+
+        if (!request.file) {
+            StandardResponse.error("Nenhum arquivo enviado", null, 400).send(response);
             return;
         }
 
-        StandardResponse.created("Abono cadastrado com sucesso", {
-            abonos: [novoAbono]
-        }).send(response);
+        const idAbono = request.params.idAbono.toString();
+        const abonoExistente = await this._abonoService.findById(idAbono);
+        if (!abonoExistente) {
+            StandardResponse.notFound("Abono não encontrado", {
+                message: `Não existe abono com id ${idAbono}`
+            }).send(response);
+            return;
+        }
+
+        abonoExistente.nomeArquivo = request.file.filename;
+        const atualizou = await this._abonoService.update(abonoExistente, funcionarioLogado);
+
+        if (atualizou) {
+            StandardResponse.success("Arquivo enviado com sucesso", {
+                abonos: [abonoExistente]
+            }).send(response);
+        } else {
+            StandardResponse.error("Falha ao salvar referência do arquivo", null, 500).send(response);
+        }
     };
 
     public findAll = async (_request: Request, response: Response): Promise<void> => {
@@ -81,12 +106,12 @@ export class AbonoController extends BaseController {
 
         const abono = new Abono();
         abono.idAbono = abonoId;
-        abono.idRegistro = request.body.abono.idRegistro;
         abono.matricula = request.body.abono.matricula;
-        abono.codDisciplina = request.body.abono.codDisciplina;
-        abono.dia = new Date(request.body.abono.dia);
-        abono.horasAbonadas = Number(request.body.abono.horasAbonadas);
+        abono.dataInicio = new Date(request.body.abono.dataInicio);
+        abono.dataFim = new Date(request.body.abono.dataFim);
         abono.motivo = request.body.abono.motivo;
+        abono.nomeArquivo = request.body.abono.nomeArquivo || '';
+        abono.status = 'Pendente';
 
         const atualizou = await this._abonoService.update(abono, funcionarioLogado);
 
@@ -99,6 +124,34 @@ export class AbonoController extends BaseController {
                 abonos: [abono]
             }).send(response);
         }
+    };
+
+    //aprovar: converte as faltas do período em Abonada
+    public aprovar = async (request: Request, response: Response): Promise<void> => {
+        console.log("🔵 AbonoController.aprovar()");
+
+        const funcionarioLogado: Funcionario = this.getFuncionarioLogado(request);
+        const idAbono = request.params.idAbono.toString();
+
+        const abono = await this._abonoService.aprovar(idAbono, funcionarioLogado);
+
+        StandardResponse.success("Abono aprovado com sucesso", {
+            abonos: [abono]
+        }).send(response);
+    };
+
+    //rejeitar
+    public rejeitar = async (request: Request, response: Response): Promise<void> => {
+        console.log("🔵 AbonoController.rejeitar()");
+
+        const funcionarioLogado: Funcionario = this.getFuncionarioLogado(request);
+        const idAbono = request.params.idAbono.toString();
+
+        const abono = await this._abonoService.rejeitar(idAbono, funcionarioLogado);
+
+        StandardResponse.success("Abono rejeitado com sucesso", {
+            abonos: [abono]
+        }).send(response);
     };
 
     public delete = async (request: Request, response: Response): Promise<void> => {
