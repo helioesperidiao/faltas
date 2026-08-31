@@ -14,6 +14,7 @@ export class Registro {
     private _dia: Date = new Date();
     private _atrasado: string = 'Não';
     private _nomeAcompanhante: string = '';
+    private _situacao: string = 'Normal';
     private _auditoria: Auditoria = new Auditoria();
 
     //construtor
@@ -142,6 +143,18 @@ export class Registro {
         this._nomeAcompanhante = value.trim();
     }
 
+    //situacao (Normal, Abonada, Dispensada)
+    get situacao(): string {
+        return this._situacao;
+    }
+    set situacao(value: string) {
+        const permitidos = ["Normal", "Abonada", "Dispensada"];
+        if (!permitidos.includes(value)) {
+            throw new Error(`situacao inválida: "${value}". Deve ser uma de: ${permitidos.join(", ")}.`);
+        }
+        this._situacao = value;
+    }
+
     //auditoria
     get auditoria(): Auditoria {
         return this._auditoria;
@@ -180,6 +193,7 @@ export class Registro {
             dia: this._dia,
             atrasado: this._atrasado,
             nomeAcompanhante: this._nomeAcompanhante,
+            situacao: this._situacao,
             auditoria: this._auditoria
         };
     }

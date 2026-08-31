@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>CRUD Alunos com ApiService</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="css/bootstrap.min.css" rel="stylesheet" />
+  <link href="css/univap-theme.css" rel="stylesheet" />
+  <script src="js/bootstrap.bundle.min.js"></script>
+  <style>
+    body { margin: 0; }
+    table { margin-top: 1em; }
+  </style>
+</head>
+
+<body>
+  <div id="app-topbar"></div>
+  <main class="container conteudo-pagina" id="conteudo-principal">
+
+  <h1 class="mb-4">Gerenciamento de Alunos</h1>
+
+  <div class="card mb-3">
+    <div class="card-header">Filtro de Aluno</div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6">
+          <label for="txtFiltroNome" class="form-label">Nome do Aluno</label>
+          <input type="text" id="txtFiltroNome" class="form-control" placeholder="Digite o nome">
+        </div>
+        <div class="col-md-6">
+          <label for="txtFiltroTurma" class="form-label">Turma</label>
+          <input type="text" id="txtFiltroTurma" class="form-control" placeholder="Digite a turma">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header">Cadastro de Aluno</div>
+    <div class="card-body">
+      <input type="text" id="txtId" class="form-control mb-2" disabled placeholder="ID (para update)" aria-label="ID do aluno selecionado" />
+      <input type="text" id="txtMatricula" class="form-control mb-2" placeholder="Matrícula" aria-label="Matrícula do aluno" />
+      <input type="text" id="txtAlunoNome" class="form-control mb-2" placeholder="Nome do aluno" aria-label="Nome do aluno" />
+      <input type="text" id="txtTurma" class="form-control mb-2" placeholder="Turma" aria-label="Turma do aluno" />
+      <input type="text" id="txtCurso" class="form-control mb-2" placeholder="Curso" aria-label="Curso do aluno" />
+      <div class="mb-3 d-flex gap-2" id="divBotoes"></div>
+      <div id="divResposta" role="status" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <!-- Importação em massa via CSV (o arquivo NÃO é enviado ao backend, cada linha vira um POST) -->
+  <div class="card mb-3">
+    <div class="card-header">Importar Alunos via CSV</div>
+    <div class="card-body">
+      <p class="text-muted">Cabeçalho esperado: matricula,alunoNome,turma,curso</p>
+      <input type="file" id="fileCsv" class="form-control mb-2" accept=".csv" aria-label="Arquivo CSV de alunos para importação" />
+      <button type="button" id="btnImportar" class="btn btn-primary mb-2">Importar</button>
+      <div class="progress mb-2" style="display:none;" id="divProgressoWrap">
+        <div id="barraProgresso" class="progress-bar" role="progressbar" style="width: 0%">0%</div>
+      </div>
+      <div id="divFalhas" role="status" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <div class="card mt-4">
+    <div class="card-header">Lista de Alunos</div>
+    <div class="card-body">
+      <div id="divTabela"></div>
+    </div>
+  </div>
+
+  </main>
+
+  <script type="module">
+    import { montarTopbar } from './js/Topbar.js';
+    import ApiService from './ApiService.js';
+
+    let userData = localStorage.getItem("userData");
+    if (userData) {
+      userData = JSON.parse(userData);
+    } else {
+      window.location.href = "login.html";
+    }
+
+    const token = userData.data.token;
+    const api = new ApiService(token);
+    montarTopbar('alunos');
+
+    let API_DATA;
+
+    const txtId = document.getElementById("txtId");
+    const txtMatricula = document.getElementById("txtMatricula");
+    const txtAlunoNome = document.getElementById("txtAlunoNome");
+    const txtTurma = document.getElementById("txtTurma");
+    const txtCurso = document.getElementById("txtCurso");
+    const txtFiltroNome = document.getElementById("txtFiltroNome");
+    const txtFiltroTurma = document.getElementById("txtFiltroTurma");
+    const divBotoes = document.getElementById("divBotoes");
+    const divResposta = document.getElementById("divResposta");
+
+    function createButton(text, className) {
+      const btn = document.createElement("button");
+      btn.textContent = text;
+      btn.className = `btn ${className} flex-fill`;
+      return btn;
+    }
+
+    function mostrarMensagem(mensagem, tipo = "success") {
+      divResposta.textContent = mensagem;
+      divResposta.className = `alert alert-${tipo}`;
+    }
+
+    function limparFormulario() {
+      txtId.value = "";
+      txtMatricula.value = "";
+      txtAlunoNome.value = "";
+      txtTurma.value = "";
+      txtCurso.value = "";
+    }
+
+    function montarObjeto() {
+      return {
+        aluno: {
+          matricula: txtMatricula.value.trim(),
+          alunoNome: txtAlunoNome.value.trim(),
+          turma: txtTurma.value.trim(),
+          curso: txtCurso.value.trim()
+        }
+      };
+    }
+
+    const btnListar = createButton("Listar", "btn-primary");
+    btnListar.onclick = () => listAll();
+    divBotoes.appendChild(btnListar);
+
+    const btnCriar = createButton("Criar", "btn-success");
+    btnCriar.onclick = async () => {
+      if (!txtMatricula.value.trim() || !txtAlunoNome.value.trim() || !txtTurma.value.trim()) {
+        mostrarMensagem("Preencha matrícula, nome e turma", "warning");
+        return;
+      }
+      const resposta = await api.post("api/v1/alunos", montarObjeto());
+      if (resposta.success) {
+        mostrarMensagem(resposta.message || "Aluno criado com sucesso", "success");
+        limparFormulario();
+        listAll();
+      } else {
+        mostrarMensagem(resposta.message || "Erro ao criar aluno", "danger");
+      }
+    };
+    divBotoes.appendChild(btnCriar);
+
+    const btnAtualizar = createButton("Atualizar", "btn-warning");
+    btnAtualizar.onclick = async () => {
+      const id = txtId.value.trim();
+      if (!id) {
+        mostrarMensagem("Selecione um aluno para atualizar", "warning");
+        return;
+      }
+      const resposta = await api.put("api/v1/alunos", id, montarObjeto());
+      if (resposta.success) {
+        mostrarMensagem(resposta.message || "Aluno atualizado com sucesso", "success");
+        limparFormulario();
+        listAll();
+      } else {
+        mostrarMensagem(resposta.message || "Erro ao atualizar aluno", "danger");
+      }
+    };
+    divBotoes.appendChild(btnAtualizar);
+
+    async function listAll() {
+      const resposta = await api.get("api/v1/alunos");
+      if (resposta.success) {
+        API_DATA = resposta.data;
+        renderTable(API_DATA);
+      } else {
+        mostrarMensagem(resposta.message || "Erro ao carregar alunos", "danger");
+      }
+    }
+
+    function renderTable(dados) {
+      const divTabela = document.getElementById("divTabela");
+      divTabela.innerHTML = "";
+
+      const table = document.createElement("table");
+      table.className = "table table-bordered table-striped";
+
+      const thead = document.createElement("thead");
+      thead.className = "table-light";
+      const trHead = document.createElement("tr");
+      ["Matrícula", "Nome", "Turma", "Curso", "Ações"].forEach(text => {
+        const th = document.createElement("th");
+        th.textContent = text;
+        trHead.appendChild(th);
+      });
+      thead.appendChild(trHead);
+      table.appendChild(thead);
+
+      const tbody = document.createElement("tbody");
+      const alunos = dados?.alunos || [];
+
+      alunos.forEach(aluno => {
+        const tr = document.createElement("tr");
+        [aluno.matricula, aluno.alunoNome, aluno.turma, aluno.curso].forEach(valor => {
+          const td = document.createElement("td");
+          td.textContent = valor;
+          tr.appendChild(td);
+        });
+
+        const tdAcoes = document.createElement("td");
+        const btnSel = createButton("Selecionar", "btn-info");
+        btnSel.onclick = () => {
+          txtId.value = aluno.idAluno;
+          txtMatricula.value = aluno.matricula;
+          txtAlunoNome.value = aluno.alunoNome;
+          txtTurma.value = aluno.turma;
+          txtCurso.value = aluno.curso;
+        };
+        tdAcoes.appendChild(btnSel);
+        tr.appendChild(tdAcoes);
+
+        tbody.appendChild(tr);
+      });
+
+      table.appendChild(tbody);
+      divTabela.appendChild(table);
+    }
+
+    function filtrar() {
+      if (!API_DATA || !API_DATA.alunos) return;
+      const nome = txtFiltroNome.value.trim().toLowerCase();
+      const turma = txtFiltroTurma.value.trim().toLowerCase();
+      const filtrados = API_DATA.alunos.filter(a =>
+        (!nome || a.alunoNome.toLowerCase().includes(nome)) &&
+        (!turma || a.turma.toLowerCase().includes(turma))
+      );
+      renderTable({ alunos: filtrados });
+    }
+
+    txtFiltroNome.addEventListener("input", filtrar);
+    txtFiltroTurma.addEventListener("input", filtrar);
+
+    // ======================== IMPORTAÇÃO CSV ========================
+    // O arquivo é lido e interpretado inteiramente no navegador.
+    // Cada linha vira um POST individual para a API (o CSV em si nunca é enviado ao backend).
+    function parseCsv(texto) {
+      const linhas = texto.split(/\r?\n/).filter(l => l.trim().length > 0);
+      const cabecalho = linhas[0].split(",").map(c => c.trim());
+      return linhas.slice(1).map(linha => {
+        const valores = linha.split(",").map(v => v.trim());
+        const objeto = {};
+        cabecalho.forEach((chave, indice) => { objeto[chave] = valores[indice] || ""; });
+        return objeto;
+      });
+    }
+
+    const fileCsv = document.getElementById("fileCsv");
+    const btnImportar = document.getElementById("btnImportar");
+    const divProgressoWrap = document.getElementById("divProgressoWrap");
+    const barraProgresso = document.getElementById("barraProgresso");
+    const divFalhas = document.getElementById("divFalhas");
+
+    btnImportar.onclick = async () => {
+      if (!fileCsv.files.length) {
+        mostrarMensagem("Selecione um arquivo CSV", "warning");
+        return;
+      }
+
+      const texto = await fileCsv.files[0].text();
+      const linhas = parseCsv(texto);
+
+      if (linhas.length === 0) {
+        mostrarMensagem("CSV vazio ou inválido", "warning");
+        return;
+      }
+
+      divProgressoWrap.style.display = "block";
+      divFalhas.innerHTML = "";
+      const falhas = [];
+
+      for (let i = 0; i < linhas.length; i++) {
+        const linha = linhas[i];
+        try {
+          const resposta = await api.post("api/v1/alunos", {
+            aluno: {
+              matricula: linha.matricula,
+              alunoNome: linha.alunoNome,
+              turma: linha.turma,
+              curso: linha.curso || ""
+            }
+          });
+          if (!resposta.success) {
+            falhas.push({ linha: i + 2, motivo: resposta.message || "Falha desconhecida" });
+          }
+        } catch (erro) {
+          falhas.push({ linha: i + 2, motivo: erro.message });
+        }
+
+        const percentual = Math.round(((i + 1) / linhas.length) * 100);
+        barraProgresso.style.width = `${percentual}%`;
+        barraProgresso.textContent = `${percentual}%`;
+      }
+
+      if (falhas.length > 0) {
+        const lista = falhas.map(f => `<li>Linha ${f.linha}: ${f.motivo}</li>`).join("");
+        divFalhas.innerHTML = `<div class="alert alert-danger"><strong>Falhas na importação:</strong><ul>${lista}</ul></div>`;
+      } else {
+        divFalhas.innerHTML = `<div class="alert alert-success">Importação concluída sem falhas.</div>`;
+      }
+
+      fileCsv.value = "";
+      listAll();
+    };
+
+    listAll();
+  </script>
+</body>
+
+</html>

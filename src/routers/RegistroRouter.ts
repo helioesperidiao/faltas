@@ -3,6 +3,8 @@ import { JwtMiddleware } from "../middlewares/JwtMiddleware";
 import { RegistroController} from "../controllers/RegistroController";
 import { RegistroService } from "../services/RegistroService";
 import { RegistroDAO } from "../dao/RegistroDAO";
+import { DispensaDAO } from "../dao/DispensaDAO";
+import { AlunoDAO } from "../dao/AlunoDAO";
 import { MongoDatabase } from "../database/MongoDatabase";
 
 export class RegistroRouter {
@@ -17,7 +19,9 @@ export class RegistroRouter {
         this._router = Router();
         this._dataBase= dataBase;   
         const registroDAO = new RegistroDAO(this._dataBase);
-        const registroService = new RegistroService(registroDAO);  
+        const dispensaDAO = new DispensaDAO(this._dataBase);
+        const alunoDAO = new AlunoDAO(this._dataBase);
+        const registroService = new RegistroService(registroDAO, dispensaDAO, alunoDAO);  
         const registroController = new RegistroController(registroService);
         const jwtMiddleware = new JwtMiddleware();
 
@@ -43,6 +47,12 @@ export class RegistroRouter {
         this._router.get(RegistroRouter.PREFIX + "/deleted",
             jwtMiddleware.validateToken,
             registroController.findAllDeleted
+        );
+
+        //get (ausentes na chamada de entrada, para entrada atrasada/acompanhada)
+        this._router.get(RegistroRouter.PREFIX + "/ausentes-entrada",
+            jwtMiddleware.validateToken,
+            registroController.findAusentesEntrada
         );
 
         //get (findById)

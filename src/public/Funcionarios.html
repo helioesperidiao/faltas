@@ -7,12 +7,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <!-- Inclui o Bootstrap (biblioteca CSS) para deixar a página mais bonita e responsiva -->
   <link href="css/bootstrap.min.css" rel="stylesheet" />
+  <link href="css/univap-theme.css" rel="stylesheet" />
 
   <script src="js/bootstrap.bundle.min.js"></script>
 
   <style>
     body {
-      padding: 2em;
+      margin: 0;
     }
 
     table {
@@ -21,8 +22,9 @@
   </style>
 </head>
 
-<body class="container">
-  <!-- “container” é uma classe do Bootstrap que centraliza o conteúdo -->
+<body>
+  <div id="app-topbar"></div>
+  <main class="container conteudo-pagina" id="conteudo-principal">
 
   <h1 class="mb-4">Gerenciamento de Funcionários</h1>
 
@@ -51,15 +53,15 @@
     <div class="card-body">
       <div class="mb-3">
         <!-- Campo ID (preenchido automaticamente ao selecionar um registro da tabela) -->
-        <input type="text" id="txtId" class="form-control mb-2" disabled placeholder="ID (para update ou delete)" />
+        <input type="text" id="txtId" class="form-control mb-2" disabled placeholder="ID (para update ou delete)" aria-label="ID do funcionário selecionado" />
 
         <!-- Campos de entrada de dados -->
-        <input type="text" id="txtNomeFuncionario" class="form-control mb-2" placeholder="Nome" value ="maria" />
-        <input type="text" id="txtEmail" class="form-control mb-2" placeholder="Email" value ="maria@gmail.com"/>
-        <input type="password" id="txtSenha" class="form-control mb-2" placeholder="Senha" value ="@Helio123456" />
+        <input type="text" id="txtNomeFuncionario" class="form-control mb-2" placeholder="Nome" aria-label="Nome do funcionário" value ="maria" />
+        <input type="text" id="txtEmail" class="form-control mb-2" placeholder="Email" aria-label="E-mail do funcionário" value ="maria@gmail.com"/>
+        <input type="password" id="txtSenha" class="form-control mb-2" placeholder="Senha" aria-label="Senha do funcionário" value ="@Helio123456" />
 
         <!-- Combobox para selecionar o cargo -->
-        <select id="cboCargos" class="form-select mb-3">
+        <select id="cboCargos" class="form-select mb-3" aria-label="Cargo do funcionário">
           <option value="-1">Selecione um cargo</option>
         </select>
 
@@ -75,7 +77,7 @@
     </div>
 
     <!-- Div usada para exibir mensagens de sucesso ou erro -->
-    <div id="divResposta" class="alert d-inline-block p-2"></div>
+    <div id="divResposta" class="alert d-inline-block p-2" role="status" aria-live="polite"></div>
   </div>
 
   <!-- ============================= -->
@@ -118,7 +120,10 @@
     </div>
   </div>
 
+  </main>
+
   <script type="module">
+    import { montarTopbar } from './js/Topbar.js';
     import ApiService from './ApiService.js'; // Importa uma classe auxiliar que faz as requisições HTTP
 
     // ======================== AUTENTICAÇÃO E CONFIGURAÇÃO INICIAL ========================
@@ -129,6 +134,7 @@
 
     const token = userData.data.token; // Pega o token JWT do usuário autenticado
     const api = new ApiService(token); // Cria um objeto para fazer chamadas autenticadas à API
+    montarTopbar('funcionarios');
 
     let API_DATA; // Variável global que guarda os dados dos funcionários retornados pela API
 

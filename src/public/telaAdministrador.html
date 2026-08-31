@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Painel do Administrador | Portal Administrativo</title>
+<title>Painel do Administrador | UNIVAP - Controle de Faltas</title>
+<link href="css/univap-theme.css" rel="stylesheet">
 <style>
   body {
     margin: 0;
@@ -252,7 +253,15 @@
   }
 
   @media (max-width: 700px) {
+    .topbar {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 12px 16px;
+    }
+    .session-info { text-align: left; }
     .navbar { overflow-x: auto; }
+    main { padding: 0 14px; }
     table.resumo-table, table.resumo-table tbody, table.resumo-table tr, table.resumo-table td {
       display: block;
       width: 100%;
@@ -263,40 +272,44 @@
       width: 100%;
       margin-bottom: 10px;
     }
+    #tabela-wrap { overflow-x: auto; }
+    table.alunos-table { min-width: 480px; }
   }
 </style>
 </head>
 <body>
+<a href="#conteudo-principal" class="skip-link">Pular para o conteúdo</a>
 
 <div class="topbar">
   <div class="brand">
-    <div class="brand-mark">U</div>
+    <div class="brand-mark" aria-hidden="true">U</div>
     <div>
-      <div class="brand-text">UniVap</div>
-      <div class="brand-sub">Portal Administrativo</div>
+      <div class="brand-text">UNIVAP</div>
+      <div class="brand-sub">Sistema de Controle de Faltas</div>
     </div>
   </div>
   <div class="session-info">
     USUÁRIO: <strong>ADMINISTRADOR DO SISTEMA</strong><br>
     <span id="relogio"></span>
+    <button type="button" class="btn-sair" id="btn-sair">Sair</button>
   </div>
 </div>
 
-<div class="navbar">
+<nav class="navbar" aria-label="Menu principal">
   <table>
     <tr>
-      <td><a href="#" class="ativo">Painel</a></td>
-      <td><a href="#">Turmas</a></td>
-      <td><a href="#">Alunos</a></td>
-      <td><a href="#">Faltas</a></td>
-      <td><a href="#">Funcionários</a></td>
-      <td><a href="#">Relatórios</a></td>
-      <td><a href="#">Configurações</a></td>
+      <td><a href="telaAdministrador.html" aria-current="page">Painel</a></td>
+      <td><a href="GradeHorarios.html">Turmas</a></td>
+      <td><a href="Alunos.html">Alunos</a></td>
+      <td><a href="telaChamada.html">Faltas</a></td>
+      <td><a href="Funcionarios.html">Funcionários</a></td>
+      <td><a href="Relatorios.html">Relatórios</a></td>
+      <td><a href="Cargos.html">Configurações</a></td>
     </tr>
   </table>
-</div>
+</nav>
 
-<main>
+<main id="conteudo-principal">
   <div class="page-title">
     <h1>Painel de Faltas</h1>
     <p>Escolha uma turma para ver a lista de alunos e a situação de frequência de cada um.</p>
@@ -383,7 +396,22 @@
   </div>
 </main>
 
-<script>
+<script type="module">
+  import ApiService from './ApiService.js';
+
+  let userData = localStorage.getItem("userData");
+  if (userData) {
+    userData = JSON.parse(userData);
+  } else {
+    window.location.href = "Login.html";
+  }
+  const api = new ApiService(userData.data.token);
+
+  document.getElementById('btn-sair').onclick = () => {
+    localStorage.removeItem('userData');
+    window.location.href = 'Login.html';
+  };
+
   // ---------- RELÓGIO ----------
   function atualizarRelogio() {
     var d = new Date();
@@ -394,102 +422,64 @@
     var min = String(d.getMinutes()).padStart(2, '0');
     document.getElementById('relogio').innerHTML = dia + '/' + mes + '/' + ano + ' - ' + hora + ':' + min;
 
-    // já deixa a data de referência preenchida com hoje
     var campoData = document.getElementById('data-referencia');
     if (campoData.value === '') {
-      var anoIso = d.getFullYear();
-      var mesIso = String(d.getMonth() + 1).padStart(2, '0');
-      var diaIso = String(d.getDate()).padStart(2, '0');
-      campoData.value = anoIso + '-' + mesIso + '-' + diaIso;
+      campoData.value = ano + '-' + mes + '-' + dia;
     }
   }
   atualizarRelogio();
   setInterval(atualizarRelogio, 30000);
 
-  // ---------- DADOS MOCK ----------
-  // cada aluno: nome, situação na data escolhida, total de faltas no bimestre
-  var nomesTurmas = [
-    "1ª Série A - Informática - Paraibuna Manhã",
-    "2ª Série A - Informática - Paraibuna Manhã",
-    "3ª Série A - Informática - Paraibuna Tarde"
-  ];
+  var turmaAtual = "";
+  var todosAlunos = [];
+  var turmas = [];
 
-  var alunosPorTurma = [
-    [
-      { nome: "Luana Pinheiro Cruz", situacao: "presente", faltas: 2 },
-      { nome: "Bruno Almeida Santos", situacao: "falta", faltas: 6 },
-      { nome: "Carla Fernandes Lima", situacao: "presente", faltas: 0 },
-      { nome: "Diego Souza Rocha", situacao: "falta", faltas: 4 },
-      { nome: "Elisa Martins Alves", situacao: "presente", faltas: 1 },
-      { nome: "Felipe Costa Reis", situacao: "pendente", faltas: 3 }
-    ],
-    [
-      { nome: "Gabriel Oliveira Nunes", situacao: "presente", faltas: 1 },
-      { nome: "Helena Barros Dias", situacao: "presente", faltas: 0 },
-      { nome: "Igor Teixeira Farias", situacao: "falta", faltas: 5 },
-      { nome: "Julia Ramos Pinto", situacao: "pendente", faltas: 2 },
-      { nome: "Kevin Andrade Melo", situacao: "presente", faltas: 3 }
-    ],
-    [
-      { nome: "Larissa Gomes Neves", situacao: "falta", faltas: 7 },
-      { nome: "Marcos Vinícius Paz", situacao: "presente", faltas: 0 },
-      { nome: "Natália Duarte Silva", situacao: "presente", faltas: 1 },
-      { nome: "Otávio Cardoso Lopes", situacao: "pendente", faltas: 0 },
-      { nome: "Patrícia Nogueira Cunha", situacao: "presente", faltas: 2 },
-      { nome: "Rafael Tavares Moura", situacao: "falta", faltas: 4 },
-      { nome: "Sabrina Freitas Xavier", situacao: "presente", faltas: 1 }
-    ]
-  ];
+  // ---------- CARREGA ALUNOS/TURMAS E MONTA O RESUMO GERAL ----------
+  async function carregarResumoGeral() {
+    const respostaAlunos = await api.get("api/v1/alunos");
+    todosAlunos = respostaAlunos.success ? respostaAlunos.data.alunos : [];
+    turmas = [...new Set(todosAlunos.map(a => a.turma))];
 
-  var turmaAtual = -1;
+    const select = document.getElementById('turma-select');
+    turmas.forEach(turma => {
+      const opcao = document.createElement('option');
+      opcao.value = turma;
+      opcao.innerHTML = turma;
+      select.appendChild(opcao);
+    });
 
-  // preencher o seletor de turmas
-  var select = document.getElementById('turma-select');
-  for (var i = 0; i < nomesTurmas.length; i++) {
-    var opcao = document.createElement('option');
-    opcao.value = i;
-    opcao.innerHTML = nomesTurmas[i];
-    select.appendChild(opcao);
-  }
+    const hoje = document.getElementById('data-referencia').value;
+    let totalFaltasHoje = 0;
 
-  // preencher os cards de resumo (considerando todas as turmas)
-  function montarResumoGeral() {
-    var totalAlunos = 0;
-    var totalFaltasHoje = 0;
-
-    for (var i = 0; i < alunosPorTurma.length; i++) {
-      for (var j = 0; j < alunosPorTurma[i].length; j++) {
-        totalAlunos = totalAlunos + 1;
-        if (alunosPorTurma[i][j].situacao === 'falta') {
-          totalFaltasHoje = totalFaltasHoje + 1;
-        }
+    for (const turma of turmas) {
+      const resposta = await api.get(`api/v1/relatorios/frequencia?turma=${encodeURIComponent(turma)}&dia=${hoje}`);
+      if (resposta.success) {
+        totalFaltasHoje += resposta.data.frequencia.filter(a => a.situacao === 'Ausente').length;
       }
     }
 
-    var frequencia = 100;
-    if (totalAlunos > 0) {
-      frequencia = Math.round(((totalAlunos - totalFaltasHoje) / totalAlunos) * 100);
-    }
+    const totalAlunos = todosAlunos.length;
+    const frequencia = totalAlunos > 0 ? Math.round(((totalAlunos - totalFaltasHoje) / totalAlunos) * 100) : 100;
 
     document.getElementById('resumo-total-alunos').innerHTML = totalAlunos;
-    document.getElementById('resumo-turmas').innerHTML = nomesTurmas.length;
+    document.getElementById('resumo-turmas').innerHTML = turmas.length;
     document.getElementById('resumo-faltas-hoje').innerHTML = totalFaltasHoje;
     document.getElementById('resumo-frequencia').innerHTML = frequencia + '%';
   }
-  montarResumoGeral();
+  carregarResumoGeral();
 
   // ---------- SELECIONAR TURMA ----------
   function selecionarTurma() {
     var valor = document.getElementById('turma-select').value;
 
     if (valor === '') {
-      turmaAtual = -1;
+      turmaAtual = "";
       document.getElementById('empty-card').style.display = 'block';
       document.getElementById('tabela-wrap').style.display = 'none';
       return;
     }
 
-    turmaAtual = parseInt(valor);
+    turmaAtual = valor;
     mostrarTurma();
   }
 
@@ -502,46 +492,62 @@
     return iniciais.toUpperCase();
   }
 
-  function mostrarTurma() {
-    if (turmaAtual === -1) {
+  // ---------- MOSTRAR TABELA DA TURMA (frequência do dia + faltas do mês) ----------
+  async function mostrarTurma() {
+    if (turmaAtual === "") {
       return;
     }
 
     document.getElementById('empty-card').style.display = 'none';
     document.getElementById('tabela-wrap').style.display = 'block';
-    document.getElementById('titulo-turma').innerHTML = nomesTurmas[turmaAtual];
+    document.getElementById('titulo-turma').innerHTML = turmaAtual;
 
-    var alunos = alunosPorTurma[turmaAtual];
+    const dia = document.getElementById('data-referencia').value;
+    const dataRef = new Date(dia);
+
+    const [respostaFrequencia, respostaFaltas] = await Promise.all([
+      api.get(`api/v1/relatorios/frequencia?turma=${encodeURIComponent(turmaAtual)}&dia=${dia}`),
+      api.get(`api/v1/relatorios/faltas/mes?turma=${encodeURIComponent(turmaAtual)}&ano=${dataRef.getFullYear()}&mes=${dataRef.getMonth() + 1}`)
+    ]);
+
+    const frequencia = respostaFrequencia.success ? respostaFrequencia.data.frequencia : [];
+    const faltasPorMatricula = {};
+    if (respostaFaltas.success) {
+      respostaFaltas.data.faltas.forEach(item => { faltasPorMatricula[item.matricula] = item.totalFaltas; });
+    }
+
     var corpo = document.getElementById('corpo-tabela');
     corpo.innerHTML = '';
 
-    for (var i = 0; i < alunos.length; i++) {
-      var aluno = alunos[i];
-
+    frequencia.forEach(aluno => {
       var textoBadge = 'Pendente';
       var classeBadge = 'badge-pendente';
-      if (aluno.situacao === 'presente') {
+      if (aluno.situacao === 'Presente') {
         textoBadge = 'Presente';
         classeBadge = 'badge-presente';
-      } else if (aluno.situacao === 'falta') {
+      } else if (aluno.situacao === 'Ausente') {
         textoBadge = 'Falta';
         classeBadge = 'badge-falta';
+      } else if (aluno.situacao === 'Abonada' || aluno.situacao === 'Dispensada') {
+        textoBadge = aluno.situacao;
+        classeBadge = 'badge-presente';
       }
 
-      var classeFaltas = 'faltas-total';
-      if (aluno.faltas >= 5) {
-        classeFaltas = 'faltas-total alerta';
-      }
+      var totalFaltas = faltasPorMatricula[aluno.matricula] || 0;
+      var classeFaltas = totalFaltas >= 5 ? 'faltas-total alerta' : 'faltas-total';
 
       var linha = document.createElement('tr');
       linha.innerHTML =
-        '<td><span class="avatar-mini">' + pegarIniciais(aluno.nome) + '</span>' + aluno.nome + '</td>' +
+        '<td><span class="avatar-mini">' + pegarIniciais(aluno.alunoNome) + '</span>' + aluno.alunoNome + '</td>' +
         '<td><span class="badge ' + classeBadge + '">' + textoBadge + '</span></td>' +
-        '<td><span class="' + classeFaltas + '">' + aluno.faltas + '</span></td>';
+        '<td><span class="' + classeFaltas + '">' + totalFaltas + '</span></td>';
 
       corpo.appendChild(linha);
-    }
+    });
   }
+
+  window.selecionarTurma = selecionarTurma;
+  window.mostrarTurma = mostrarTurma;
 </script>
 
 </body>

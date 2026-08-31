@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Relatórios com ApiService</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="css/bootstrap.min.css" rel="stylesheet" />
+  <link href="css/univap-theme.css" rel="stylesheet" />
+  <script src="js/bootstrap.bundle.min.js"></script>
+  <style>
+    body { margin: 0; }
+    table { margin-top: 1em; }
+  </style>
+</head>
+
+<body>
+  <div id="app-topbar"></div>
+  <main class="container conteudo-pagina" id="conteudo-principal">
+
+  <h1 class="mb-4">Relatórios de Frequência</h1>
+
+  <div class="card mb-3">
+    <div class="card-header">Frequência da turma em um dia</div>
+    <div class="card-body">
+      <div class="row g-2 mb-2">
+        <div class="col-md-6">
+          <input type="text" id="txtTurmaFreq" class="form-control" placeholder="Turma" aria-label="Turma para consultar frequência" />
+        </div>
+        <div class="col-md-6">
+          <input type="date" id="txtDiaFreq" class="form-control" aria-label="Dia para consultar frequência" />
+        </div>
+      </div>
+      <button type="button" id="btnFrequencia" class="btn btn-primary mb-2">Gerar</button>
+      <div id="divTabelaFrequencia"></div>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header">Faltas por turma / período</div>
+    <div class="card-body">
+      <div class="row g-2 mb-2">
+        <div class="col-md-4">
+          <input type="text" id="txtTurmaFaltas" class="form-control" placeholder="Turma" aria-label="Turma para consultar faltas" />
+        </div>
+        <div class="col-md-4">
+          <select id="cboTipoPeriodo" class="form-select" aria-label="Tipo de período do relatório de faltas">
+            <option value="semana">Semana</option>
+            <option value="mes">Mês</option>
+            <option value="periodo">Período customizado</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row g-2 mb-2" id="divCamposSemana">
+        <div class="col-md-4">
+          <input type="date" id="txtDataSemana" class="form-control" placeholder="Data inicial da semana" aria-label="Data inicial da semana" />
+        </div>
+      </div>
+
+      <div class="row g-2 mb-2" id="divCamposMes" style="display:none;">
+        <div class="col-md-2">
+          <input type="number" id="txtAnoMes" class="form-control" placeholder="Ano" aria-label="Ano de referência" />
+        </div>
+        <div class="col-md-2">
+          <input type="number" id="txtMesMes" class="form-control" min="1" max="12" placeholder="Mês" aria-label="Mês de referência" />
+        </div>
+      </div>
+
+      <div class="row g-2 mb-2" id="divCamposPeriodo" style="display:none;">
+        <div class="col-md-4">
+          <input type="date" id="txtDataInicioPeriodo" class="form-control" aria-label="Data de início do período" />
+        </div>
+        <div class="col-md-4">
+          <input type="date" id="txtDataFimPeriodo" class="form-control" aria-label="Data de fim do período" />
+        </div>
+      </div>
+
+      <button type="button" id="btnFaltas" class="btn btn-primary mb-2">Gerar</button>
+      <div id="divTabelaFaltas"></div>
+    </div>
+  </div>
+
+  </main>
+
+  <script type="module">
+    import { montarTopbar } from './js/Topbar.js';
+    import ApiService from './ApiService.js';
+
+    let userData = localStorage.getItem("userData");
+    if (userData) {
+      userData = JSON.parse(userData);
+    } else {
+      window.location.href = "login.html";
+    }
+
+    const token = userData.data.token;
+    const api = new ApiService(token);
+    montarTopbar('relatorios');
+
+    document.getElementById("btnFrequencia").onclick = async () => {
+      const turma = document.getElementById("txtTurmaFreq").value.trim();
+      const dia = document.getElementById("txtDiaFreq").value;
+      if (!turma || !dia) return;
+
+      const resposta = await api.get(`api/v1/relatorios/frequencia?turma=${encodeURIComponent(turma)}&dia=${dia}`);
+      const divTabela = document.getElementById("divTabelaFrequencia");
+      if (!resposta.success) {
+        divTabela.innerHTML = `<div class="alert alert-danger">${resposta.message || "Erro ao gerar relatório"}</div>`;
+        return;
+      }
+
+      const linhas = resposta.data.frequencia.map(item =>
+        `<tr><td>${item.matricula}</td><td>${item.alunoNome}</td><td>${item.situacao}</td></tr>`
+      ).join("");
+      divTabela.innerHTML = `<table class="table table-bordered table-striped">
+        <thead><tr><th>Matrícula</th><th>Nome</th><th>Situação</th></tr></thead>
+        <tbody>${linhas}</tbody></table>`;
+    };
+
+    const cboTipoPeriodo = document.getElementById("cboTipoPeriodo");
+    cboTipoPeriodo.addEventListener("change", () => {
+      document.getElementById("divCamposSemana").style.display = cboTipoPeriodo.value === "semana" ? "flex" : "none";
+      document.getElementById("divCamposMes").style.display = cboTipoPeriodo.value === "mes" ? "flex" : "none";
+      document.getElementById("divCamposPeriodo").style.display = cboTipoPeriodo.value === "periodo" ? "flex" : "none";
+    });
+
+    document.getElementById("btnFaltas").onclick = async () => {
+      const turma = document.getElementById("txtTurmaFaltas").value.trim();
+      if (!turma) return;
+
+      let uri = "";
+      if (cboTipoPeriodo.value === "semana") {
+        const data = document.getElementById("txtDataSemana").value;
+        if (!data) return;
+        uri = `api/v1/relatorios/faltas/semana?turma=${encodeURIComponent(turma)}&data=${data}`;
+      } else if (cboTipoPeriodo.value === "mes") {
+        const ano = document.getElementById("txtAnoMes").value;
+        const mes = document.getElementById("txtMesMes").value;
+        if (!ano || !mes) return;
+        uri = `api/v1/relatorios/faltas/mes?turma=${encodeURIComponent(turma)}&ano=${ano}&mes=${mes}`;
+      } else {
+        const dataInicio = document.getElementById("txtDataInicioPeriodo").value;
+        const dataFim = document.getElementById("txtDataFimPeriodo").value;
+        if (!dataInicio || !dataFim) return;
+        uri = `api/v1/relatorios/faltas/periodo?turma=${encodeURIComponent(turma)}&dataInicio=${dataInicio}&dataFim=${dataFim}`;
+      }
+
+      const resposta = await api.get(uri);
+      const divTabela = document.getElementById("divTabelaFaltas");
+      if (!resposta.success) {
+        divTabela.innerHTML = `<div class="alert alert-danger">${resposta.message || "Erro ao gerar relatório"}</div>`;
+        return;
+      }
+
+      const linhas = resposta.data.faltas.map(item =>
+        `<tr><td>${item.matricula}</td><td>${item.alunoNome}</td><td>${item.totalFaltas}</td></tr>`
+      ).join("");
+      divTabela.innerHTML = `<table class="table table-bordered table-striped">
+        <thead><tr><th>Matrícula</th><th>Nome</th><th>Total de Faltas</th></tr></thead>
+        <tbody>${linhas}</tbody></table>`;
+    };
+  </script>
+</body>
+
+</html>

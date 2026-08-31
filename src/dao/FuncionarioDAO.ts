@@ -191,7 +191,7 @@ export class FuncionarioDAO {
         const collection = await this.getCollection();
 
         const pipeline = [
-            { $match: { "auditoria.deletadoEm": { $exists: false } } },
+            { $match: { "auditoria.deletadoEm": null } },
             {
                 $lookup: {
                     from: "cargo",
@@ -243,7 +243,7 @@ export class FuncionarioDAO {
         const collection = await this.getCollection();
         const filter: Filter<Document> = { 
             _id: new ObjectId(idFuncionario),
-            "auditoria.deletadoEm": { $exists: false } 
+            "auditoria.deletadoEm": null 
         };
 
         const pipeline = [
@@ -309,12 +309,12 @@ export class FuncionarioDAO {
         if (field === "_id") {
             filter = { 
                 _id: new ObjectId(value),
-                "auditoria.deletadoEm": { $exists: false } 
+                "auditoria.deletadoEm": null 
             };
         } else {
             filter = { 
                 [field]: value,
-                "auditoria.deletadoEm": { $exists: false } 
+                "auditoria.deletadoEm": null 
             };
         }
 
@@ -429,7 +429,7 @@ export class FuncionarioDAO {
     public async count(): Promise<number> {
         console.log("🟢 FuncionarioDAO.count()");
         const collection = await this.getCollection();
-        return await collection.countDocuments({ "auditoria.deletadoEm": { $exists: false } });
+        return await collection.countDocuments({ "auditoria.deletadoEm": null });
     }
 
     /**
@@ -449,7 +449,7 @@ export class FuncionarioDAO {
         const collection = await this.getCollection();
         return await collection.countDocuments({ 
             cargoId: new ObjectId(cargoId),
-            "auditoria.deletadoEm": { $exists: false } 
+            "auditoria.deletadoEm": null 
         });
     }
 

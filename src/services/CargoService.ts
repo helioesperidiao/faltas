@@ -82,7 +82,7 @@ export class CargoService {
         console.log("🟣 CargoService.findAllDeleted()");
 
         // Cargos autorizados a visualizar registros deletados
-        const cargosPermitidos = ["Administrador", "Gerente"];
+        const cargosPermitidos = ["Administrador", "Diretor"];
         const cargoFuncionario = funcionarioLogado.cargo.nomeCargo;
 
         if (!cargosPermitidos.includes(cargoFuncionario)) {

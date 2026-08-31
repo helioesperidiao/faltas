@@ -70,6 +70,20 @@ export class RegistroController extends BaseController {
         }).send(response);
     };
 
+    //findAusentesEntrada: alunos ausentes na chamada de ENTRADA para uma turma/dia
+    public findAusentesEntrada = async (request: Request, response: Response): Promise<void> => {
+        console.log("🔵 RegistroController.findAusentesEntrada()");
+
+        const turma = request.query.turma?.toString() || '';
+        const dia = request.query.dia?.toString() || '';
+
+        const ausentes = await this._registroService.findAusentesEntrada(turma, dia);
+
+        StandardResponse.success("Busca realizada com sucesso", {
+            registros: ausentes
+        }).send(response);
+    };
+
     //findById
     public findById = async (_request: Request, response: Response): Promise<void> => {
         console.log("🔵 RegistroController.findById()");

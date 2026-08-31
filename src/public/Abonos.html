@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>CRUD Abonos com ApiService</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="css/bootstrap.min.css" rel="stylesheet" />
+  <link href="css/univap-theme.css" rel="stylesheet" />
+  <script src="js/bootstrap.bundle.min.js"></script>
+  <style>
+    body { margin: 0; }
+    table { margin-top: 1em; }
+  </style>
+</head>
+
+<body>
+  <div id="app-topbar"></div>
+  <main class="container conteudo-pagina" id="conteudo-principal">
+
+  <h1 class="mb-4">Gerenciamento de Abonos</h1>
+
+  <div class="card mb-3">
+    <div class="card-header">Filtro de Abono</div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6">
+          <label for="txtFiltroMatricula" class="form-label">Matrícula</label>
+          <input type="text" id="txtFiltroMatricula" class="form-control" placeholder="Digite a matrícula">
+        </div>
+        <div class="col-md-6 d-flex align-items-end">
+          <div class="form-check">
+            <input type="checkbox" class="form-check-input" id="chkMostrarInativos">
+            <label class="form-check-label" for="chkMostrarInativos">Mostrar abonos inativos (deletados)</label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Solicitar abono: upload de atestado + definição de período -->
+  <div class="card mb-3">
+    <div class="card-header">Solicitação de Abono</div>
+    <div class="card-body">
+      <div class="mb-3">
+        <input type="text" id="txtId" class="form-control mb-2" disabled placeholder="ID (para update)" aria-label="ID do abono selecionado" />
+        <input type="text" id="txtMatricula" class="form-control mb-2" placeholder="Matrícula do aluno" aria-label="Matrícula do aluno" />
+        <label class="form-label">Período da falta abonada</label>
+        <div class="row mb-2">
+          <div class="col-md-6">
+            <input type="date" id="txtDataInicio" class="form-control" aria-label="Data de início da falta abonada" />
+          </div>
+          <div class="col-md-6">
+            <input type="date" id="txtDataFim" class="form-control" aria-label="Data de fim da falta abonada" />
+          </div>
+        </div>
+        <textarea id="txtMotivo" class="form-control mb-2" rows="3" placeholder="Motivo" aria-label="Motivo do abono"></textarea>
+        <label class="form-label">Atestado (PDF ou imagem)</label>
+        <input type="file" id="fileAtestado" class="form-control mb-2" accept=".pdf,.jpg,.jpeg" />
+      </div>
+      <div class="mb-3 d-flex gap-2" id="divBotoes"></div>
+      <div id="divResposta" role="status" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <div class="card mt-4">
+    <div class="card-header">Lista de Abonos</div>
+    <div class="card-body">
+      <div id="divTabela"></div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="modalConfirm" tabindex="-1" aria-labelledby="modalConfirmLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalConfirmLabel">Confirmar Exclusão</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">Tem certeza que deseja excluir este abono?</div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-danger" id="btnConfirmDelete">Excluir</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  </main>
+
+  <script type="module">
+    import { montarTopbar } from './js/Topbar.js';
+    import ApiService from './ApiService.js';
+
+    let userData = localStorage.getItem("userData");
+    if (userData) {
+      userData = JSON.parse(userData);
+    } else {
+      window.location.href = "login.html";
+    }
+
+    const token = userData.data.token;
+    const api = new ApiService(token);
+    montarTopbar('abonos');
+
+    let API_DATA;
+
+    const txtId = document.getElementById("txtId");
+    const txtMatricula = document.getElementById("txtMatricula");
+    const txtDataInicio = document.getElementById("txtDataInicio");
+    const txtDataFim = document.getElementById("txtDataFim");
+    const txtMotivo = document.getElementById("txtMotivo");
+    const fileAtestado = document.getElementById("fileAtestado");
+    const txtFiltroMatricula = document.getElementById("txtFiltroMatricula");
+    const chkMostrarInativos = document.getElementById("chkMostrarInativos");
+
+    const divBotoes = document.getElementById("divBotoes");
+    const divResposta = document.getElementById("divResposta");
+
+    function createButton(text, className) {
+      const btn = document.createElement("button");
+      btn.textContent = text;
+      btn.className = `btn ${className} flex-fill`;
+      return btn;
+    }
+
+    function mostrarMensagem(mensagem, tipo = "success") {
+      divResposta.textContent = mensagem;
+      divResposta.className = `alert alert-${tipo}`;
+    }
+
+    function limparFormulario() {
+      txtId.value = "";
+      txtMatricula.value = "";
+      txtDataInicio.value = "";
+      txtDataFim.value = "";
+      txtMotivo.value = "";
+      fileAtestado.value = "";
+    }
+
+    function montarObjeto() {
+      return {
+        abono: {
+          matricula: txtMatricula.value.trim(),
+          dataInicio: txtDataInicio.value,
+          dataFim: txtDataFim.value,
+          motivo: txtMotivo.value.trim()
+        }
+      };
+    }
+
+    function validarCampos() {
+      if (!txtMatricula.value.trim()) {
+        mostrarMensagem("Informe a matrícula", "warning");
+        return false;
+      }
+      if (!txtDataInicio.value || !txtDataFim.value) {
+        mostrarMensagem("Informe o período (data início e data fim)", "warning");
+        return false;
+      }
+      if (!txtMotivo.value.trim()) {
+        mostrarMensagem("Informe o motivo", "warning");
+        return false;
+      }
+      return true;
+    }
+
+    // envia o atestado via multipart/form-data diretamente (fora do ApiService, que só trabalha com JSON)
+    async function enviarAtestado(idAbono, arquivo) {
+      const formData = new FormData();
+      formData.append("arquivo", arquivo);
+      const response = await fetch(`api/v1/abonos/${idAbono}/arquivo`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` },
+        body: formData
+      });
+      return await response.json();
+    }
+
+    const btnListar = createButton("Listar", "btn-primary");
+    btnListar.onclick = () => listAll();
+    divBotoes.appendChild(btnListar);
+
+    const btnCriar = createButton("Solicitar Abono", "btn-success");
+    btnCriar.onclick = async () => {
+      if (!validarCampos()) {
+        return;
+      }
+
+      const resposta = await api.post("api/v1/abonos", montarObjeto());
+      if (resposta.success) {
+        const idAbono = resposta.data.abonos[0].idAbono;
+        if (fileAtestado.files.length > 0) {
+          await enviarAtestado(idAbono, fileAtestado.files[0]);
+        }
+        mostrarMensagem(resposta.message || "Abono solicitado com sucesso", "success");
+        limparFormulario();
+        listAll();
+      } else {
+        mostrarMensagem(resposta.message || "Erro ao solicitar abono", "danger");
+      }
+    };
+    divBotoes.appendChild(btnCriar);
+
+    const btnAtualizar = createButton("Atualizar", "btn-warning");
+    btnAtualizar.onclick = async () => {
+      const id = txtId.value.trim();
+      if (!id) {
+        mostrarMensagem("Selecione um abono para atualizar", "warning");
+        return;
+      }
+      if (!validarCampos()) {
+        return;
+      }
+
+      const resposta = await api.put("api/v1/abonos", id, montarObjeto());
+      if (resposta.success) {
+        if (fileAtestado.files.length > 0) {
+          await enviarAtestado(id, fileAtestado.files[0]);
+        }
+        mostrarMensagem(resposta.message || "Abono atualizado com sucesso", "success");
+        limparFormulario();
+        listAll();
+      } else {
+        mostrarMensagem(resposta.message || "Erro ao atualizar abono", "danger");
+      }
+    };
+    divBotoes.appendChild(btnAtualizar);
+
+    const btnExcluir = createButton("Excluir", "btn-danger");
+    btnExcluir.onclick = () => {
+      const id = txtId.value.trim();
+      if (!id) {
+        mostrarMensagem("Selecione um abono para excluir", "warning");
+        return;
+      }
+
+      const modal = new bootstrap.Modal(document.getElementById('modalConfirm'));
+      modal.show();
+      const btnConfirmDelete = document.getElementById("btnConfirmDelete");
+      btnConfirmDelete.onclick = async () => {
+        const resposta = await api.delete("api/v1/abonos", id);
+        if (resposta.success) {
+          mostrarMensagem(resposta.message || "Abono excluído com sucesso", "success");
+          limparFormulario();
+          listAll();
+        } else {
+          mostrarMensagem(resposta.message || "Erro ao excluir abono", "danger");
+        }
+        modal.hide();
+      };
+    };
+    divBotoes.appendChild(btnExcluir);
+
+    async function aprovarAbono(idAbono) {
+      const resposta = await api.put("api/v1/abonos", `${idAbono}/aprovar`, {});
+      if (resposta.success) {
+        mostrarMensagem("Abono aprovado. Faltas do período convertidas em Abonada.", "success");
+        listAll();
+      } else {
+        mostrarMensagem(resposta.message || "Erro ao aprovar abono", "danger");
+      }
+    }
+
+    async function rejeitarAbono(idAbono) {
+      const resposta = await api.put("api/v1/abonos", `${idAbono}/rejeitar`, {});
+      if (resposta.success) {
+        mostrarMensagem("Abono rejeitado.", "success");
+        listAll();
+      } else {
+        mostrarMensagem(resposta.message || "Erro ao rejeitar abono", "danger");
+      }
+    }
+
+    async function listAll() {
+      const endpoint = chkMostrarInativos.checked ? "api/v1/abonos/deleted" : "api/v1/abonos";
+      const resposta = await api.get(endpoint);
+
+      if (resposta.success) {
+        API_DATA = resposta.data;
+        renderTable(API_DATA);
+        divResposta.className = "";
+      } else {
+        mostrarMensagem(resposta.message || "Erro ao carregar abonos", "danger");
+      }
+    }
+
+    function badgeStatus(status) {
+      const cores = { Pendente: "warning", Aprovado: "success", Rejeitado: "danger" };
+      return `<span class="badge bg-${cores[status] || 'secondary'}">${status}</span>`;
+    }
+
+    function renderTable(dados) {
+      const divTabela = document.getElementById("divTabela");
+      divTabela.innerHTML = "";
+
+      const table = document.createElement("table");
+      table.className = "table table-bordered table-striped";
+
+      const thead = document.createElement("thead");
+      thead.className = "table-light";
+      const trHead = document.createElement("tr");
+      ["ID", "Matrícula", "Início", "Fim", "Motivo", "Atestado", "Status", "Ações"].forEach(text => {
+        const th = document.createElement("th");
+        th.textContent = text;
+        trHead.appendChild(th);
+      });
+      thead.appendChild(trHead);
+      table.appendChild(thead);
+
+      const tbody = document.createElement("tbody");
+      const abonos = dados?.abonos || [];
+
+      abonos.forEach(abono => {
+        const tr = document.createElement("tr");
+
+        const tdId = document.createElement("td");
+        tdId.textContent = abono.idAbono;
+        tr.appendChild(tdId);
+
+        const tdMatricula = document.createElement("td");
+        tdMatricula.textContent = abono.matricula;
+        tr.appendChild(tdMatricula);
+
+        const tdInicio = document.createElement("td");
+        tdInicio.textContent = new Date(abono.dataInicio).toLocaleDateString("pt-BR");
+        tr.appendChild(tdInicio);
+
+        const tdFim = document.createElement("td");
+        tdFim.textContent = new Date(abono.dataFim).toLocaleDateString("pt-BR");
+        tr.appendChild(tdFim);
+
+        const tdMotivo = document.createElement("td");
+        tdMotivo.textContent = abono.motivo;
+        tr.appendChild(tdMotivo);
+
+        const tdArquivo = document.createElement("td");
+        tdArquivo.textContent = abono.nomeArquivo || "-";
+        tr.appendChild(tdArquivo);
+
+        const tdStatus = document.createElement("td");
+        tdStatus.innerHTML = badgeStatus(abono.status);
+        tr.appendChild(tdStatus);
+
+        const tdAcoes = document.createElement("td");
+        const divBtns = document.createElement("div");
+        divBtns.className = "d-flex gap-2";
+
+        const btnSel = createButton("Selecionar", "btn-info");
+        btnSel.onclick = () => {
+          txtId.value = abono.idAbono;
+          txtMatricula.value = abono.matricula;
+          txtDataInicio.value = new Date(abono.dataInicio).toISOString().split("T")[0];
+          txtDataFim.value = new Date(abono.dataFim).toISOString().split("T")[0];
+          txtMotivo.value = abono.motivo;
+          divResposta.className = "";
+          divResposta.textContent = "";
+        };
+        divBtns.appendChild(btnSel);
+
+        if (abono.status === "Pendente") {
+          const btnAprovar = createButton("Aprovar", "btn-success");
+          btnAprovar.onclick = () => aprovarAbono(abono.idAbono);
+          divBtns.appendChild(btnAprovar);
+
+          const btnRejeitar = createButton("Rejeitar", "btn-danger");
+          btnRejeitar.onclick = () => rejeitarAbono(abono.idAbono);
+          divBtns.appendChild(btnRejeitar);
+        }
+
+        tdAcoes.appendChild(divBtns);
+        tr.appendChild(tdAcoes);
+
+        tbody.appendChild(tr);
+      });
+
+      table.appendChild(tbody);
+      divTabela.appendChild(table);
+    }
+
+    txtFiltroMatricula.addEventListener("input", function () {
+      const filtro = this.value.trim().toLowerCase();
+      if (!API_DATA || !API_DATA.abonos) return;
+      const filtrados = {
+        abonos: API_DATA.abonos.filter(a => a.matricula.toLowerCase().includes(filtro))
+      };
+      renderTable(filtrados);
+      txtId.value = "";
+    });
+
+    chkMostrarInativos.addEventListener("change", function () {
+      listAll();
+      txtFiltroMatricula.value = "";
+    });
+
+    listAll();
+  </script>
+</body>
+
+</html>

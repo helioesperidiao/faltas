@@ -1,34 +1,57 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="/css/bootstrap.min.css" rel="stylesheet" />
-    <title>Document</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel | UNIVAP - Controle de Faltas</title>
+  <link href="css/univap-theme.css" rel="stylesheet" />
 </head>
 
 <body>
-    <div id="divUsuario"></div>
-    <div>
-        <a href="Cargos.html">Cargos</a>
-    </div>
-    <div>
-        <a href="Funcionarios.html">Funcionarios</a>
-    </div>
-</body>
-<script type="module">
-    const divUsuario = document.getElementById("divUsuario");
-    let userData = localStorage.getItem("userData");
+  <div id="app-topbar"></div>
 
+  <main class="conteudo-pagina" id="conteudo-principal">
+    <div class="page-title">
+      <h1>Painel</h1>
+      <p id="mensagem-boas-vindas">Bem-vindo(a)! Escolha um módulo no menu acima para começar.</p>
+    </div>
+
+    <div class="card">
+      <div class="card-header">Acesso rápido</div>
+      <div class="card-body">
+        <nav aria-label="Acesso rápido aos módulos">
+          <ul style="list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:12px;">
+            <li><a href="telaChamada.html" class="btn btn-primary" style="display:block; text-align:center; padding:14px; color:#fff; text-decoration:none;">Chamada</a></li>
+            <li><a href="telaAdministrador.html" class="btn btn-primary" style="display:block; text-align:center; padding:14px; color:#fff; text-decoration:none;">Frequência</a></li>
+            <li><a href="Alunos.html" class="btn btn-primary" style="display:block; text-align:center; padding:14px; color:#fff; text-decoration:none;">Alunos</a></li>
+            <li><a href="GradeHorarios.html" class="btn btn-primary" style="display:block; text-align:center; padding:14px; color:#fff; text-decoration:none;">Grade de Horários</a></li>
+            <li><a href="Abonos.html" class="btn btn-primary" style="display:block; text-align:center; padding:14px; color:#fff; text-decoration:none;">Abonos</a></li>
+            <li><a href="Relatorios.html" class="btn btn-primary" style="display:block; text-align:center; padding:14px; color:#fff; text-decoration:none;">Relatórios</a></li>
+            <li><a href="Cargos.html" class="btn btn-primary" style="display:block; text-align:center; padding:14px; color:#fff; text-decoration:none;">Cargos</a></li>
+            <li><a href="Funcionarios.html" class="btn btn-primary" style="display:block; text-align:center; padding:14px; color:#fff; text-decoration:none;">Funcionários</a></li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+  </main>
+
+  <script type="module">
+    import { montarTopbar } from './js/Topbar.js';
+
+    let userData = localStorage.getItem("userData");
     if (userData) {
-        userData = JSON.parse(userData);
-        divUsuario.textContent = "Bem Vindo (" + userData.data.funcionario[0].nomeFuncionario + ")";
-        divUsuario.className = "alert alert-primary";
-    }else{
-         window.location.href = "login.html"; 
+      userData = JSON.parse(userData);
+      const nome = userData?.data?.funcionario?.[0]?.nomeFuncionario;
+      if (nome) {
+        document.getElementById("mensagem-boas-vindas").textContent = "Bem-vindo(a), " + nome + "! Escolha um módulo no menu acima para começar.";
+      }
+    } else {
+      window.location.href = "Login.html";
     }
 
-</script>
+    montarTopbar('dashboard');
+  </script>
+</body>
 
 </html>

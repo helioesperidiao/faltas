@@ -2,39 +2,101 @@
 <html lang="pt-BR">
 
 <head>
-    <meta charset="UTF-8" />
-    <title>CRUD Usuários com ApiService</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <!-- Meta tag para responsividade em dispositivos móveis -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
-    <!-- Bootstrap para estilização rápida e responsiva -->
-    <style>
-        body {
-            padding: 2em;
-        }
-
-        table {
-            margin-top: 1em;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <title>Login | UNIVAP - Controle de Faltas</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="css/univap-theme.css" rel="stylesheet" />
+  <style>
+    .login-wrap {
+      display: flex;
+      justify-content: center;
+      padding: 60px 20px;
+    }
+    .login-card {
+      width: 100%;
+      max-width: 420px;
+    }
+    .login-logo {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: var(--univap-azul);
+      color: #ffffff;
+      font-size: 30px;
+      font-weight: bold;
+      text-align: center;
+      line-height: 72px;
+      margin: 0 auto 14px auto;
+    }
+    .login-titulo {
+      text-align: center;
+      margin-bottom: 4px;
+    }
+    .login-subtitulo {
+      text-align: center;
+      color: var(--univap-texto-suave);
+      font-size: 13px;
+      margin-bottom: 20px;
+    }
+    .campo-login {
+      margin-bottom: 16px;
+    }
+    .campo-login input {
+      width: 100%;
+      border: 1px solid var(--univap-cinza-borda);
+      border-radius: 4px;
+      padding: 11px 12px;
+      font-size: 14px;
+    }
+    .btn-entrar {
+      display: block;
+      width: 100%;
+      border: none;
+      border-radius: 4px;
+      padding: 12px 16px;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      background: var(--univap-vermelho);
+      color: #ffffff;
+    }
+  </style>
 </head>
 
-<body class="container">
-    <!-- Container Bootstrap para centralizar e limitar largura -->
-
-    <h1 class="mb-4">Login</h1>
-    <!-- Título principal da aplicação -->
-
-    <!-- Formulário para entrada de dados do usuário -->
-    <div class="mb-3">
-        <!-- Campo ID (somente leitura, usado para update e delete) -->
-        <input type="text" id="txtUsuario" class="form-control mb-2" placeholder="usuario" />
-        <!-- Campo para nome do usuário -->
-        <input type="password" id="txtSenha" class="form-control mb-2" placeholder="senha" />
-
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">U</div>
+      <div>
+        <div class="brand-text">UNIVAP</div>
+        <div class="brand-sub">Sistema de Controle de Faltas</div>
+      </div>
     </div>
+  </header>
 
-    <div>
+  <main class="login-wrap" id="conteudo-principal">
+    <div class="card login-card">
+      <div class="card-body">
+        <div class="login-logo" aria-hidden="true">U</div>
+        <h1 class="login-titulo">Entrar no sistema</h1>
+        <p class="login-subtitulo">Informe seu e-mail e senha cadastrados.</p>
+
+        <form id="formLogin" novalidate>
+          <div class="campo-login">
+            <label for="txtUsuario">E-mail</label>
+            <input type="email" id="txtUsuario" autocomplete="username" required />
+          </div>
+          <div class="campo-login">
+            <label for="txtSenha">Senha</label>
+            <input type="password" id="txtSenha" autocomplete="current-password" required />
+          </div>
+
+          <div id="divResposta" role="alert" aria-live="polite"></div>
+
+          <button type="submit" class="btn-entrar" id="btnLogin">Entrar</button>
+        </form>
+      </div>
+      <div>
         "usuario": "helioesperidiao@gmail.com",<br>
         "senha": "@Helio123456" <br>
         posicione os arquivos na pasta htdocs.<br>
@@ -44,94 +106,62 @@
         Troque a porta para 8080 caso seja necessário
 
     </div>
-    <!-- Div onde os botões CRUD serão criados dinamicamente -->
-    <div class="mb-3" id="divBotoes"></div>
-    <!-- Div para mensagens de resposta/erro -->
-    <div id="divResposta"></div>
-    <!-- Div onde a tabela de usuários será renderizada -->
-    <div id="divTabela"></div>
+    </div>
+  </main>
 
-    <script type="module">
-        // Importa a classe ApiService para comunicação com a API (abstrai fetch/axios)
-        import ApiService from './ApiService.js';
+  <script type="module">
+    import ApiService from './ApiService.js';
 
-        const api = new ApiService("o token ainda será gerado");
+    const api = new ApiService();
 
+    const formLogin = document.getElementById("formLogin");
+    const txtUsuario = document.getElementById("txtUsuario");
+    const txtSenha = document.getElementById("txtSenha");
+    const divResposta = document.getElementById("divResposta");
+    const btnLogin = document.getElementById("btnLogin");
 
-        // Variável global que armazenará os dados da API para manipulação local
-        let API_DATA;
+    function mostrarErro(mensagem) {
+      divResposta.textContent = mensagem;
+      divResposta.className = "alert alert-danger";
+    }
 
-        // Referências para elementos do formulário e divs
-        const txtUsuario = document.getElementById("txtUsuario");
-        const txtSenha = document.getElementById("txtSenha");
+    formLogin.addEventListener("submit", async (evento) => {
+      evento.preventDefault();
 
-        const divBotoes = document.getElementById("divBotoes");
-        const divResposta = document.getElementById("divResposta");
+      if (txtUsuario.value.trim() === "") {
+        mostrarErro("Informe o e-mail.");
+        txtUsuario.focus();
+        return;
+      }
+      if (txtSenha.value.trim() === "") {
+        mostrarErro("Informe a senha.");
+        txtSenha.focus();
+        return;
+      }
 
-        /**
-         * Função para criar um botão HTML com texto e classes CSS,
-         * retorna o elemento criado para ser manipulado.
-         * @param {string} text - Texto do botão.
-         * @param {string} className - Classes CSS para estilizar o botão.
-         * @returns {HTMLButtonElement} - Botão criado.
-         */
-        function createButton(text, className) {
-            const btn = document.createElement("button");
-            btn.textContent = text;
-            btn.className = `btn ${className} me-2 mb-2`; // Margem para espaçamento
-            return btn;
+      btnLogin.disabled = true;
+      btnLogin.textContent = "Entrando...";
+
+      const dadosLogin = {
+        funcionario: {
+          email: txtUsuario.value.trim(),
+          senha: txtSenha.value.trim()
         }
+      };
 
-        // Criação dos botões principais dinamicamente, com eventos .onclick
+      const respostaAPI = await api.post("api/v1/funcionarios/login", dadosLogin);
 
-        // Botão Listar: atualiza a lista de usuários na tabela
-        const btnLogin = createButton("Login", "btn-primary");
-        btnLogin.onclick = async function btnListar_click() {
-            // Validação simples para campo nome obrigatório
+      if (respostaAPI.success === true) {
+        localStorage.setItem("userData", JSON.stringify(respostaAPI));
+        window.location.href = "dashboard.html";
+        return;
+      }
 
-            if (txtUsuario.value.trim() == "") {
-                divResposta.textContent = "Usuário Inválido";
-                divResposta.className = "alert alert-danger";
-                return;
-            } else if (txtSenha.value.trim() == "") {
-                divResposta.textContent = "Senha Inválida";
-                divResposta.className = "alert alert-danger";
-                return;
-            }
-            // Monta o objeto a ser enviado na requisição POST
-            const dadosLogin = {
-                "funcionario": {
-                    "email": txtUsuario.value.trim(),
-                    "senha": txtSenha.value.trim()
-                }
-            }
-
-            /*
-                const dadosLogin = {
-                "funcionario": {
-                    "email": "helioesperidiao@gmail.com",
-                    "senha": "@Helio123456"
-                }
-            }
-            */
-
-            // Chama a API validar o login
-            const respostaAPI = await api.post("api/v1/funcionarios/login", dadosLogin);
-            console.log(respostaAPI)
-            if (respostaAPI.success == true) {
-                localStorage.setItem("userData", JSON.stringify(respostaAPI)); // converte a resposta para texto e armazena no local storage na variavel userData
-                window.location.href = "dashboard.html";
-            }
-
-            // Atualiza a lista após criar
-        };
-        divBotoes.appendChild(btnLogin);
-
-
-
-    </script>
-
-
+      mostrarErro(respostaAPI.message || "Usuário ou senha inválidos.");
+      btnLogin.disabled = false;
+      btnLogin.textContent = "Entrar";
+    });
+  </script>
 </body>
 
 </html>
