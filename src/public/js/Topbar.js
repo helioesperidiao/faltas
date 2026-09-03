@@ -4,24 +4,26 @@
  */
 
 const PAGINAS = [
-  { chave: "dashboard", label: "Painel", href: "dashboard.html" },
-  { chave: "chamada", label: "Chamada", href: "telaChamada.html" },
-  { chave: "frequencia", label: "Frequência", href: "telaAdministrador.html" },
-  { chave: "alunos", label: "Alunos", href: "Alunos.html" },
-  { chave: "gradehorarios", label: "Grade de Horários", href: "GradeHorarios.html" },
-  { chave: "abonos", label: "Abonos", href: "Abonos.html" },
-  { chave: "relatorios", label: "Relatórios", href: "Relatorios.html" },
-  { chave: "cargos", label: "Cargos", href: "Cargos.html" },
-  { chave: "funcionarios", label: "Funcionários", href: "Funcionarios.html" }
+  { chave: "dashboard", label: "Painel", href: "dashboard.html", restrito: false },
+  { chave: "chamada", label: "Chamada", href: "telaChamada.html", restrito: false },
+  { chave: "frequencia", label: "Frequência", href: "telaAdministrador.html", restrito: false },
+  { chave: "alunos", label: "Alunos", href: "Alunos.html", restrito: true },
+  { chave: "gradehorarios", label: "Grade de Horários", href: "GradeHorarios.html", restrito: true },
+  { chave: "abonos", label: "Abonos", href: "Abonos.html", restrito: false },
+  { chave: "relatorios", label: "Relatórios", href: "Relatorios.html", restrito: true },
+  { chave: "cargos", label: "Cargos", href: "Cargos.html", restrito: true },
+  { chave: "funcionarios", label: "Funcionários", href: "Funcionarios.html", restrito: true }
 ];
+
+const CARGOS_ACESSO_TOTAL = ["Administrador", "Coordenador", "Diretor", "Processos Pedagógicos"];
 
 function pegarUsuarioLogado() {
   const bruto = localStorage.getItem("userData");
   if (!bruto) return null;
   try {
     const dados = JSON.parse(bruto);
-    const funcionario = dados?.data?.funcionario?.[0];
-    return funcionario || null;
+    const usuario = dados?.data?.user;
+    return usuario || null;
   } catch {
     return null;
   }
@@ -29,7 +31,7 @@ function pegarUsuarioLogado() {
 
 function sair() {
   localStorage.removeItem("userData");
-  window.location.href = "Login.html";
+  window.location.href = "login.html";
 }
 
 export function montarTopbar(paginaAtiva) {
@@ -37,7 +39,14 @@ export function montarTopbar(paginaAtiva) {
   const nome = usuario?.nomeFuncionario || "Usuário";
   const cargo = usuario?.cargo?.nomeCargo || "";
 
-  const itensMenu = PAGINAS.map(pagina => {
+  const temAcessoTotal = CARGOS_ACESSO_TOTAL.includes(cargo);
+
+  const paginasVisiveis = PAGINAS.filter(pagina => {
+    if (!pagina.restrito) return true;      // módulos "abertos" (chamada, abonos, frequência, painel) sempre aparecem
+    return temAcessoTotal;                  // módulos "restritos" só aparecem pra quem tem acesso total
+  });
+
+  const itensMenu = paginasVisiveis.map(pagina => {
     const atual = pagina.chave === paginaAtiva;
     return `<li><a href="${pagina.href}"${atual ? ' aria-current="page"' : ''}>${pagina.label}</a></li>`;
   }).join("");

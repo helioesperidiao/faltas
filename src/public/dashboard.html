@@ -42,7 +42,7 @@
     let userData = localStorage.getItem("userData");
     if (userData) {
       userData = JSON.parse(userData);
-      const nome = userData?.data?.funcionario?.[0]?.nomeFuncionario;
+      const nome = userData?.data?.user?.nomeFuncionario;
       if (nome) {
         document.getElementById("mensagem-boas-vindas").textContent = "Bem-vindo(a), " + nome + "! Escolha um módulo no menu acima para começar.";
       }

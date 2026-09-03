@@ -75,7 +75,14 @@ export class RegistroController extends BaseController {
         console.log("🔵 RegistroController.findAusentesEntrada()");
 
         const turma = request.query.turma?.toString() || '';
-        const dia = request.query.dia?.toString() || '';
+        const diaQuery = request.query.dia?.toString() || '';
+
+        if (!turma || !diaQuery) {
+            StandardResponse.error("Parâmetros 'turma' e 'dia' são obrigatórios", null, 400).send(response);
+            return;
+        }
+
+        const dia = new Date(diaQuery);
 
         const ausentes = await this._registroService.findAusentesEntrada(turma, dia);
 
