@@ -13,50 +13,6 @@
     font-family: Arial, Helvetica, sans-serif;
   }
 
-  /* ---------- CABEÇALHO ---------- */
-  .topbar {
-    background: #163b6b;
-    color: #ffffff;
-    padding: 14px 28px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .brand {
-    display: flex;
-    align-items: center;
-  }
-  .brand-mark {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: #ffffff;
-    color: #163b6b;
-    font-weight: bold;
-    font-size: 18px;
-    text-align: center;
-    line-height: 40px;
-    margin-right: 14px;
-  }
-  .brand-text {
-    font-size: 20px;
-    font-weight: bold;
-  }
-  .brand-sub {
-    font-size: 11px;
-    color: #c9d7ec;
-    margin-top: 2px;
-  }
-  .session-info {
-    text-align: right;
-    font-size: 12px;
-    line-height: 1.5;
-    color: #d7e2f2;
-  }
-  .session-info strong {
-    color: #ffffff;
-  }
-
   .crumbbar {
     background: #0f2a4d;
     color: #d7e2f2;
@@ -114,14 +70,20 @@
     color: #4a4f57;
     margin-bottom: 6px;
   }
-  .field select {
+  .field {
+    margin-bottom: 14px;
+  }
+  .field select,
+  .field input {
     width: 100%;
+    box-sizing: border-box;
     border: 1px solid #c7cbd1;
     border-radius: 4px;
     padding: 10px 12px;
     font-size: 14px;
     color: #1f2937;
     background: #ffffff;
+    font-family: Arial, Helvetica, sans-serif;
   }
 
   .turma-summary {
@@ -459,17 +421,8 @@
   }
 
   @media (max-width: 700px) {
-    .topbar {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 8px;
-      padding: 12px 16px;
-    }
     .navbar {
       overflow-x: auto;
-    }
-    .session-info {
-      text-align: left;
     }
     .crumbbar {
       padding: 8px 16px;
@@ -545,36 +498,9 @@
 </style>
 </head>
 <body>
-<a href="#conteudo-principal" class="skip-link">Pular para o conteúdo</a>
 
-<div class="topbar">
-  <div class="brand">
-    <div class="brand-mark" aria-hidden="true">U</div>
-    <div>
-      <div class="brand-text">UNIVAP</div>
-      <div class="brand-sub">Sistema de Controle de Faltas</div>
-    </div>
-  </div>
-  <div class="session-info">
-    USUÁRIO: <strong>JOSÉ CARLOS SOUZA</strong> · Inspetor<br>
-    <span id="relogio"></span>
-    <button type="button" class="btn-sair" id="btn-sair">Sair</button>
-  </div>
-</div>
-
-<nav class="navbar" aria-label="Menu principal">
-  <table>
-    <tr>
-      <td><a href="telaAdministrador.html">Painel</a></td>
-      <td><a href="GradeHorarios.html">Turmas</a></td>
-      <td><a href="Alunos.html">Alunos</a></td>
-      <td><a href="telaChamada.html" aria-current="page">Faltas</a></td>
-      <td><a href="Funcionarios.html">Funcionários</a></td>
-      <td><a href="Relatorios.html">Relatórios</a></td>
-      <td><a href="Cargos.html">Configurações</a></td>
-    </tr>
-  </table>
-</nav>
+<!-- O link "pular para o conteúdo" é injetado pelo js/Topbar.js junto do cabeçalho. -->
+<div id="app-topbar"></div>
 
 <div class="crumbbar">
   ENSINO BÁSICO &rsaquo; <span class="current">CHAMADA DE TURMA</span>
@@ -710,37 +636,33 @@
 
 <script type="module">
   import ApiService from './ApiService.js';
+  import { exigirSessao, montarTopbar, escaparHtml } from './js/Topbar.js';
 
-  let userData = localStorage.getItem("userData");
-  if (userData) {
-    userData = JSON.parse(userData);
-  } else {
-    window.location.href = "Login.html";
+  const sessao = exigirSessao();
+  if (!sessao) {
+    // exigirSessao já redirecionou para o login; nada mais roda nesta página.
+    throw new Error('Sessão não encontrada.');
   }
-  const api = new ApiService(userData.data.token);
 
-  document.getElementById('btn-sair').onclick = () => {
-    localStorage.removeItem('userData');
-    window.location.href = 'Login.html';
-  };
+  const api = new ApiService(sessao.token);
 
-  // ---------- RELÓGIO ----------
-  function atualizarRelogio() {
+  montarTopbar('chamada');
+
+  // ---------- DATA PADRÃO (hoje) ----------
+  // Montada a partir dos componentes locais da data; toISOString() devolveria o dia
+  // em UTC e, à noite, deixaria o campo com a data do dia seguinte.
+  function preencherDataDeHoje() {
     var d = new Date();
     var dia = String(d.getDate()).padStart(2, '0');
     var mes = String(d.getMonth() + 1).padStart(2, '0');
     var ano = d.getFullYear();
-    var hora = String(d.getHours()).padStart(2, '0');
-    var min = String(d.getMinutes()).padStart(2, '0');
-    document.getElementById('relogio').innerHTML = dia + '/' + mes + '/' + ano + ' - ' + hora + ':' + min;
 
     var campoData = document.getElementById('data-chamada');
     if (campoData.value === '') {
       campoData.value = ano + '-' + mes + '-' + dia;
     }
   }
-  atualizarRelogio();
-  setInterval(atualizarRelogio, 30000);
+  preencherDataDeHoje();
 
   var turmaAtual = "";
   var alunosDaTurma = []; // { matricula, alunoNome }
@@ -758,7 +680,7 @@
     turmas.forEach(turma => {
       const opcao = document.createElement('option');
       opcao.value = turma;
-      opcao.innerHTML = turma;
+      opcao.textContent = turma;
       select.appendChild(opcao);
     });
   }
@@ -796,7 +718,7 @@
   function abrirChamada() {
     if (alunosDaTurma.length === 0) return;
 
-    document.getElementById('modal-turma-titulo').innerHTML = turmaAtual;
+    document.getElementById('modal-turma-titulo').textContent = turmaAtual;
     document.getElementById('modal-overlay').classList.add('ativo');
     document.body.classList.add('modal-aberto');
 
@@ -811,12 +733,12 @@
 
   // ---------- INICIAIS DO NOME (avatar) ----------
   function pegarIniciais(nome) {
-    var partes = nome.split(' ');
-    var iniciais = partes[0].charAt(0);
+    var partes = String(nome || '').trim().split(/\s+/);
+    var iniciais = (partes[0] || '').charAt(0);
     if (partes.length > 1) {
       iniciais = iniciais + partes[1].charAt(0);
     }
-    return iniciais.toUpperCase();
+    return iniciais.toUpperCase() || '?';
   }
 
   // ---------- MOSTRAR ALUNO ATUAL ----------
@@ -825,10 +747,10 @@
     var aluno = alunosDaTurma[alunoAtual];
     var status = statusAlunos[alunoAtual];
 
-    document.getElementById('student-avatar').innerHTML = pegarIniciais(aluno.alunoNome);
-    document.getElementById('student-name').innerHTML = aluno.alunoNome;
-    document.getElementById('student-meta').innerHTML = turmaAtual + ' · Matrícula ' + aluno.matricula;
-    document.getElementById('student-count').innerHTML = 'Aluno ' + (alunoAtual + 1) + ' de ' + alunosDaTurma.length;
+    document.getElementById('student-avatar').textContent = pegarIniciais(aluno.alunoNome);
+    document.getElementById('student-name').textContent = aluno.alunoNome;
+    document.getElementById('student-meta').textContent = turmaAtual + ' · Matrícula ' + aluno.matricula;
+    document.getElementById('student-count').textContent = 'Aluno ' + (alunoAtual + 1) + ' de ' + alunosDaTurma.length;
 
     var card = document.getElementById('student-card');
     card.className = 'student-card';
@@ -882,7 +804,7 @@
       linha.innerHTML =
         '<table><tr>' +
         '<td style="width:30px;"><span class="idx">' + (i + 1) + '</span></td>' +
-        '<td>' + alunosDaTurma[i].alunoNome + '</td>' +
+        '<td>' + escaparHtml(alunosDaTurma[i].alunoNome) + '</td>' +
         '<td style="width:100px;text-align:right;"><span class="rstatus" id="roster-status-' + i + '">Pendente</span></td>' +
         '</tr></table>';
 
@@ -922,9 +844,12 @@
     var dia = document.getElementById('data-chamada').value;
     var codDisciplina = document.getElementById('cod-disciplina').value || 'GERAL';
 
+    // O ano sai direto da string 'AAAA-MM-DD'. new Date(dia) interpretaria a data como
+    // UTC e, em fuso negativo, devolveria o ano anterior em toda chamada feita em 1º
+    // de janeiro — o registro iria para o ano errado.
     const objeto = {
       registro: {
-        ano: new Date(dia).getFullYear(),
+        ano: Number(String(dia).split('-')[0]),
         codDisciplina: codDisciplina,
         horaInicio: 0,
         horaFim: 0,
@@ -946,12 +871,12 @@
     }
 
     statusAlunos[alunoAtual] = tipo;
-    mostrarAluno();
 
+    // Avança sozinho para o próximo aluno; se já é o último, apenas repinta o atual.
     if (alunoAtual < alunosDaTurma.length - 1) {
       alunoAtual = alunoAtual + 1;
-      mostrarAluno();
     }
+    mostrarAluno();
   }
 
   function alunoAnterior() {
@@ -974,7 +899,13 @@
   }
 
   function limparChamada() {
+    if (!window.confirm('Limpar as marcações desta chamada e recomeçar do primeiro aluno?')) {
+      return;
+    }
     statusAlunos = alunosDaTurma.map(() => 'pending');
+    alunoAtual = 0;
+    // registroIds é preservado de propósito: o registro já gravado no backend continua
+    // existindo, e marcar de novo o corrige via PUT em vez de criar uma duplicata.
     mostrarAluno();
   }
 

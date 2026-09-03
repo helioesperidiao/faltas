@@ -130,7 +130,7 @@
     // Recupera os dados do usuário logado (armazenados no localStorage após o login)
     let userData = localStorage.getItem("userData");
     if (userData) userData = JSON.parse(userData);
-    else window.location.href = "login.html"; // Se não estiver logado, volta para a página de login
+    else window.location.href = "Login.html"; // Se não estiver logado, volta para a página de login
 
     const token = userData.data.token; // Pega o token JWT do usuário autenticado
     const api = new ApiService(token); // Cria um objeto para fazer chamadas autenticadas à API

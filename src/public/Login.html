@@ -60,6 +60,62 @@
       background: var(--univap-vermelho);
       color: #ffffff;
     }
+    .btn-entrar:disabled {
+      opacity: .6;
+      cursor: progress;
+    }
+
+    /* ---------- ESQUECI MINHA SENHA ---------- */
+    .link-esqueci {
+      display: block;
+      width: 100%;
+      margin-top: 14px;
+      background: none;
+      border: none;
+      padding: 0;
+      color: var(--univap-azul);
+      font-size: 13px;
+      text-align: center;
+      text-decoration: underline;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .passo-titulo {
+      text-align: center;
+      margin: 0 0 4px 0;
+      font-size: 18px;
+      color: var(--univap-azul-escuro);
+    }
+    .passo-ajuda {
+      text-align: center;
+      color: var(--univap-texto-suave);
+      font-size: 13px;
+      margin: 0 0 20px 0;
+    }
+    .campo-login #txtCodigo {
+      letter-spacing: 8px;
+      text-align: center;
+      font-size: 20px;
+      font-weight: bold;
+    }
+    .btn-secundario {
+      display: block;
+      width: 100%;
+      margin-top: 10px;
+      border: 1px solid var(--univap-cinza-borda);
+      border-radius: 4px;
+      padding: 11px 16px;
+      font-size: 13.5px;
+      font-weight: bold;
+      cursor: pointer;
+      background: #ffffff;
+      color: #4a4f57;
+      font-family: inherit;
+    }
+    .btn-secundario:disabled {
+      opacity: .6;
+      cursor: not-allowed;
+    }
   </style>
 </head>
 
@@ -78,8 +134,10 @@
     <div class="card login-card">
       <div class="card-body">
         <div class="login-logo" aria-hidden="true">U</div>
-        <h1 class="login-titulo">Entrar no sistema</h1>
-        <p class="login-subtitulo">Informe seu e-mail e senha cadastrados.</p>
+        <div id="cabecalhoLogin">
+          <h1 class="login-titulo">Entrar no sistema</h1>
+          <p class="login-subtitulo">Informe seu e-mail e senha cadastrados.</p>
+        </div>
 
         <form id="formLogin" novalidate>
           <div class="campo-login">
@@ -94,6 +152,61 @@
           <div id="divResposta" role="alert" aria-live="polite"></div>
 
           <button type="submit" class="btn-entrar" id="btnLogin">Entrar</button>
+          <button type="button" class="link-esqueci" id="btnEsqueciSenha">Esqueceu a senha?</button>
+        </form>
+
+        <!-- ETAPA 1: informar o e-mail para receber o código -->
+        <form id="formPedirCodigo" novalidate hidden>
+          <h2 class="passo-titulo">Recuperar senha</h2>
+          <p class="passo-ajuda">Informe seu e-mail cadastrado. Enviaremos um código de 6 dígitos.</p>
+
+          <div class="campo-login">
+            <label for="txtEmailRecuperacao">E-mail</label>
+            <input type="email" id="txtEmailRecuperacao" autocomplete="email" required />
+          </div>
+
+          <div id="divRespostaRecuperacao" role="alert" aria-live="polite"></div>
+
+          <button type="submit" class="btn-entrar" id="btnEnviarCodigo">Enviar código</button>
+          <button type="button" class="btn-secundario" data-voltar-login>Voltar ao login</button>
+        </form>
+
+        <!-- ETAPA 2: digitar o código recebido -->
+        <form id="formValidarCodigo" novalidate hidden>
+          <h2 class="passo-titulo">Digite o código</h2>
+          <p class="passo-ajuda" id="ajudaCodigo">Enviamos um código para o seu e-mail. Ele vale por 15 minutos.</p>
+
+          <div class="campo-login">
+            <label for="txtCodigo">Código de 6 dígitos</label>
+            <input type="text" id="txtCodigo" inputmode="numeric" autocomplete="one-time-code"
+                   maxlength="6" pattern="[0-9]{6}" required />
+          </div>
+
+          <div id="divRespostaCodigo" role="alert" aria-live="polite"></div>
+
+          <button type="submit" class="btn-entrar" id="btnValidarCodigo">Validar código</button>
+          <button type="button" class="btn-secundario" id="btnReenviarCodigo">Reenviar código</button>
+          <button type="button" class="btn-secundario" data-voltar-login>Voltar ao login</button>
+        </form>
+
+        <!-- ETAPA 3: definir a nova senha -->
+        <form id="formNovaSenha" novalidate hidden>
+          <h2 class="passo-titulo">Nova senha</h2>
+          <p class="passo-ajuda">Escolha uma senha de pelo menos 8 caracteres.</p>
+
+          <div class="campo-login">
+            <label for="txtNovaSenha">Nova senha</label>
+            <input type="password" id="txtNovaSenha" autocomplete="new-password" required />
+          </div>
+          <div class="campo-login">
+            <label for="txtConfirmarSenha">Repita a nova senha</label>
+            <input type="password" id="txtConfirmarSenha" autocomplete="new-password" required />
+          </div>
+
+          <div id="divRespostaNovaSenha" role="alert" aria-live="polite"></div>
+
+          <button type="submit" class="btn-entrar" id="btnSalvarSenha">Salvar nova senha</button>
+          <button type="button" class="btn-secundario" data-voltar-login>Cancelar</button>
         </form>
       </div>
       <div>
@@ -160,6 +273,244 @@
       mostrarErro(respostaAPI.message || "Usuário ou senha inválidos.");
       btnLogin.disabled = false;
       btnLogin.textContent = "Entrar";
+    });
+
+    // ==================== ESQUECI MINHA SENHA ====================
+    // Três etapas na mesma tela: pedir o código, digitar o código, definir a senha.
+    // Rotas (públicas, sem JWT): api/v1/auth/esqueci-senha, /validar-codigo e
+    // /redefinir-senha. O fluxo NÃO cria sessão: ao fim, o usuário volta ao login.
+
+    const formPedirCodigo = document.getElementById("formPedirCodigo");
+    const formValidarCodigo = document.getElementById("formValidarCodigo");
+    const formNovaSenha = document.getElementById("formNovaSenha");
+
+    const txtEmailRecuperacao = document.getElementById("txtEmailRecuperacao");
+    const txtCodigo = document.getElementById("txtCodigo");
+    const txtNovaSenha = document.getElementById("txtNovaSenha");
+    const txtConfirmarSenha = document.getElementById("txtConfirmarSenha");
+
+    const btnEsqueciSenha = document.getElementById("btnEsqueciSenha");
+    const btnEnviarCodigo = document.getElementById("btnEnviarCodigo");
+    const btnValidarCodigo = document.getElementById("btnValidarCodigo");
+    const btnReenviarCodigo = document.getElementById("btnReenviarCodigo");
+    const btnSalvarSenha = document.getElementById("btnSalvarSenha");
+
+    const divRespostaRecuperacao = document.getElementById("divRespostaRecuperacao");
+    const divRespostaCodigo = document.getElementById("divRespostaCodigo");
+    const divRespostaNovaSenha = document.getElementById("divRespostaNovaSenha");
+    const ajudaCodigo = document.getElementById("ajudaCodigo");
+
+    /** Segundos que faltam para liberar o reenvio; o backend também impõe esse limite. */
+    const SEGUNDOS_PARA_REENVIO = 60;
+    let contagemReenvio = null;
+    let emailEmRecuperacao = "";
+    let tokenReset = "";
+
+    function mostrarAviso(div, mensagem, tipo) {
+      div.textContent = mensagem;
+      div.className = "alert alert-" + tipo;
+    }
+
+    function limparAviso(div) {
+      div.textContent = "";
+      div.className = "";
+    }
+
+    /** Mostra uma das etapas e esconde as demais. */
+    function mostrarEtapa(etapa) {
+      const noLogin = etapa === "login";
+      // O título "Entrar no sistema" fica fora do <form>, então precisa ser escondido
+      // à parte — senão aparece por cima das telas de recuperação.
+      document.getElementById("cabecalhoLogin").hidden = !noLogin;
+      formLogin.hidden = !noLogin;
+      formPedirCodigo.hidden = etapa !== "pedir";
+      formValidarCodigo.hidden = etapa !== "codigo";
+      formNovaSenha.hidden = etapa !== "senha";
+    }
+
+    function voltarAoLogin() {
+      pararContagemDeReenvio();
+      emailEmRecuperacao = "";
+      tokenReset = "";
+      txtCodigo.value = "";
+      txtNovaSenha.value = "";
+      txtConfirmarSenha.value = "";
+      [divRespostaRecuperacao, divRespostaCodigo, divRespostaNovaSenha].forEach(limparAviso);
+      mostrarEtapa("login");
+      txtUsuario.focus();
+    }
+
+    document.querySelectorAll("[data-voltar-login]").forEach(botao => {
+      botao.addEventListener("click", voltarAoLogin);
+    });
+
+    btnEsqueciSenha.addEventListener("click", () => {
+      limparAviso(divResposta);
+      // Aproveita o e-mail já digitado no login, se houver.
+      txtEmailRecuperacao.value = txtUsuario.value.trim();
+      mostrarEtapa("pedir");
+      txtEmailRecuperacao.focus();
+    });
+
+    function pararContagemDeReenvio() {
+      if (contagemReenvio) {
+        clearInterval(contagemReenvio);
+        contagemReenvio = null;
+      }
+      btnReenviarCodigo.disabled = false;
+      btnReenviarCodigo.textContent = "Reenviar código";
+    }
+
+    function iniciarContagemDeReenvio() {
+      pararContagemDeReenvio();
+      let restante = SEGUNDOS_PARA_REENVIO;
+      btnReenviarCodigo.disabled = true;
+      btnReenviarCodigo.textContent = "Reenviar código (" + restante + "s)";
+
+      contagemReenvio = setInterval(() => {
+        restante = restante - 1;
+        if (restante <= 0) {
+          pararContagemDeReenvio();
+          return;
+        }
+        btnReenviarCodigo.textContent = "Reenviar código (" + restante + "s)";
+      }, 1000);
+    }
+
+    /**
+     * Etapa 1 — pede o código.
+     * A resposta é sempre a mesma, exista o e-mail ou não: a tela não pode virar um
+     * verificador de quais endereços estão cadastrados.
+     */
+    async function pedirCodigo(email, div, botao, rotuloBotao) {
+      botao.disabled = true;
+      botao.textContent = "Enviando...";
+
+      const resposta = await api.post("api/v1/auth/esqueci-senha", { email });
+
+      botao.disabled = false;
+      botao.textContent = rotuloBotao;
+
+      if (resposta.success !== true) {
+        mostrarAviso(div, resposta.message || "Não foi possível enviar o código. Tente novamente.", "danger");
+        return false;
+      }
+
+      emailEmRecuperacao = email;
+      return true;
+    }
+
+    formPedirCodigo.addEventListener("submit", async (evento) => {
+      evento.preventDefault();
+
+      const email = txtEmailRecuperacao.value.trim();
+      if (email === "") {
+        mostrarAviso(divRespostaRecuperacao, "Informe o e-mail.", "warning");
+        txtEmailRecuperacao.focus();
+        return;
+      }
+
+      const enviou = await pedirCodigo(email, divRespostaRecuperacao, btnEnviarCodigo, "Enviar código");
+      if (!enviou) return;
+
+      limparAviso(divRespostaRecuperacao);
+      ajudaCodigo.textContent =
+        "Se " + email + " estiver cadastrado, o código chegou por e-mail. Ele vale por 15 minutos.";
+      mostrarEtapa("codigo");
+      iniciarContagemDeReenvio();
+      txtCodigo.focus();
+    });
+
+    btnReenviarCodigo.addEventListener("click", async () => {
+      const enviou = await pedirCodigo(
+        emailEmRecuperacao, divRespostaCodigo, btnReenviarCodigo, "Reenviar código"
+      );
+      if (!enviou) return;
+
+      mostrarAviso(divRespostaCodigo, "Novo código enviado. O código anterior deixou de valer.", "success");
+      txtCodigo.value = "";
+      iniciarContagemDeReenvio();
+      txtCodigo.focus();
+    });
+
+    // Só dígitos no campo do código.
+    txtCodigo.addEventListener("input", function () {
+      this.value = this.value.replace(/\D/g, "").slice(0, 6);
+    });
+
+    /** Etapa 2 — valida o código e guarda o tokenReset de uso único. */
+    formValidarCodigo.addEventListener("submit", async (evento) => {
+      evento.preventDefault();
+
+      const codigo = txtCodigo.value.trim();
+      if (codigo.length !== 6) {
+        mostrarAviso(divRespostaCodigo, "Digite os 6 dígitos do código.", "warning");
+        txtCodigo.focus();
+        return;
+      }
+
+      btnValidarCodigo.disabled = true;
+      btnValidarCodigo.textContent = "Validando...";
+
+      const resposta = await api.post("api/v1/auth/validar-codigo", {
+        email: emailEmRecuperacao,
+        codigo: codigo
+      });
+
+      btnValidarCodigo.disabled = false;
+      btnValidarCodigo.textContent = "Validar código";
+
+      if (resposta.success !== true || !resposta.data?.tokenReset) {
+        mostrarAviso(divRespostaCodigo, resposta.message || "Código inválido.", "danger");
+        return;
+      }
+
+      tokenReset = resposta.data.tokenReset;
+      pararContagemDeReenvio();
+      limparAviso(divRespostaCodigo);
+      mostrarEtapa("senha");
+      txtNovaSenha.focus();
+    });
+
+    /** Etapa 3 — grava a nova senha e devolve o usuário ao login. */
+    formNovaSenha.addEventListener("submit", async (evento) => {
+      evento.preventDefault();
+
+      const novaSenha = txtNovaSenha.value;
+      const confirmacao = txtConfirmarSenha.value;
+
+      if (novaSenha.length < 8) {
+        mostrarAviso(divRespostaNovaSenha, "A senha deve ter pelo menos 8 caracteres.", "warning");
+        txtNovaSenha.focus();
+        return;
+      }
+      if (novaSenha !== confirmacao) {
+        mostrarAviso(divRespostaNovaSenha, "As duas senhas não são iguais.", "warning");
+        txtConfirmarSenha.focus();
+        return;
+      }
+
+      btnSalvarSenha.disabled = true;
+      btnSalvarSenha.textContent = "Salvando...";
+
+      const resposta = await api.post("api/v1/auth/redefinir-senha", {
+        tokenReset: tokenReset,
+        novaSenha: novaSenha
+      });
+
+      btnSalvarSenha.disabled = false;
+      btnSalvarSenha.textContent = "Salvar nova senha";
+
+      if (resposta.success !== true) {
+        mostrarAviso(divRespostaNovaSenha, resposta.message || "Não foi possível trocar a senha.", "danger");
+        return;
+      }
+
+      const emailTrocado = emailEmRecuperacao;
+      voltarAoLogin();
+      txtUsuario.value = emailTrocado;
+      mostrarAviso(divResposta, "Senha alterada com sucesso. Entre com a nova senha.", "success");
+      txtSenha.focus();
     });
   </script>
 </body>

@@ -193,4 +193,25 @@ export class RegistroDAO {
         const docs = await cursor.toArray();
         return docs.map(doc => this.toRegistro(doc));
     }
+    //busca registros com falta=true, filtrando por uma lista de matrículas e um dia específico
+    public async findAusentesEntrada(matriculas: string[], dia: Date): Promise<Registro[]> {
+        console.log(`🟢 RegistroDAO.findAusentesEntrada() - Matriculas: ${matriculas.length}, Dia: ${dia}`);
+        const collection = await this.getCollection();
+
+        const inicioDia = new Date(dia);
+        inicioDia.setHours(0, 0, 0, 0);
+        const fimDia = new Date(dia);
+        fimDia.setHours(23, 59, 59, 999);
+
+        const filter: Filter<Document> = {
+            matricula: { $in: matriculas },
+            dia: { $gte: inicioDia, $lte: fimDia },
+            falta: true,
+            "auditoria.deletadoEm": null
+        };
+
+        const cursor = collection.find(filter);
+        const docs = await cursor.toArray();
+        return docs.map(doc => this.toRegistro(doc));
+    }
 }
