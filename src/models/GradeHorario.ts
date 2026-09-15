@@ -4,8 +4,8 @@ import { Auditoria } from "./Auditoria";
 export class GradeHorario {
     private _idGradeHorario: string = '';
     private _turma: string = '';
-    private _horaInicio: number = 0;
-    private _horaFim: number = 0;
+    private _horaInicio: string = '';
+    private _horaFim: string = '';
     private _dia: string = '';
     private _cod: string = '';
     private _disciplina: string = '';
@@ -41,24 +41,49 @@ export class GradeHorario {
         this._turma = value.trim();
     }
 
-    get horaInicio(): number {
+    get horaInicio(): string {
         return this._horaInicio;
     }
-    set horaInicio(value: number) {
-        if (typeof value !== "number" || isNaN(value) || value < 0 || value > 23) {
-            throw new Error(`horaInicio inválido: "${value}". Deve ser entre 0 e 23.`);
-        }
-        this._horaInicio = value;
+    set horaInicio(value: string | number) {
+        this._horaInicio = this.normalizarHorario(value, "horaInicio");
     }
 
-    get horaFim(): number {
+    get horaFim(): string {
         return this._horaFim;
     }
-    set horaFim(value: number) {
-        if (typeof value !== "number" || isNaN(value) || value < 0 || value > 23) {
-            throw new Error(`horaFim inválido: "${value}". Deve ser entre 0 e 23.`);
+    set horaFim(value: string | number) {
+        this._horaFim = this.normalizarHorario(value, "horaFim");
+    }
+
+    private normalizarHorario(value: string | number, campo: string): string {
+        if (typeof value === "number") {
+            if (isNaN(value) || value < 0 || value >= 24) {
+                throw new Error(`${campo} inválido: "${value}".`);
+            }
+            const minutos = value > 0 && value < 1 ? Math.round(value * 24 * 60) : Math.round(value * 60);
+            return this.formatarMinutos(minutos, campo);
         }
-        this._horaFim = value;
+
+        const texto = String(value || '').trim().toLowerCase().replace('h', ':');
+        const correspondencia = texto.match(/^(\d{1,2})(?::(\d{1,2})(?::\d{1,2})?)?$/);
+        if (!correspondencia) {
+            throw new Error(`${campo} inválido: "${value}". Use formatos como 7, 07:00 ou 07h30.`);
+        }
+        const hora = Number(correspondencia[1]);
+        const minuto = Number(correspondencia[2] || 0);
+        if (minuto >= 60) {
+            throw new Error(`${campo} inválido: "${value}".`);
+        }
+        return this.formatarMinutos(hora * 60 + minuto, campo);
+    }
+
+    private formatarMinutos(minutos: number, campo: string): string {
+        if (minutos < 0 || minutos >= 24 * 60) {
+            throw new Error(`${campo} inválido.`);
+        }
+        const hora = Math.floor(minutos / 60);
+        const minuto = minutos % 60;
+        return `${String(hora).padStart(2, '0')}:${String(minuto).padStart(2, '0')}`;
     }
 
     get dia(): string {

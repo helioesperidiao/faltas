@@ -31,6 +31,8 @@ export class AlunoDAO {
             serie: aluno.serie,
             situacao: aluno.situacao,
             ano: aluno.ano,
+            turmaInicioEm: aluno.turmaInicioEm,
+            historicoTurmas: aluno.historicoTurmas,
             dataNascimento: aluno.dataNascimento,
             alunoRG: aluno.alunoRG,
             alunoFone: aluno.alunoFone,
@@ -92,6 +94,8 @@ export class AlunoDAO {
                 serie: aluno.serie,
                 situacao: aluno.situacao,
                 ano: aluno.ano,
+                turmaInicioEm: aluno.turmaInicioEm,
+                historicoTurmas: aluno.historicoTurmas,
                 dataNascimento: aluno.dataNascimento,
                 alunoRG: aluno.alunoRG,
                 alunoFone: aluno.alunoFone,
@@ -129,6 +133,18 @@ export class AlunoDAO {
         aluno.serie = doc.serie || '';
         aluno.situacao = doc.situacao || 'Ativo';
         aluno.ano = doc.ano || '';
+        aluno.turmaInicioEm = doc.turmaInicioEm ? new Date(doc.turmaInicioEm) : this.inicioAnoLetivo(doc.ano);
+        aluno.historicoTurmas = Array.isArray(doc.historicoTurmas)
+            ? doc.historicoTurmas.map((item: any) => ({
+                turma: item.turma || '',
+                curso: item.curso || '',
+                serie: item.serie || '',
+                ano: String(item.ano || ''),
+                inicioEm: item.inicioEm ? new Date(item.inicioEm) : this.inicioAnoLetivo(item.ano),
+                fimEm: item.fimEm ? new Date(item.fimEm) : new Date(),
+                disponivelAte: item.disponivelAte ? new Date(item.disponivelAte) : new Date()
+            }))
+            : [];
         aluno.dataNascimento = doc.dataNascimento || '';
         aluno.alunoRG = doc.alunoRG || '';
         aluno.alunoFone = doc.alunoFone || '';
@@ -161,6 +177,11 @@ export class AlunoDAO {
         return aluno;
     }
 
+    private inicioAnoLetivo(ano: unknown): Date {
+        const anoNumerico = Number(ano);
+        return new Date(Number.isInteger(anoNumerico) && anoNumerico >= 2000 ? anoNumerico : new Date().getFullYear(), 0, 1);
+    }
+
     public async findById(idAluno: string): Promise<Aluno | null> {
         console.log("🟢 AlunoDAO.findById()");
         const collection = await this.getCollection();
@@ -190,6 +211,53 @@ export class AlunoDAO {
         console.log("🟢 AlunoDAO.count()");
         const collection = await this.getCollection();
         return await collection.countDocuments({ "auditoria.deletadoEm": null });
+    }
+
+    /**
+     * Retorna alunos que estiveram na turma em qualquer parte do período.
+     * Vínculos encerrados ficam disponíveis por 12 meses após a troca de turma.
+     */
+    public async findByTurmaNoPeriodo(turma: string, dataInicio: Date, dataFim: Date): Promise<Aluno[]> {
+        const alunos = await this.findAll();
+        const agora = new Date();
+
+        return alunos.filter(aluno => {
+            const vinculoAtual = aluno.turma === turma && aluno.turmaInicioEm <= dataFim;
+            const vinculoHistorico = aluno.historicoTurmas.some(historico =>
+                historico.turma === turma &&
+                historico.inicioEm <= dataFim &&
+                historico.fimEm >= dataInicio &&
+                historico.disponivelAte >= agora
+            );
+            return vinculoAtual || vinculoHistorico;
+        });
+    }
+
+    public async atualizarEnturmacaoEmLote(alunos: Aluno[], funcionarioLogado: Funcionario): Promise<number> {
+        if (alunos.length === 0) {
+            return 0;
+        }
+
+        const collection = await this.getCollection();
+        const agora = new Date();
+        const result = await collection.bulkWrite(alunos.map(aluno => ({
+            updateOne: {
+                filter: { _id: new ObjectId(aluno.idAluno), "auditoria.deletadoEm": null },
+                update: {
+                    $set: {
+                        turma: aluno.turma,
+                        serie: aluno.serie,
+                        ano: aluno.ano,
+                        turmaInicioEm: aluno.turmaInicioEm,
+                        historicoTurmas: aluno.historicoTurmas,
+                        "auditoria.alteradoPor": funcionarioLogado.idFuncionario,
+                        "auditoria.alteradoEm": agora
+                    }
+                }
+            }
+        })));
+
+        return result.modifiedCount;
     }
 
     public async findByField(field: string, value: any): Promise<Aluno[]> {

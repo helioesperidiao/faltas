@@ -33,6 +33,10 @@ export class RegistroDAO {
             horaInicio: registro.horaInicio,
             horaFim: registro.horaFim,
             matricula: registro.matricula,
+            alunoNome: registro.alunoNome,
+            turma: registro.turma,
+            curso: registro.curso,
+            serie: registro.serie,
             falta: registro.falta,
             dia: registro.dia,
             atrasado: registro.atrasado,
@@ -116,6 +120,10 @@ export class RegistroDAO {
         registro.horaInicio = doc.horaInicio;
         registro.horaFim = doc.horaFim;
         registro.matricula = doc.matricula;
+        registro.alunoNome = doc.alunoNome || '';
+        registro.turma = doc.turma || '';
+        registro.curso = doc.curso || '';
+        registro.serie = doc.serie || '';
         registro.falta = doc.falta;
         registro.dia = new Date(doc.dia);
         registro.atrasado = doc.atrasado;

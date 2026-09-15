@@ -20,6 +20,15 @@ export class RegistroService {
     //create
     public create = async (registro: Registro, funcionarioLogado: Funcionario): Promise<Registro> => {
         console.log("🟣 RegistroService.create()");
+        const aluno = await this._alunoDAO.findByField("matricula", registro.matricula);
+        if (aluno.length === 0) {
+            throw new ErrorResponse(404, "Aluno não encontrado", { matricula: registro.matricula });
+        }
+
+        registro.alunoNome = aluno[0].alunoNome;
+        registro.turma = aluno[0].turma;
+        registro.curso = aluno[0].curso;
+        registro.serie = aluno[0].serie;
         return await this._registroDAO.create(registro, funcionarioLogado);
     };
 

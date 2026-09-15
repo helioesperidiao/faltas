@@ -3,15 +3,18 @@ import { RegistroDAO } from "../dao/RegistroDAO";
 import { Abono } from "../models/Abono";
 import { ErrorResponse } from "../http/ErrorResponse";
 import { Funcionario } from "@/models/Funcionario";
+import { AlunoDAO } from "@/dao/AlunoDAO";
 
 export class AbonoService {
     private _abonoDAO: AbonoDAO;
     private _registroDAO: RegistroDAO;
+    private _alunoDAO: AlunoDAO;
 
-    constructor(abonoDAODependency: AbonoDAO, registroDAODependency: RegistroDAO) {
+    constructor(abonoDAODependency: AbonoDAO, registroDAODependency: RegistroDAO, alunoDAODependency: AlunoDAO) {
         console.log("⬆️  AbonoService.constructor()");
         this._abonoDAO = abonoDAODependency;
         this._registroDAO = registroDAODependency;
+        this._alunoDAO = alunoDAODependency;
     }
 
     public create = async (abono: Abono, funcionarioLogado: Funcionario): Promise<Abono> => {
@@ -27,6 +30,15 @@ export class AbonoService {
         }
 
         abono.status = "Pendente";
+        const alunos = await this._alunoDAO.findByField("matricula", abono.matricula);
+        if (alunos.length === 0) {
+            throw new ErrorResponse(404, "Aluno não encontrado", { matricula: abono.matricula });
+        }
+        const aluno = alunos[0];
+        abono.alunoNome = aluno.alunoNome;
+        abono.turma = aluno.turma;
+        abono.curso = aluno.curso;
+        abono.serie = aluno.serie;
         return await this._abonoDAO.create(abono, funcionarioLogado);
     };
 
@@ -71,6 +83,15 @@ export class AbonoService {
             );
         }
 
+        const alunos = await this._alunoDAO.findByField("matricula", abono.matricula);
+        if (alunos.length === 0) {
+            throw new ErrorResponse(404, "Aluno não encontrado", { matricula: abono.matricula });
+        }
+        const aluno = alunos[0];
+        abono.alunoNome = aluno.alunoNome;
+        abono.turma = aluno.turma;
+        abono.curso = aluno.curso;
+        abono.serie = aluno.serie;
         return await this._abonoDAO.update(abono, funcionarioLogado);
     };
 

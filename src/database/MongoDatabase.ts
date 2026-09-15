@@ -1,4 +1,4 @@
-import { MongoClient, Db, MongoClientOptions } from "mongodb";
+import { MongoClient, Db, MongoClientOptions, Document } from "mongodb";
 import dotenv from "dotenv";
 
 // Carrega variáveis de ambiente do arquivo .env
@@ -36,6 +36,8 @@ export class MongoDatabase {
     private static _client: MongoClient | null = null;
     /** Instância do banco de dados singleton. */
     private static _db: Db | null = null;
+    /** Promessa compartilhada para impedir acesso ao banco antes da conexão terminar. */
+    private static _connectionPromise: Promise<MongoClient> | null = null;
 
     // ======================== CONFIGURAÇÃO ========================
 
@@ -123,18 +125,28 @@ export class MongoDatabase {
      */
     public async connect(): Promise<MongoClient> {
         if (!MongoDatabase._client) {
-            try {
-                MongoDatabase._client = new MongoClient(this._uri, this._options);
-                await MongoDatabase._client.connect();
-                console.log("⬆️ Conectado ao MongoDB com sucesso!");
-
-                // Inicializa o banco de dados
-                MongoDatabase._db = MongoDatabase._client.db(this._databaseName);
-            } catch (error: any) {
-                console.error("❌ Falha ao conectar ao MongoDB:", error.message);
-                process.exit(1);
-            }
+            MongoDatabase._client = new MongoClient(this._uri, this._options);
+            MongoDatabase._connectionPromise = MongoDatabase._client.connect()
+                .then(client => {
+                    MongoDatabase._db = client.db(this._databaseName);
+                    console.log("⬆️ Conectado ao MongoDB com sucesso!");
+                    return client;
+                })
+                .catch((error: Error) => {
+                    MongoDatabase._client = null;
+                    MongoDatabase._connectionPromise = null;
+                    throw error;
+                });
         }
+
+        try {
+            await MongoDatabase._connectionPromise;
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : String(error);
+            console.error("❌ Falha ao conectar ao MongoDB:", message);
+            throw error;
+        }
+
         return MongoDatabase._client;
     }
 
@@ -168,6 +180,92 @@ export class MongoDatabase {
     }
 
     /**
+     * Cria os índices da consulta histórica e completa, uma única vez, os
+     * vínculos de turma dos documentos antigos. MongoDB não exige migrações de
+     * schema, portanto este passo torna a evolução segura para bases já em uso.
+     */
+    public async initializeSchema(): Promise<void> {
+        const db = await this.getDb();
+
+        await Promise.all([
+            db.collection("aluno").createIndex({ turma: 1, turmaInicioEm: 1 }),
+            db.collection("registro").createIndex({ turma: 1, dia: 1, matricula: 1 }),
+            db.collection("abonos").createIndex({ turma: 1, dataInicio: 1 })
+        ]);
+
+        await this.migrarVinculosLegados(db);
+    }
+
+    private async migrarVinculosLegados(db: Db): Promise<void> {
+        const alunos = db.collection<Document>("aluno");
+        const registros = db.collection<Document>("registro");
+        const abonos = db.collection<Document>("abonos");
+
+        const alunosSemInicio = await alunos.find({ turmaInicioEm: { $exists: false } }).toArray();
+        if (alunosSemInicio.length > 0) {
+            await alunos.bulkWrite(alunosSemInicio.map(aluno => {
+                const ano = Number(aluno.ano);
+                const inicio = new Date(Number.isInteger(ano) && ano >= 2000 ? ano : new Date().getFullYear(), 0, 1);
+                return {
+                    updateOne: {
+                        filter: { _id: aluno._id },
+                        update: { $set: { turmaInicioEm: inicio, historicoTurmas: aluno.historicoTurmas || [] } }
+                    }
+                }
+            }));
+        }
+
+        const registrosSemTurma = await registros.find({ turma: { $exists: false } }).toArray();
+        for (const registro of registrosSemTurma) {
+            const aluno = await alunos.findOne({ matricula: registro.matricula });
+            if (!aluno) {
+                // O documento é preservado mesmo se o aluno já tiver sido removido
+                // definitivamente da base anterior à migração. Não há como inferir
+                // sua turma com segurança, por isso ele fica identificado como legado.
+                await registros.updateOne(
+                    { _id: registro._id },
+                    { $set: { turma: '', curso: '', serie: '', alunoNome: '', vinculoHistoricoIndisponivel: true } }
+                );
+                continue;
+            }
+            await registros.updateOne(
+                { _id: registro._id },
+                {
+                    $set: {
+                        turma: aluno.turma || '',
+                        curso: aluno.curso || '',
+                        serie: aluno.serie || '',
+                        alunoNome: aluno.alunoNome || ''
+                    }
+                }
+            );
+        }
+
+        const abonosSemTurma = await abonos.find({ turma: { $exists: false } }).toArray();
+        for (const abono of abonosSemTurma) {
+            const aluno = await alunos.findOne({ matricula: abono.matricula });
+            if (!aluno) {
+                await abonos.updateOne(
+                    { _id: abono._id },
+                    { $set: { turma: '', curso: '', serie: '', alunoNome: '', vinculoHistoricoIndisponivel: true } }
+                );
+                continue;
+            }
+            await abonos.updateOne(
+                { _id: abono._id },
+                {
+                    $set: {
+                        turma: aluno.turma || '',
+                        curso: aluno.curso || '',
+                        serie: aluno.serie || '',
+                        alunoNome: aluno.alunoNome || ''
+                    }
+                }
+            );
+        }
+    }
+
+    /**
      * Fecha a conexão com o MongoDB.
      * 
      * Útil para encerrar a aplicação de forma limpa, liberando recursos.
@@ -187,6 +285,7 @@ export class MongoDatabase {
             await MongoDatabase._client.close();
             MongoDatabase._client = null;
             MongoDatabase._db = null;
+            MongoDatabase._connectionPromise = null;
             console.log("⬆️ Conexão com MongoDB fechada.");
         }
     }

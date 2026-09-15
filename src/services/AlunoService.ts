@@ -2,6 +2,7 @@ import { AlunoDAO } from "../dao/AlunoDAO";
 import { Aluno } from "../models/Aluno";
 import { ErrorResponse } from "../http/ErrorResponse";
 import { Funcionario } from "@/models/Funcionario";
+import { HistoricoTurma } from "@/models/HistoricoTurma";
 
 export class AlunoService {
     private _alunoDAO: AlunoDAO;
@@ -81,8 +82,75 @@ export class AlunoService {
             );
         }
 
+        const alunoAnterior = await this._alunoDAO.findById(aluno.idAluno);
+        if (!alunoAnterior) {
+            return false;
+        }
+
+        aluno.historicoTurmas = alunoAnterior.historicoTurmas;
+        aluno.turmaInicioEm = alunoAnterior.turmaInicioEm;
+
+        if (this.alterouEnturmacao(alunoAnterior, aluno)) {
+            aluno.historicoTurmas = [
+                ...alunoAnterior.historicoTurmas,
+                this.criarHistorico(alunoAnterior)
+            ];
+            aluno.turmaInicioEm = new Date();
+        }
+
         return await this._alunoDAO.update(aluno, funcionarioLogado);
     };
+
+    /** Atualiza uma turma inteira na virada do ano sem recriar cadastros. */
+    public promoverTurma = async (
+        turmaOrigem: string,
+        turmaDestino: string,
+        anoDestino: string,
+        serieDestino: string,
+        funcionarioLogado: Funcionario
+    ): Promise<number> => {
+        if (funcionarioLogado.cargo.nomeCargo !== "Administrador") {
+            throw new ErrorResponse(403, "Não autorizado", {
+                message: "Apenas Administrador pode executar a virada anual de turma."
+            });
+        }
+
+        const alunos = await this._alunoDAO.findByField("turma", turmaOrigem);
+        for (const aluno of alunos) {
+            aluno.historicoTurmas = [...aluno.historicoTurmas, this.criarHistorico(aluno)];
+            aluno.turma = turmaDestino;
+            aluno.ano = anoDestino;
+            if (serieDestino) {
+                aluno.serie = serieDestino;
+            }
+            aluno.turmaInicioEm = new Date();
+        }
+
+        return await this._alunoDAO.atualizarEnturmacaoEmLote(alunos, funcionarioLogado);
+    };
+
+    private alterouEnturmacao(anterior: Aluno, atualizado: Aluno): boolean {
+        return anterior.turma !== atualizado.turma ||
+            anterior.curso !== atualizado.curso ||
+            anterior.serie !== atualizado.serie ||
+            anterior.ano !== atualizado.ano;
+    }
+
+    private criarHistorico(aluno: Aluno): HistoricoTurma {
+        const fimEm = new Date();
+        const disponivelAte = new Date(fimEm);
+        disponivelAte.setFullYear(disponivelAte.getFullYear() + 1);
+
+        return {
+            turma: aluno.turma,
+            curso: aluno.curso,
+            serie: aluno.serie,
+            ano: aluno.ano,
+            inicioEm: aluno.turmaInicioEm,
+            fimEm,
+            disponivelAte
+        };
+    }
 
     public delete = async (aluno: Aluno, funcionarioLogado: Funcionario): Promise<boolean> => {
         console.log("🟣 AlunoService.delete()");

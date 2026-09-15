@@ -44,17 +44,35 @@
       <input type="text" id="txtAlunoNome" class="form-control mb-2" placeholder="Nome do aluno" aria-label="Nome do aluno" />
       <input type="text" id="txtTurma" class="form-control mb-2" placeholder="Turma" aria-label="Turma do aluno" />
       <input type="text" id="txtCurso" class="form-control mb-2" placeholder="Curso" aria-label="Curso do aluno" />
+      <div class="row g-2 mb-2">
+        <div class="col-md-6"><input type="text" id="txtSerie" class="form-control" placeholder="Série" aria-label="Série do aluno" /></div>
+        <div class="col-md-6"><input type="number" id="txtAno" class="form-control" placeholder="Ano letivo" aria-label="Ano letivo" /></div>
+      </div>
       <div class="mb-3 d-flex gap-2" id="divBotoes"></div>
       <div id="divResposta" role="status" aria-live="polite"></div>
     </div>
   </div>
 
-  <!-- Importação em massa via CSV (o arquivo NÃO é enviado ao backend, cada linha vira um POST) -->
   <div class="card mb-3">
-    <div class="card-header">Importar Alunos via CSV</div>
+    <div class="card-header">Virada anual de turma</div>
     <div class="card-body">
-      <p class="text-muted">Cabeçalho esperado: matricula,alunoNome,turma,curso</p>
-      <input type="file" id="fileCsv" class="form-control mb-2" accept=".csv" aria-label="Arquivo CSV de alunos para importação" />
+      <p class="text-muted">Move todos os alunos de uma turma sem recriar cadastros. A turma anterior e seus registros ficam disponíveis por 12 meses.</p>
+      <div class="row g-2">
+        <div class="col-md-3"><input type="text" id="txtTurmaOrigem" class="form-control" placeholder="Turma atual (ex.: 2D)"></div>
+        <div class="col-md-3"><input type="text" id="txtTurmaDestino" class="form-control" placeholder="Nova turma (ex.: 3D)"></div>
+        <div class="col-md-2"><input type="text" id="txtSerieDestino" class="form-control" placeholder="Nova série"></div>
+        <div class="col-md-2"><input type="number" id="txtAnoDestino" class="form-control" placeholder="Ano letivo"></div>
+        <div class="col-md-2"><button type="button" id="btnViradaAnual" class="btn btn-warning w-100">Atualizar turma</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Importação em massa: a planilha é lida no navegador e cada linha validada vira um POST. -->
+  <div class="card mb-3">
+    <div class="card-header">Importar Alunos via planilha</div>
+    <div class="card-body">
+      <p class="text-muted">A importação reconhece os cabeçalhos da planilha. Use, por exemplo, “Matrícula” ou “RA”, “Nome do aluno”, “Turma”, “Curso”, “Série” e “Ano letivo”, em qualquer ordem.</p>
+      <input type="file" id="fileCsv" class="form-control mb-2" accept=".xlsx,.xls,.xlsm,.csv,.tsv,.txt" aria-label="Planilha de alunos para importação" />
       <button type="button" id="btnImportar" class="btn btn-primary mb-2">Importar</button>
       <div class="progress mb-2" style="display:none;" id="divProgressoWrap">
         <div id="barraProgresso" class="progress-bar" role="progressbar" style="width: 0%">0%</div>
@@ -72,9 +90,11 @@
 
   </main>
 
+  <script src="vendor/xlsx/xlsx.full.min.js"></script>
   <script type="module">
     import { montarTopbar } from './js/Topbar.js';
     import ApiService from './ApiService.js';
+    import { ESQUEMAS_IMPORTACAO, lerArquivoPlanilha, prepararImportacao } from './js/ImportadorCsv.js';
 
     let userData = localStorage.getItem("userData");
     if (userData) {
@@ -94,6 +114,8 @@
     const txtAlunoNome = document.getElementById("txtAlunoNome");
     const txtTurma = document.getElementById("txtTurma");
     const txtCurso = document.getElementById("txtCurso");
+    const txtSerie = document.getElementById("txtSerie");
+    const txtAno = document.getElementById("txtAno");
     const txtFiltroNome = document.getElementById("txtFiltroNome");
     const txtFiltroTurma = document.getElementById("txtFiltroTurma");
     const divBotoes = document.getElementById("divBotoes");
@@ -117,6 +139,8 @@
       txtAlunoNome.value = "";
       txtTurma.value = "";
       txtCurso.value = "";
+      txtSerie.value = "";
+      txtAno.value = new Date().getFullYear();
     }
 
     function montarObjeto() {
@@ -125,7 +149,9 @@
           matricula: txtMatricula.value.trim(),
           alunoNome: txtAlunoNome.value.trim(),
           turma: txtTurma.value.trim(),
-          curso: txtCurso.value.trim()
+          curso: txtCurso.value.trim(),
+          serie: txtSerie.value.trim(),
+          ano: String(txtAno.value || new Date().getFullYear())
         }
       };
     }
@@ -189,7 +215,7 @@
       const thead = document.createElement("thead");
       thead.className = "table-light";
       const trHead = document.createElement("tr");
-      ["Matrícula", "Nome", "Turma", "Curso", "Ações"].forEach(text => {
+      ["Matrícula", "Nome", "Turma", "Curso", "Série", "Ano", "Ações"].forEach(text => {
         const th = document.createElement("th");
         th.textContent = text;
         trHead.appendChild(th);
@@ -202,7 +228,7 @@
 
       alunos.forEach(aluno => {
         const tr = document.createElement("tr");
-        [aluno.matricula, aluno.alunoNome, aluno.turma, aluno.curso].forEach(valor => {
+        [aluno.matricula, aluno.alunoNome, aluno.turma, aluno.curso, aluno.serie, aluno.ano].forEach(valor => {
           const td = document.createElement("td");
           td.textContent = valor;
           tr.appendChild(td);
@@ -216,8 +242,26 @@
           txtAlunoNome.value = aluno.alunoNome;
           txtTurma.value = aluno.turma;
           txtCurso.value = aluno.curso;
+          txtSerie.value = aluno.serie || "";
+          txtAno.value = aluno.ano || new Date().getFullYear();
         };
         tdAcoes.appendChild(btnSel);
+
+        const btnExcluir = createButton("Excluir", "btn-danger");
+        btnExcluir.onclick = async () => {
+          if (!window.confirm(`Excluir ${aluno.alunoNome}? Os registros históricos serão preservados.`)) {
+            return;
+          }
+          const resposta = await api.delete("api/v1/alunos", aluno.idAluno);
+          if (resposta.success) {
+            mostrarMensagem("Aluno excluído do cadastro ativo.", "success");
+            limparFormulario();
+            listAll();
+          } else {
+            mostrarMensagem(resposta.message || "Não foi possível excluir o aluno", "danger");
+          }
+        };
+        tdAcoes.appendChild(btnExcluir);
         tr.appendChild(tdAcoes);
 
         tbody.appendChild(tr);
@@ -241,19 +285,28 @@
     txtFiltroNome.addEventListener("input", filtrar);
     txtFiltroTurma.addEventListener("input", filtrar);
 
-    // ======================== IMPORTAÇÃO CSV ========================
-    // O arquivo é lido e interpretado inteiramente no navegador.
-    // Cada linha vira um POST individual para a API (o CSV em si nunca é enviado ao backend).
-    function parseCsv(texto) {
-      const linhas = texto.split(/\r?\n/).filter(l => l.trim().length > 0);
-      const cabecalho = linhas[0].split(",").map(c => c.trim());
-      return linhas.slice(1).map(linha => {
-        const valores = linha.split(",").map(v => v.trim());
-        const objeto = {};
-        cabecalho.forEach((chave, indice) => { objeto[chave] = valores[indice] || ""; });
-        return objeto;
-      });
-    }
+    document.getElementById("txtAno").value = new Date().getFullYear();
+    document.getElementById("txtAnoDestino").value = new Date().getFullYear() + 1;
+    document.getElementById("btnViradaAnual").onclick = async () => {
+      const turmaOrigem = document.getElementById("txtTurmaOrigem").value.trim();
+      const turmaDestino = document.getElementById("txtTurmaDestino").value.trim();
+      const anoDestino = document.getElementById("txtAnoDestino").value.trim();
+      const serieDestino = document.getElementById("txtSerieDestino").value.trim();
+      if (!turmaOrigem || !turmaDestino) {
+        mostrarMensagem("Informe a turma atual e a nova turma", "warning");
+        return;
+      }
+      if (!window.confirm(`Mover todos os alunos de ${turmaOrigem} para ${turmaDestino}? O histórico será preservado.`)) {
+        return;
+      }
+      const resposta = await api.post("api/v1/alunos/transicao-anual", { turmaOrigem, turmaDestino, anoDestino, serieDestino });
+      if (resposta.success) {
+        mostrarMensagem(`${resposta.data.total} aluno(s) movido(s) com histórico preservado.`, "success");
+        listAll();
+      } else {
+        mostrarMensagem(resposta.message || "Não foi possível atualizar a turma", "danger");
+      }
+    };
 
     const fileCsv = document.getElementById("fileCsv");
     const btnImportar = document.getElementById("btnImportar");
@@ -263,15 +316,21 @@
 
     btnImportar.onclick = async () => {
       if (!fileCsv.files.length) {
-        mostrarMensagem("Selecione um arquivo CSV", "warning");
+        mostrarMensagem("Selecione uma planilha", "warning");
         return;
       }
 
-      const texto = await fileCsv.files[0].text();
-      const linhas = parseCsv(texto);
+      const texto = await lerArquivoPlanilha(fileCsv.files[0]);
+      const importacao = prepararImportacao(texto, ESQUEMAS_IMPORTACAO.alunos,
+        ["matricula", "alunoNome", "turma"]);
+      const linhas = importacao.linhas;
 
+      if (importacao.ausentes.length > 0) {
+        mostrarMensagem(`Cabeçalhos não identificados: ${importacao.ausentes.join(", ")}`, "warning");
+        return;
+      }
       if (linhas.length === 0) {
-        mostrarMensagem("CSV vazio ou inválido", "warning");
+        mostrarMensagem("Planilha vazia ou inválida", "warning");
         return;
       }
 
@@ -287,14 +346,16 @@
               matricula: linha.matricula,
               alunoNome: linha.alunoNome,
               turma: linha.turma,
-              curso: linha.curso || ""
+              curso: linha.curso || "",
+              serie: linha.serie || "",
+              ano: linha.ano || String(new Date().getFullYear())
             }
           });
           if (!resposta.success) {
-            falhas.push({ linha: i + 2, motivo: resposta.message || "Falha desconhecida" });
+            falhas.push({ linha: linha.__linha, motivo: resposta.message || "Falha desconhecida" });
           }
         } catch (erro) {
-          falhas.push({ linha: i + 2, motivo: erro.message });
+          falhas.push({ linha: linha.__linha, motivo: erro.message });
         }
 
         const percentual = Math.round(((i + 1) / linhas.length) * 100);
@@ -306,7 +367,9 @@
         const lista = falhas.map(f => `<li>Linha ${f.linha}: ${f.motivo}</li>`).join("");
         divFalhas.innerHTML = `<div class="alert alert-danger"><strong>Falhas na importação:</strong><ul>${lista}</ul></div>`;
       } else {
-        divFalhas.innerHTML = `<div class="alert alert-success">Importação concluída sem falhas.</div>`;
+        const cabecalhos = Object.entries(importacao.mapeamento).map(([campo, indice]) =>
+          `${campo} ← ${importacao.cabecalhos[indice]}`).join(" · ");
+        divFalhas.innerHTML = `<div class="alert alert-success">Importação concluída sem falhas.<br><small>Cabeçalhos identificados: ${cabecalhos}</small></div>`;
       }
 
       fileCsv.value = "";

@@ -118,3 +118,11 @@ faltas_cti/
 ├── package.json
 ├── tsconfig.json
 └── README.md
+
+7. HISTÓRICO DE TURMAS
+
+O sistema conserva por 12 meses o vínculo anterior de cada aluno ao trocar sua turma. A operação coletiva de virada anual está disponível em Alunos para o cargo Administrador. Consulte `docs/turmas-e-historico.md` para a regra de retenção e o efeito nos registros e relatórios.
+
+8. IMPORTAÇÃO DE PLANILHAS
+
+As telas de alunos e grade de horários aceitam Excel, CSV e TSV e identificam as colunas pelos cabeçalhos, sem depender da ordem. Consulte `docs/importacao-de-planilhas.md` para os cabeçalhos reconhecidos e formatos de horário.

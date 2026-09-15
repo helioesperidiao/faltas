@@ -28,12 +28,13 @@ export class RelatorioService {
     public frequenciaPorTurma = async (turma: string, dia: Date): Promise<FrequenciaAluno[]> => {
         console.log("🟣 RelatorioService.frequenciaPorTurma()");
 
-        const alunosDaTurma = await this._alunoDAO.findByField("turma", turma);
+        const alunosDaTurma = await this._alunoDAO.findByTurmaNoPeriodo(turma, dia, dia);
         const todosRegistros = await this._registroDAO.findAll();
 
         return alunosDaTurma.map(aluno => {
             const registroDoDia = todosRegistros.find(registro =>
                 registro.matricula === aluno.matricula &&
+                registro.turma === turma &&
                 registro.dia.toDateString() === dia.toDateString()
             );
 
@@ -58,10 +59,11 @@ export class RelatorioService {
     public faltasPorTurmaEPeriodo = async (turma: string, dataInicio: Date, dataFim: Date): Promise<FaltasPorAluno[]> => {
         console.log("🟣 RelatorioService.faltasPorTurmaEPeriodo()");
 
-        const alunosDaTurma = await this._alunoDAO.findByField("turma", turma);
+        const alunosDaTurma = await this._alunoDAO.findByTurmaNoPeriodo(turma, dataInicio, dataFim);
         const todosRegistros = await this._registroDAO.findAll();
 
         const registrosNoPeriodo = todosRegistros.filter((registro: Registro) =>
+            registro.turma === turma &&
             registro.dia >= dataInicio && registro.dia <= dataFim && registro.falta === true
         );
 

@@ -25,8 +25,8 @@
     <div class="card-body">
       <input type="text" id="txtId" class="form-control mb-2" disabled placeholder="ID (para update)" aria-label="ID da grade selecionada" />
       <input type="text" id="txtTurma" class="form-control mb-2" placeholder="Turma" aria-label="Turma" />
-      <input type="number" id="txtHoraInicio" class="form-control mb-2" min="0" max="23" placeholder="Hora início" aria-label="Hora de início" />
-      <input type="number" id="txtHoraFim" class="form-control mb-2" min="0" max="23" placeholder="Hora fim" aria-label="Hora de fim" />
+      <input type="time" id="txtHoraInicio" class="form-control mb-2" placeholder="Hora início" aria-label="Hora de início" />
+      <input type="time" id="txtHoraFim" class="form-control mb-2" placeholder="Hora fim" aria-label="Hora de fim" />
       <input type="text" id="txtDia" class="form-control mb-2" placeholder="Dia da semana (ex: Segunda)" aria-label="Dia da semana" />
       <input type="text" id="txtCod" class="form-control mb-2" placeholder="Código da disciplina" aria-label="Código da disciplina" />
       <input type="text" id="txtDisciplina" class="form-control mb-2" placeholder="Disciplina" aria-label="Nome da disciplina" />
@@ -35,12 +35,12 @@
     </div>
   </div>
 
-  <!-- Importação em massa via CSV (o arquivo NÃO é enviado ao backend, cada linha vira um POST) -->
+  <!-- Importação em massa: a planilha é lida no navegador e cada linha validada vira um POST. -->
   <div class="card mb-3">
-    <div class="card-header">Importar Grade via CSV</div>
+    <div class="card-header">Importar Grade via planilha</div>
     <div class="card-body">
-      <p class="text-muted">Cabeçalho esperado: turma,horaInicio,horaFim,dia,cod,disciplina</p>
-      <input type="file" id="fileCsv" class="form-control mb-2" accept=".csv" aria-label="Arquivo CSV de grade de horários para importação" />
+      <p class="text-muted">A importação identifica os cabeçalhos da sua planilha. São aceitos, por exemplo, “Turma”, “Horário início”, “Horário fim”, “Dia da semana”, “Código” e “Disciplina”, em qualquer ordem.</p>
+      <input type="file" id="fileCsv" class="form-control mb-2" accept=".xlsx,.xls,.xlsm,.csv,.tsv,.txt" aria-label="Planilha de grade de horários para importação" />
       <button type="button" id="btnImportar" class="btn btn-primary mb-2">Importar</button>
       <div class="progress mb-2" style="display:none;" id="divProgressoWrap">
         <div id="barraProgresso" class="progress-bar" role="progressbar" style="width: 0%">0%</div>
@@ -58,9 +58,11 @@
 
   </main>
 
+  <script src="vendor/xlsx/xlsx.full.min.js"></script>
   <script type="module">
     import { montarTopbar } from './js/Topbar.js';
     import ApiService from './ApiService.js';
+    import { ESQUEMAS_IMPORTACAO, lerArquivoPlanilha, prepararImportacao } from './js/ImportadorCsv.js';
 
     let userData = localStorage.getItem("userData");
     if (userData) {
@@ -109,8 +111,8 @@
       return {
         gradeHorario: {
           turma: txtTurma.value.trim(),
-          horaInicio: Number(txtHoraInicio.value),
-          horaFim: Number(txtHoraFim.value),
+          horaInicio: txtHoraInicio.value,
+          horaFim: txtHoraFim.value,
           dia: txtDia.value.trim(),
           cod: txtCod.value.trim(),
           disciplina: txtDisciplina.value.trim()
@@ -212,18 +214,6 @@
       divTabela.appendChild(table);
     }
 
-    // ======================== IMPORTAÇÃO CSV ========================
-    function parseCsv(texto) {
-      const linhas = texto.split(/\r?\n/).filter(l => l.trim().length > 0);
-      const cabecalho = linhas[0].split(",").map(c => c.trim());
-      return linhas.slice(1).map(linha => {
-        const valores = linha.split(",").map(v => v.trim());
-        const objeto = {};
-        cabecalho.forEach((chave, indice) => { objeto[chave] = valores[indice] || ""; });
-        return objeto;
-      });
-    }
-
     const fileCsv = document.getElementById("fileCsv");
     const btnImportar = document.getElementById("btnImportar");
     const divProgressoWrap = document.getElementById("divProgressoWrap");
@@ -232,15 +222,21 @@
 
     btnImportar.onclick = async () => {
       if (!fileCsv.files.length) {
-        mostrarMensagem("Selecione um arquivo CSV", "warning");
+        mostrarMensagem("Selecione uma planilha", "warning");
         return;
       }
 
-      const texto = await fileCsv.files[0].text();
-      const linhas = parseCsv(texto);
+      const texto = await lerArquivoPlanilha(fileCsv.files[0]);
+      const importacao = prepararImportacao(texto, ESQUEMAS_IMPORTACAO.gradeHorarios,
+        ["turma", "horaInicio", "horaFim", "dia", "cod", "disciplina"]);
+      const linhas = importacao.linhas;
 
+      if (importacao.ausentes.length > 0) {
+        mostrarMensagem(`Cabeçalhos não identificados: ${importacao.ausentes.join(", ")}`, "warning");
+        return;
+      }
       if (linhas.length === 0) {
-        mostrarMensagem("CSV vazio ou inválido", "warning");
+        mostrarMensagem("Planilha vazia ou inválida", "warning");
         return;
       }
 
@@ -254,18 +250,18 @@
           const resposta = await api.post("api/v1/gradehorarios", {
             gradeHorario: {
               turma: linha.turma,
-              horaInicio: Number(linha.horaInicio),
-              horaFim: Number(linha.horaFim),
+              horaInicio: linha.horaInicio,
+              horaFim: linha.horaFim,
               dia: linha.dia,
               cod: linha.cod,
               disciplina: linha.disciplina
             }
           });
           if (!resposta.success) {
-            falhas.push({ linha: i + 2, motivo: resposta.message || "Falha desconhecida" });
+            falhas.push({ linha: linha.__linha, motivo: resposta.message || "Falha desconhecida" });
           }
         } catch (erro) {
-          falhas.push({ linha: i + 2, motivo: erro.message });
+          falhas.push({ linha: linha.__linha, motivo: erro.message });
         }
 
         const percentual = Math.round(((i + 1) / linhas.length) * 100);
@@ -277,7 +273,9 @@
         const lista = falhas.map(f => `<li>Linha ${f.linha}: ${f.motivo}</li>`).join("");
         divFalhas.innerHTML = `<div class="alert alert-danger"><strong>Falhas na importação:</strong><ul>${lista}</ul></div>`;
       } else {
-        divFalhas.innerHTML = `<div class="alert alert-success">Importação concluída sem falhas.</div>`;
+        const cabecalhos = Object.entries(importacao.mapeamento).map(([campo, indice]) =>
+          `${campo} ← ${importacao.cabecalhos[indice]}`).join(" · ");
+        divFalhas.innerHTML = `<div class="alert alert-success">Importação concluída sem falhas.<br><small>Cabeçalhos identificados: ${cabecalhos}</small></div>`;
       }
 
       fileCsv.value = "";

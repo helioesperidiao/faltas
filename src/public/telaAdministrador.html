@@ -436,13 +436,28 @@
       todosAlunos = respostaAlunos.success ? respostaAlunos.data.alunos : [];
       turmas = [...new Set(todosAlunos.map(a => a.turma))];
 
+      const agora = new Date();
+      const turmasHistoricas = [...new Set(todosAlunos.flatMap(aluno =>
+        (aluno.historicoTurmas || [])
+          .filter(historico => new Date(historico.disponivelAte) >= agora)
+          .map(historico => historico.turma)
+      ).filter(turma => !turmas.includes(turma)))];
+
       const select = document.getElementById('turma-select');
-      turmas.forEach(turma => {
-        const opcao = document.createElement('option');
-        opcao.value = turma;
-        opcao.textContent = turma;
-        select.appendChild(opcao);
-      });
+      const adicionarOpcoes = (lista, titulo) => {
+        if (lista.length === 0) return;
+        const grupo = document.createElement('optgroup');
+        grupo.label = titulo;
+        lista.forEach(turma => {
+          const opcao = document.createElement('option');
+          opcao.value = turma;
+          opcao.textContent = turma;
+          grupo.appendChild(opcao);
+        });
+        select.appendChild(grupo);
+      };
+      adicionarOpcoes(turmas, 'Turmas ativas');
+      adicionarOpcoes(turmasHistoricas, 'Histórico disponível por 12 meses');
 
       const hoje = document.getElementById('data-referencia').value;
 

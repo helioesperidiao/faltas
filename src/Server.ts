@@ -51,9 +51,11 @@ export class Server {
     async init(): Promise<void> {
         console.log("⬆️ Server.init()");
 
+        await this._dataBase.initializeSchema();
 
         this._app.use(cors({ origin: "*" }));
         this._app.use(express.json());
+        this._app.use("/vendor/xlsx", express.static(path.resolve(__dirname, "../node_modules/xlsx/dist")));
         this._app.use(express.static(path.resolve(__dirname, "public")));
 
         // Rotas da API (os routers já têm seus prefixos internos)

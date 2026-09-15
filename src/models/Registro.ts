@@ -10,6 +10,10 @@ export class Registro {
     private _horaInicio: number = 0;
     private _horaFim: number = 0;
     private _matricula: string = '';
+    private _alunoNome: string = '';
+    private _turma: string = '';
+    private _curso: string = '';
+    private _serie: string = '';
     private _falta: boolean = false;
     private _dia: Date = new Date();
     private _atrasado: string = 'Não';
@@ -95,6 +99,18 @@ export class Registro {
         }
         this._matricula = value.trim();
     }
+
+    get alunoNome(): string { return this._alunoNome; }
+    set alunoNome(value: string) { this._alunoNome = (value || '').trim(); }
+
+    get turma(): string { return this._turma; }
+    set turma(value: string) { this._turma = (value || '').trim(); }
+
+    get curso(): string { return this._curso; }
+    set curso(value: string) { this._curso = (value || '').trim(); }
+
+    get serie(): string { return this._serie; }
+    set serie(value: string) { this._serie = (value || '').trim(); }
 
     //falta 
     get falta(): boolean {
@@ -189,6 +205,10 @@ export class Registro {
             horaInicio: this._horaInicio,
             horaFim: this._horaFim,
             matricula: this._matricula,
+            alunoNome: this._alunoNome,
+            turma: this._turma,
+            curso: this._curso,
+            serie: this._serie,
             falta: this._falta,
             dia: this._dia,
             atrasado: this._atrasado,
