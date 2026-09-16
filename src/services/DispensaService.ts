@@ -3,7 +3,7 @@ import { Dispensa } from "../models/Dispensa";
 import { ErrorResponse } from "../http/ErrorResponse";
 import { Funcionario } from "@/models/Funcionario";
 
-const CARGOS_ACESSO_TOTAL = ["Administrador", "Coordenador", "Diretor", "Processos Pedagógicos"];
+const CARGOS_ACESSO_TOTAL = ["Processo Pedagógico"];
 
 export class DispensaService {
     private _dispensaDAO: DispensaDAO;

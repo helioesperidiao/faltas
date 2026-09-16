@@ -15,7 +15,7 @@ export class AlunoService {
     public create = async (aluno: Aluno, funcionarioLogado: Funcionario): Promise<Aluno> => {
         console.log("🟣 AlunoService.create()");
 
-        const cargosPermitidos = ["Secretaria", "Administrador"];
+        const cargosPermitidos = ["Processo Pedagógico"];
         if (!cargosPermitidos.includes(funcionarioLogado.cargo.nomeCargo)) {
             throw new ErrorResponse(
                 403,
@@ -58,7 +58,7 @@ export class AlunoService {
     public findAllDeleted = async (funcionarioLogado: Funcionario): Promise<Aluno[]> => {
         console.log("🟣 AlunoService.findAllDeleted()");
 
-        const cargosPermitidos = ["Administrador", "Diretor"];
+        const cargosPermitidos = ["Processo Pedagógico"];
         if (!cargosPermitidos.includes(funcionarioLogado.cargo.nomeCargo)) {
             throw new ErrorResponse(
                 403,
@@ -73,7 +73,7 @@ export class AlunoService {
     public update = async (aluno: Aluno, funcionarioLogado: Funcionario): Promise<boolean> => {
         console.log("🟣 AlunoService.update()");
 
-        const cargosPermitidos = ["Secretaria", "Administrador"];
+        const cargosPermitidos = ["Processo Pedagógico"];
         if (!cargosPermitidos.includes(funcionarioLogado.cargo.nomeCargo)) {
             throw new ErrorResponse(
                 403,
@@ -109,9 +109,9 @@ export class AlunoService {
         serieDestino: string,
         funcionarioLogado: Funcionario
     ): Promise<number> => {
-        if (funcionarioLogado.cargo.nomeCargo !== "Administrador") {
+        if (funcionarioLogado.cargo.nomeCargo !== "Processo Pedagógico") {
             throw new ErrorResponse(403, "Não autorizado", {
-                message: "Apenas Administrador pode executar a virada anual de turma."
+                message: "Apenas Processo Pedagógico pode executar a virada anual de turma."
             });
         }
 
@@ -155,7 +155,7 @@ export class AlunoService {
     public delete = async (aluno: Aluno, funcionarioLogado: Funcionario): Promise<boolean> => {
         console.log("🟣 AlunoService.delete()");
 
-        const cargosPermitidos = ["Secretaria", "Administrador"];
+        const cargosPermitidos = ["Processo Pedagógico"];
         if (!cargosPermitidos.includes(funcionarioLogado.cargo.nomeCargo)) {
             throw new ErrorResponse(
                 403,

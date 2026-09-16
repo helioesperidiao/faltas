@@ -162,6 +162,18 @@ export class RegistroDAO {
         return docs.map(doc => this.toRegistro(doc));
     }
 
+    /** Faltas válidas no período, sem registros abonados, dispensados ou excluídos. */
+    public async findFaltasNoPeriodo(dataInicio: Date, dataFim: Date): Promise<Registro[]> {
+        const collection = await this.getCollection();
+        const cursor = collection.find({
+            dia: { $gte: dataInicio, $lte: dataFim },
+            falta: true,
+            situacao: { $nin: ["Abonada", "Dispensada"] },
+            "auditoria.deletadoEm": null
+        });
+        return (await cursor.toArray()).map(doc => this.toRegistro(doc));
+    }
+
     //"select" deletados
     public async findAllDeleted(): Promise<Registro[]> {
         const collection = await this.getCollection();

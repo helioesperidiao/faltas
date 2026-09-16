@@ -71,7 +71,7 @@
   <div class="card mb-3">
     <div class="card-header">Importar Alunos via planilha</div>
     <div class="card-body">
-      <p class="text-muted">A importação reconhece os cabeçalhos da planilha. Use, por exemplo, “Matrícula” ou “RA”, “Nome do aluno”, “Turma”, “Curso”, “Série” e “Ano letivo”, em qualquer ordem.</p>
+      <p class="text-muted">Use os cabeçalhos ANO_REF, CURSO, TURMA_PREF, SERIE, SIT_ALUNO, ALUNO, NOME_COMPL e os dados de contato dos responsáveis. Todos os cabeçalhos da planilha são identificados antes da importação.</p>
       <input type="file" id="fileCsv" class="form-control mb-2" accept=".xlsx,.xls,.xlsm,.csv,.tsv,.txt" aria-label="Planilha de alunos para importação" />
       <button type="button" id="btnImportar" class="btn btn-primary mb-2">Importar</button>
       <div class="progress mb-2" style="display:none;" id="divProgressoWrap">
@@ -108,6 +108,7 @@
     montarTopbar('alunos');
 
     let API_DATA;
+    let alunoSelecionado = null;
 
     const txtId = document.getElementById("txtId");
     const txtMatricula = document.getElementById("txtMatricula");
@@ -134,6 +135,7 @@
     }
 
     function limparFormulario() {
+      alunoSelecionado = null;
       txtId.value = "";
       txtMatricula.value = "";
       txtAlunoNome.value = "";
@@ -144,6 +146,7 @@
     }
 
     function montarObjeto() {
+      const dadosPreservados = alunoSelecionado || {};
       return {
         aluno: {
           matricula: txtMatricula.value.trim(),
@@ -151,7 +154,27 @@
           turma: txtTurma.value.trim(),
           curso: txtCurso.value.trim(),
           serie: txtSerie.value.trim(),
-          ano: String(txtAno.value || new Date().getFullYear())
+          situacao: dadosPreservados.situacao || "Ativo",
+          ano: String(txtAno.value || new Date().getFullYear()),
+          dataNascimento: dadosPreservados.dataNascimento || "",
+          alunoRG: dadosPreservados.alunoRG || "",
+          alunoFone: dadosPreservados.alunoFone || "",
+          alunoEmail: dadosPreservados.alunoEmail || "",
+          alunoFoneCel: dadosPreservados.alunoFoneCel || "",
+          paiNome: dadosPreservados.paiNome || "",
+          paiFoneCel: dadosPreservados.paiFoneCel || "",
+          paiFoneFixo: dadosPreservados.paiFoneFixo || "",
+          paiFoneRecado: dadosPreservados.paiFoneRecado || "",
+          paiEmail: dadosPreservados.paiEmail || "",
+          maeNome: dadosPreservados.maeNome || "",
+          maeFoneCel: dadosPreservados.maeFoneCel || "",
+          maeFoneFixo: dadosPreservados.maeFoneFixo || "",
+          maeFoneRecado: dadosPreservados.maeFoneRecado || "",
+          maeEmail: dadosPreservados.maeEmail || "",
+          finanNome: dadosPreservados.finanNome || "",
+          finanFone: dadosPreservados.finanFone || "",
+          legalNome: dadosPreservados.legalNome || "",
+          legalFone: dadosPreservados.legalFone || ""
         }
       };
     }
@@ -237,6 +260,7 @@
         const tdAcoes = document.createElement("td");
         const btnSel = createButton("Selecionar", "btn-info");
         btnSel.onclick = () => {
+          alunoSelecionado = aluno;
           txtId.value = aluno.idAluno;
           txtMatricula.value = aluno.matricula;
           txtAlunoNome.value = aluno.alunoNome;
@@ -314,6 +338,45 @@
     const barraProgresso = document.getElementById("barraProgresso");
     const divFalhas = document.getElementById("divFalhas");
 
+    const CAMPOS_PLANILHA_ALUNOS = [
+      "ano", "curso", "turma", "serie", "situacao", "matricula", "alunoNome",
+      "dataNascimento", "alunoRG", "alunoFone", "alunoEmail", "alunoFoneCel",
+      "paiNome", "paiFoneCel", "paiFoneFixo", "paiFoneRecado", "paiEmail",
+      "maeNome", "maeFoneCel", "maeFoneFixo", "maeFoneRecado", "maeEmail",
+      "finanNome", "finanFone", "legalNome", "legalFone"
+    ];
+
+    function alunoDaPlanilha(linha) {
+      return {
+        matricula: linha.matricula,
+        alunoNome: linha.alunoNome,
+        turma: linha.turma,
+        curso: linha.curso,
+        serie: linha.serie,
+        situacao: linha.situacao,
+        ano: linha.ano,
+        dataNascimento: linha.dataNascimento,
+        alunoRG: linha.alunoRG,
+        alunoFone: linha.alunoFone,
+        alunoEmail: linha.alunoEmail,
+        alunoFoneCel: linha.alunoFoneCel,
+        paiNome: linha.paiNome,
+        paiFoneCel: linha.paiFoneCel,
+        paiFoneFixo: linha.paiFoneFixo,
+        paiFoneRecado: linha.paiFoneRecado,
+        paiEmail: linha.paiEmail,
+        maeNome: linha.maeNome,
+        maeFoneCel: linha.maeFoneCel,
+        maeFoneFixo: linha.maeFoneFixo,
+        maeFoneRecado: linha.maeFoneRecado,
+        maeEmail: linha.maeEmail,
+        finanNome: linha.finanNome,
+        finanFone: linha.finanFone,
+        legalNome: linha.legalNome,
+        legalFone: linha.legalFone
+      };
+    }
+
     btnImportar.onclick = async () => {
       if (!fileCsv.files.length) {
         mostrarMensagem("Selecione uma planilha", "warning");
@@ -321,8 +384,7 @@
       }
 
       const texto = await lerArquivoPlanilha(fileCsv.files[0]);
-      const importacao = prepararImportacao(texto, ESQUEMAS_IMPORTACAO.alunos,
-        ["matricula", "alunoNome", "turma"]);
+      const importacao = prepararImportacao(texto, ESQUEMAS_IMPORTACAO.alunos, CAMPOS_PLANILHA_ALUNOS);
       const linhas = importacao.linhas;
 
       if (importacao.ausentes.length > 0) {
@@ -342,14 +404,7 @@
         const linha = linhas[i];
         try {
           const resposta = await api.post("api/v1/alunos", {
-            aluno: {
-              matricula: linha.matricula,
-              alunoNome: linha.alunoNome,
-              turma: linha.turma,
-              curso: linha.curso || "",
-              serie: linha.serie || "",
-              ano: linha.ano || String(new Date().getFullYear())
-            }
+            aluno: alunoDaPlanilha(linha)
           });
           if (!resposta.success) {
             falhas.push({ linha: linha.__linha, motivo: resposta.message || "Falha desconhecida" });

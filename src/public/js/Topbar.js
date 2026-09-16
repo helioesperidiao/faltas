@@ -70,6 +70,13 @@ const PAGINAS = [
     descricao: "Relatórios de faltas e frequência por turma, aluno e período."
   },
   {
+    chave: "alertasfaltas",
+    label: "Alertas de Faltas",
+    href: "AlertasFaltas.html",
+    restrito: true,
+    descricao: "Configure limites de faltas e consulte os alunos em alerta."
+  },
+  {
     chave: "cargos",
     label: "Cargos",
     href: "Cargos.html",
@@ -87,10 +94,7 @@ const PAGINAS = [
 
 /** Cargos que enxergam todos os módulos, inclusive os restritos. */
 const CARGOS_ACESSO_TOTAL = [
-  "Administrador",
-  "Coordenador",
-  "Diretor",
-  "Processos Pedagógicos"
+  "Processo Pedagógico"
 ];
 
 /** Compara cargos sem depender de acento, caixa ou espaço sobrando. */

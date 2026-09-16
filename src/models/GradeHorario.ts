@@ -9,6 +9,8 @@ export class GradeHorario {
     private _dia: string = '';
     private _cod: string = '';
     private _disciplina: string = '';
+    private _duracaoAulaMinutos: number = 0;
+    private _cargaHorariaSemanalMinutos: number = 0;
     private _auditoria: Auditoria = new Auditoria();
 
     constructor() {
@@ -53,6 +55,60 @@ export class GradeHorario {
     }
     set horaFim(value: string | number) {
         this._horaFim = this.normalizarHorario(value, "horaFim");
+    }
+
+    /** Minutos de uma aula, calculados a partir do horário de início e fim. */
+    get duracaoAulaMinutos(): number {
+        return this._duracaoAulaMinutos;
+    }
+    set duracaoAulaMinutos(value: number) {
+        if (!Number.isInteger(value) || value <= 0 || value > 24 * 60) {
+            throw new Error("duracaoAulaMinutos deve ser um número inteiro positivo.");
+        }
+        this._duracaoAulaMinutos = value;
+    }
+
+    /** Soma semanal de todas as aulas desta disciplina na turma. */
+    get cargaHorariaSemanalMinutos(): number {
+        return this._cargaHorariaSemanalMinutos;
+    }
+    set cargaHorariaSemanalMinutos(value: number) {
+        if (!Number.isInteger(value) || value <= 0 || value > 7 * 24 * 60) {
+            throw new Error("cargaHorariaSemanalMinutos deve ser um número inteiro positivo.");
+        }
+        this._cargaHorariaSemanalMinutos = value;
+    }
+
+    /** Calcula a duração entre dois horários aceitos pela grade. */
+    public static calcularDuracaoMinutos(horaInicio: string | number, horaFim: string | number): number {
+        const inicio = GradeHorario.horarioParaMinutos(horaInicio);
+        const fim = GradeHorario.horarioParaMinutos(horaFim);
+        const duracao = fim - inicio;
+        if (duracao <= 0) {
+            throw new Error("horaFim deve ser posterior a horaInicio.");
+        }
+        return duracao;
+    }
+
+    public static horarioParaMinutos(value: string | number): number {
+        if (typeof value === "number") {
+            if (isNaN(value) || value < 0 || value >= 24) {
+                throw new Error(`horário inválido: "${value}".`);
+            }
+            return value > 0 && value < 1 ? Math.round(value * 24 * 60) : Math.round(value * 60);
+        }
+
+        const texto = String(value || '').trim().toLowerCase().replace('h', ':');
+        const correspondencia = texto.match(/^(\d{1,2})(?::(\d{1,2})(?::\d{1,2})?)?$/);
+        if (!correspondencia) {
+            throw new Error(`horário inválido: "${value}".`);
+        }
+        const hora = Number(correspondencia[1]);
+        const minuto = Number(correspondencia[2] || 0);
+        if (hora >= 24 || minuto >= 60) {
+            throw new Error(`horário inválido: "${value}".`);
+        }
+        return hora * 60 + minuto;
     }
 
     private normalizarHorario(value: string | number, campo: string): string {
@@ -154,6 +210,8 @@ export class GradeHorario {
             dia: this._dia,
             cod: this._cod,
             disciplina: this._disciplina,
+            duracaoAulaMinutos: this._duracaoAulaMinutos,
+            cargaHorariaSemanalMinutos: this._cargaHorariaSemanalMinutos,
             auditoria: this._auditoria
         };
     }

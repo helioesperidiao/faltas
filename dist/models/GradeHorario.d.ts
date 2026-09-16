@@ -1,0 +1,55 @@
+import { Auditoria } from "./Auditoria";
+export declare class GradeHorario {
+    private _idGradeHorario;
+    private _turma;
+    private _horaInicio;
+    private _horaFim;
+    private _dia;
+    private _cod;
+    private _disciplina;
+    private _duracaoAulaMinutos;
+    private _cargaHorariaSemanalMinutos;
+    private _auditoria;
+    constructor();
+    get idGradeHorario(): string;
+    set idGradeHorario(value: string);
+    get turma(): string;
+    set turma(value: string);
+    get horaInicio(): string;
+    set horaInicio(value: string | number);
+    get horaFim(): string;
+    set horaFim(value: string | number);
+    get duracaoAulaMinutos(): number;
+    set duracaoAulaMinutos(value: number);
+    get cargaHorariaSemanalMinutos(): number;
+    set cargaHorariaSemanalMinutos(value: number);
+    static calcularDuracaoMinutos(horaInicio: string | number, horaFim: string | number): number;
+    static horarioParaMinutos(value: string | number): number;
+    private normalizarHorario;
+    private formatarMinutos;
+    get dia(): string;
+    set dia(value: string);
+    get cod(): string;
+    set cod(value: string);
+    get disciplina(): string;
+    set disciplina(value: string);
+    get auditoria(): Auditoria;
+    set auditoria(value: Auditoria);
+    marcarCriadoPor(idFuncionario: string): void;
+    marcarAlteradoPor(idFuncionario: string): void;
+    marcarDeletadoPor(idFuncionario: string): void;
+    isDeletado(): boolean;
+    toJSON(): {
+        idGradeHorario: string;
+        turma: string;
+        horaInicio: string;
+        horaFim: string;
+        dia: string;
+        cod: string;
+        disciplina: string;
+        duracaoAulaMinutos: number;
+        cargaHorariaSemanalMinutos: number;
+        auditoria: Auditoria;
+    };
+}
+//# sourceMappingURL=GradeHorario.d.ts.map

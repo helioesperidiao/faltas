@@ -8,7 +8,7 @@ Faltas, abonos e dispensas não dependem mais apenas da turma atual. Cada falta 
 
 ## Virada anual
 
-Na página **Alunos**, a seção **Virada anual de turma** move todos os alunos de uma turma atual para a nova turma. A operação é exclusiva do cargo `Administrador`; ela mantém os cadastros, registra a turma anterior por um ano e atualiza a série e o ano letivo quando informados.
+Na página **Alunos**, a seção **Virada anual de turma** move todos os alunos de uma turma atual para a nova turma. A operação é exclusiva do cargo `Processo Pedagógico`; ela mantém os cadastros, registra a turma anterior por um ano e atualiza a série e o ano letivo quando informados.
 
 Também é possível editar uma pessoa individualmente, criar alunos e fazer a exclusão lógica de um aluno. A exclusão retira o aluno da lista ativa, mas não apaga o seu histórico e seus registros já feitos.
 

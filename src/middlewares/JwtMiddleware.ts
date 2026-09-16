@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { MeuTokenJWT } from '../http/MeuTokenJWT';
 import { ErrorResponse } from '../http/ErrorResponse';
 import { Funcionario } from '@/models/Funcionario';
+import { cargoAceito } from '@/constants/Cargos';
 
 /**
  * Middleware para validação de tokens JWT em requisições.
@@ -51,7 +52,7 @@ export class JwtMiddleware {
         const jwt = new MeuTokenJWT();
         const funcionario: Funcionario | null = jwt.validarToken(authorization as string);
 
-        if (funcionario) {
+        if (funcionario && cargoAceito(funcionario.cargo.nomeCargo)) {
             // Injeta o funcionário decodificado na requisição para uso posterior
             (request as any).funcionarioLogado = funcionario;
             next();

@@ -1,0 +1,1 @@
+{"version":3,"file":"GradeHorarioRouter.d.ts","sourceRoot":"","sources":["../../src/routers/GradeHorarioRouter.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,MAAM,EAAE,MAAM,SAAS,CAAC;AAKjC,OAAO,EAAE,aAAa,EAAE,MAAM,2BAA2B,CAAC;AAE1D,qBAAa,kBAAkB;IAC3B,gBAAuB,MAAM,2BAA2B;IAExD,OAAO,CAAC,OAAO,CAAS;IACxB,OAAO,CAAC,SAAS,CAAgB;gBAErB,QAAQ,EAAE,aAAa;IAmD5B,SAAS,QAAO,MAAM,CAE3B;CACL"}

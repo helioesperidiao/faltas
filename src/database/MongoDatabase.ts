@@ -1,5 +1,7 @@
 import { MongoClient, Db, MongoClientOptions, Document } from "mongodb";
 import dotenv from "dotenv";
+import { CARGOS_ACEITOS, CARGO_PROCESSO_PEDAGOGICO } from "@/constants/Cargos";
+import { GradeHorario } from "@/models/GradeHorario";
 
 // Carrega variáveis de ambiente do arquivo .env
 dotenv.config();
@@ -190,10 +192,50 @@ export class MongoDatabase {
         await Promise.all([
             db.collection("aluno").createIndex({ turma: 1, turmaInicioEm: 1 }),
             db.collection("registro").createIndex({ turma: 1, dia: 1, matricula: 1 }),
-            db.collection("abonos").createIndex({ turma: 1, dataInicio: 1 })
+            db.collection("abonos").createIndex({ turma: 1, dataInicio: 1 }),
+            db.collection("alertasFaltas").createIndex({ ano: 1, bimestre: 1, matricula: 1, turma: 1, codDisciplina: 1 })
         ]);
 
         await this.migrarVinculosLegados(db);
+        await this.migrarCargosAceitos(db);
+        await this.migrarCargaHorariaDasGrades(db);
+        await this.criarConfiguracoesPadraoDeAlertas(db);
+    }
+
+    /** Mantém no banco somente os dois cargos permitidos pela aplicação. */
+    private async migrarCargosAceitos(db: Db): Promise<void> {
+        const cargos = db.collection<Document>("cargo");
+        const funcionarios = db.collection<Document>("funcionario");
+        const filtroAtivo = { "auditoria.deletadoEm": null };
+        const cargoPlural = await cargos.findOne({
+            nomeCargo: "Processos Pedagógicos",
+            ...filtroAtivo
+        });
+        const cargoCanonico = await cargos.findOne({
+            nomeCargo: CARGO_PROCESSO_PEDAGOGICO,
+            ...filtroAtivo
+        });
+
+        if (cargoPlural && cargoCanonico) {
+            await funcionarios.updateMany(
+                { cargoId: cargoPlural._id, ...filtroAtivo },
+                { $set: { cargoId: cargoCanonico._id } }
+            );
+            await cargos.updateOne(
+                { _id: cargoPlural._id },
+                { $set: { "auditoria.deletadoPor": "sistema", "auditoria.deletadoEm": new Date() } }
+            );
+        } else if (cargoPlural) {
+            await cargos.updateOne(
+                { _id: cargoPlural._id },
+                { $set: { nomeCargo: CARGO_PROCESSO_PEDAGOGICO, "auditoria.alteradoPor": "sistema", "auditoria.alteradoEm": new Date() } }
+            );
+        }
+
+        await cargos.updateMany(
+            { nomeCargo: { $nin: [...CARGOS_ACEITOS] }, ...filtroAtivo },
+            { $set: { "auditoria.deletadoPor": "sistema", "auditoria.deletadoEm": new Date() } }
+        );
     }
 
     private async migrarVinculosLegados(db: Db): Promise<void> {
@@ -263,6 +305,65 @@ export class MongoDatabase {
                 }
             );
         }
+    }
+
+    /** Calcula a duração e a carga semanal das grades já existentes na base. */
+    private async migrarCargaHorariaDasGrades(db: Db): Promise<void> {
+        const grades = db.collection<Document>("gradeHorario");
+        const aulasAtivas = await grades.find({ "auditoria.deletadoEm": null }).toArray();
+        const cargas = new Map<string, { total: number; aulas: Document[] }>();
+
+        aulasAtivas.forEach(aula => {
+            try {
+                const duracao = GradeHorario.calcularDuracaoMinutos(aula.horaInicio, aula.horaFim);
+                const chave = `${aula.turma}\u0000${aula.cod}`;
+                const grupo = cargas.get(chave) || { total: 0, aulas: [] };
+                grupo.total += duracao;
+                grupo.aulas.push({ ...aula, duracaoAulaMinutos: duracao });
+                cargas.set(chave, grupo);
+            } catch {
+                // Uma grade legada inválida não pode impedir a aplicação de iniciar.
+                // Ela não entra nos alertas até ser corrigida no cadastro da grade.
+            }
+        });
+
+        const atualizacoes = Array.from(cargas.values()).flatMap(grupo =>
+            grupo.aulas.map(aula => ({
+                updateOne: {
+                    filter: { _id: aula._id },
+                    update: {
+                        $set: {
+                            duracaoAulaMinutos: aula.duracaoAulaMinutos,
+                            cargaHorariaSemanalMinutos: grupo.total
+                        }
+                    }
+                }
+            }))
+        );
+        if (atualizacoes.length > 0) {
+            await grades.bulkWrite(atualizacoes);
+        }
+    }
+
+    /** Garante as regras iniciais, que podem ser alteradas pelo Processo Pedagógico. */
+    private async criarConfiguracoesPadraoDeAlertas(db: Db): Promise<void> {
+        const configuracoes = db.collection<Document>("configuracoesAlertasFaltas");
+        if (await configuracoes.countDocuments() > 0) return;
+        const padroes = [
+            { cargaHorariaSemanalMinutos: 50, limiteFaltas: 3 },
+            { cargaHorariaSemanalMinutos: 100, limiteFaltas: 5 }
+        ].map(configuracao => ({
+            ...configuracao,
+            auditoria: {
+                criadoPor: "sistema",
+                criadoEm: new Date(),
+                alteradoPor: "",
+                alteradoEm: null,
+                deletadoPor: "",
+                deletadoEm: null
+            }
+        }));
+        await configuracoes.insertMany(padroes);
     }
 
     /**

@@ -126,3 +126,15 @@ O sistema conserva por 12 meses o vínculo anterior de cada aluno ao trocar sua 
 8. IMPORTAÇÃO DE PLANILHAS
 
 As telas de alunos e grade de horários aceitam Excel, CSV e TSV e identificam as colunas pelos cabeçalhos, sem depender da ordem. Consulte `docs/importacao-de-planilhas.md` para os cabeçalhos reconhecidos e formatos de horário.
+
+9. CARGOS ACEITOS
+
+O sistema aceita somente os cargos `Inspetor` e `Processo Pedagógico`. Consulte `docs/cargos-aceitos.md` para a regra de validação e as permissões preservadas.
+
+10. ACESSO
+
+O acesso é feito exclusivamente com o e-mail e a senha cadastrados. Não há recuperação de senha por e-mail; a alteração de senha é realizada no cadastro de funcionário por quem tiver a permissão correspondente. Consulte `docs/acesso.md`.
+
+11. ALERTAS DE FALTAS
+
+No painel de `Processo Pedagógico`, o sistema avisa quando um aluno atinge o limite de faltas bimestral da disciplina, considerando a carga semanal da grade. Consulte `docs/alertas-de-faltas.md`.

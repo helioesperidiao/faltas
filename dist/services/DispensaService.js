@@ -1,0 +1,49 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.DispensaService = void 0;
+const Dispensa_1 = require("../models/Dispensa");
+const ErrorResponse_1 = require("../http/ErrorResponse");
+const CARGOS_ACESSO_TOTAL = ["Processo Pedagógico"];
+class DispensaService {
+    _dispensaDAO;
+    constructor(dispensaDAODependency) {
+        console.log("⬆️  DispensaService.constructor()");
+        this._dispensaDAO = dispensaDAODependency;
+    }
+    create = async (dispensa, funcionarioLogado) => {
+        console.log("🟣 DispensaService.create()");
+        return await this._dispensaDAO.create(dispensa, funcionarioLogado);
+    };
+    findAll = async () => {
+        console.log("🟣 DispensaService.findAll()");
+        return await this._dispensaDAO.findAll();
+    };
+    findById = async (idDispensa) => {
+        console.log("🟣 DispensaService.findById()");
+        const dispensa = new Dispensa_1.Dispensa();
+        dispensa.idDispensa = idDispensa;
+        return await this._dispensaDAO.findById(dispensa.idDispensa);
+    };
+    findAllDeleted = async (funcionarioLogado) => {
+        console.log("🟣 DispensaService.findAllDeleted()");
+        const cargoFuncionario = funcionarioLogado.cargo.nomeCargo;
+        if (!CARGOS_ACESSO_TOTAL.includes(cargoFuncionario)) {
+            throw new ErrorResponse_1.ErrorResponse(403, "Não autorizado", { message: `Apenas ${CARGOS_ACESSO_TOTAL.join(", ")} podem visualizar dispensas deletadas.` });
+        }
+        return await this._dispensaDAO.findAllDeleted();
+    };
+    update = async (dispensa, funcionarioLogado) => {
+        console.log("🟣 DispensaService.update()");
+        return await this._dispensaDAO.update(dispensa, funcionarioLogado);
+    };
+    delete = async (dispensa, funcionarioLogado) => {
+        console.log("🟣 DispensaService.delete()");
+        return await this._dispensaDAO.delete(dispensa, funcionarioLogado);
+    };
+    count = async () => {
+        console.log("🟣 DispensaService.count()");
+        return await this._dispensaDAO.count();
+    };
+}
+exports.DispensaService = DispensaService;
+//# sourceMappingURL=DispensaService.js.map

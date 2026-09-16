@@ -4,7 +4,7 @@ import { ErrorResponse } from "../http/ErrorResponse";
 import { Funcionario } from "@/models/Funcionario";
 import { AlunoDAO } from "../dao/AlunoDAO";
 
-const CARGOS_ACESSO_TOTAL = ["Administrador", "Coordenador", "Diretor", "Processos Pedagógicos"];
+const CARGOS_ACESSO_TOTAL = ["Processo Pedagógico"];
 
 export class RegistroService {
     private _registroDAO: RegistroDAO;

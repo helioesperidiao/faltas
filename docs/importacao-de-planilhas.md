@@ -4,8 +4,10 @@
 
 As importações de alunos e de grade de horários leem a primeira aba de arquivos Excel (`.xlsx`, `.xls` e `.xlsm`) e também arquivos CSV ou TSV. A posição das colunas não importa: o sistema encontra as informações pelo texto do cabeçalho da planilha antes de criar qualquer registro.
 
-Para alunos, os campos essenciais são matrícula, nome e turma. Para a grade, são turma, horário de início, horário de fim, dia, código e disciplina. Os nomes podem variar, por exemplo, `Matrícula` ou `RA`, `Nome do aluno`, `Horário início`, `Dia da semana` e `Código`. Se algum campo obrigatório não for reconhecido, a importação é interrompida e mostra quais cabeçalhos faltaram.
+Para alunos, a importação reconhece o layout com `ANO_REF`, `CURSO`, `TURMA_PREF`, `SERIE`, `SIT_ALUNO`, `ALUNO`, `NOME_COMPL`, dados de nascimento, RG, contato do aluno e contatos de pai, mãe, financeiro e responsável legal. No layout, `ALUNO` é salvo como matrícula e `NOME_COMPL` como nome completo. Todos esses cabeçalhos são verificados antes da importação.
+
+Para a grade, os cabeçalhos são `TURMA`, `DISCIPLINA`, `NOME_DESCIPLINA`, `SEMANA_EXTENSO` e `HORAINICIALFINAL`. `DISCIPLINA` é o código da disciplina e `NOME_DESCIPLINA` é o nome exibido. O valor de `SEMANA_EXTENSO`, como `quarta-feira`, é reduzido para o dia da semana, e `HORAINICIALFINAL`, como `10:50-11:40`, é separado em início e fim.
 
 ## Horários de aula
 
-A grade preserva horários com minutos e aceita formatos como `7`, `07:00`, `07h30` e valores de horário do Excel. Todos são guardados no formato `HH:MM`, evitando que uma formatação diferente da planilha cause erro ou descarte os minutos.
+A grade preserva horários com minutos e aceita formatos como `7`, `07:00`, `07h30`, `10:50-11:40` e valores de horário do Excel. Todos são guardados no formato `HH:MM`, evitando que uma formatação diferente da planilha cause erro ou descarte os minutos.

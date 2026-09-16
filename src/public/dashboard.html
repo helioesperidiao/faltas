@@ -53,6 +53,16 @@
       color: var(--univap-texto-suave);
       margin: 0;
     }
+    .alerta-faltas {
+      margin-bottom: 20px;
+      border: 1px solid #d98b86;
+      border-left: 5px solid var(--univap-vermelho);
+      background: #fff7f6;
+    }
+    .alerta-faltas .card-header { color: #7f1f1a; }
+    .alerta-faltas-lista { margin: 0; padding-left: 20px; }
+    .alerta-faltas-lista li { margin: 7px 0; font-size: 13px; color: #3c2523; }
+    .alerta-faltas-vazio { margin: 0; color: var(--univap-texto-suave); font-size: 13px; }
 
     @media (max-width: 700px) {
       .modulos {
@@ -71,6 +81,11 @@
       <p id="mensagem-boas-vindas">Escolha um módulo abaixo para começar.</p>
     </div>
 
+    <section class="card alerta-faltas" id="alerta-faltas-bimestral" hidden aria-live="polite">
+      <div class="card-header">Atenção: faltas no bimestre</div>
+      <div class="card-body" id="alerta-faltas-conteudo"></div>
+    </section>
+
     <div class="card">
       <div class="card-header">Acesso rápido</div>
       <div class="card-body">
@@ -85,12 +100,14 @@
   </main>
 
   <script type="module">
-    import { exigirSessao, montarTopbar, paginasPermitidas, escaparHtml } from './js/Topbar.js';
+    import ApiService from './ApiService.js';
+    import { exigirSessao, montarTopbar, paginasPermitidas, escaparHtml, temAcessoTotal } from './js/Topbar.js';
 
     const sessao = exigirSessao();
 
     if (sessao) {
       montarTopbar('dashboard');
+      carregarAlertasDeFalta();
 
       // ---------- SAUDAÇÃO COM O NOME DE QUEM ESTÁ LOGADO ----------
       const primeiroNome = (sessao.nome || '').trim().split(/\s+/)[0];
@@ -122,6 +139,32 @@
       `).join('');
 
       document.getElementById('aviso-sem-modulos').hidden = modulos.length > 0;
+    }
+
+    async function carregarAlertasDeFalta() {
+      if (!temAcessoTotal(sessao.cargo)) return;
+
+      const resposta = await new ApiService(sessao.token).get('api/v1/relatorios/alertas-faltas-bimestral');
+      if (!resposta.success) return;
+
+      const painel = document.getElementById('alerta-faltas-bimestral');
+      const conteudo = document.getElementById('alerta-faltas-conteudo');
+      const dados = resposta.data || {};
+      const alertas = dados.alertas || [];
+      painel.hidden = false;
+
+      if (alertas.length === 0) {
+        conteudo.innerHTML = '<p class="alerta-faltas-vazio">Nenhum aluno atingiu o limite de faltas neste bimestre.</p>';
+        return;
+      }
+
+      const titulo = 'Há ' + alertas.length + (alertas.length === 1 ? ' alerta' : ' alertas')
+        + ' no ' + dados.bimestre + 'º bimestre de ' + dados.ano + '.';
+      const itens = alertas.map(alerta => '<li><strong>' + escaparHtml(alerta.alunoNome) + '</strong>'
+        + ' — ' + escaparHtml(alerta.disciplina) + ' (' + escaparHtml(alerta.turma) + '): '
+        + alerta.totalFaltas + ' faltas; limite de ' + alerta.limiteFaltas
+        + ' para ' + alerta.cargaHorariaSemanalMinutos + ' minutos semanais.</li>').join('');
+      conteudo.innerHTML = '<p class="alerta-faltas-vazio">' + titulo + '</p><ul class="alerta-faltas-lista">' + itens + '</ul>';
     }
   </script>
 </body>

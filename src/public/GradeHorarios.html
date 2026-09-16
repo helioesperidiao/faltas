@@ -39,7 +39,7 @@
   <div class="card mb-3">
     <div class="card-header">Importar Grade via planilha</div>
     <div class="card-body">
-      <p class="text-muted">A importação identifica os cabeçalhos da sua planilha. São aceitos, por exemplo, “Turma”, “Horário início”, “Horário fim”, “Dia da semana”, “Código” e “Disciplina”, em qualquer ordem.</p>
+      <p class="text-muted">Use os cabeçalhos TURMA, DISCIPLINA, NOME_DESCIPLINA, SEMANA_EXTENSO e HORAINICIALFINAL. O sistema separa horários como 10:50-11:40 e normaliza dias como quarta-feira.</p>
       <input type="file" id="fileCsv" class="form-control mb-2" accept=".xlsx,.xls,.xlsm,.csv,.tsv,.txt" aria-label="Planilha de grade de horários para importação" />
       <button type="button" id="btnImportar" class="btn btn-primary mb-2">Importar</button>
       <div class="progress mb-2" style="display:none;" id="divProgressoWrap">
@@ -62,7 +62,7 @@
   <script type="module">
     import { montarTopbar } from './js/Topbar.js';
     import ApiService from './ApiService.js';
-    import { ESQUEMAS_IMPORTACAO, lerArquivoPlanilha, prepararImportacao } from './js/ImportadorCsv.js';
+    import { ESQUEMAS_IMPORTACAO, lerArquivoPlanilha, normalizarLinhaGradeHorario, prepararImportacao } from './js/ImportadorCsv.js';
 
     let userData = localStorage.getItem("userData");
     if (userData) {
@@ -228,7 +228,7 @@
 
       const texto = await lerArquivoPlanilha(fileCsv.files[0]);
       const importacao = prepararImportacao(texto, ESQUEMAS_IMPORTACAO.gradeHorarios,
-        ["turma", "horaInicio", "horaFim", "dia", "cod", "disciplina"]);
+        ["turma", "horaInicio", "horaFim", "dia", "cod", "disciplina"], normalizarLinhaGradeHorario);
       const linhas = importacao.linhas;
 
       if (importacao.ausentes.length > 0) {

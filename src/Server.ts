@@ -10,7 +10,7 @@ import { AbonoRouter } from "./routers/AbonoRouter";
 import { AlunoRouter } from "./routers/AlunoRouter";
 import { GradeHorarioRouter } from "./routers/GradeHorarioRouter";
 import { RelatorioRouter } from "./routers/RelatorioRouter";
-import { RecuperacaoSenhaRouter } from "./routers/RecuperacaoSenhaRouter";
+import { ConfiguracaoAlertaFaltaRouter } from "./routers/ConfiguracaoAlertaFaltaRouter";
 import { ErrorResponse } from "./http/ErrorResponse";
 import { StandardResponse } from "./http/StandardResponse";
 import { MongoDatabase } from "./database/MongoDatabase";
@@ -27,7 +27,7 @@ export class Server {
     private _alunoRouter: AlunoRouter;
     private _gradeHorarioRouter: GradeHorarioRouter;
     private _relatorioRouter: RelatorioRouter;
-    private _recuperacaoSenhaRouter: RecuperacaoSenhaRouter;
+    private _configuracaoAlertaFaltaRouter: ConfiguracaoAlertaFaltaRouter;
     private _dataBase: MongoDatabase;
 
     constructor(porta?: number) {
@@ -45,7 +45,7 @@ export class Server {
         this._alunoRouter = new AlunoRouter(this._dataBase);
         this._gradeHorarioRouter = new GradeHorarioRouter(this._dataBase);
         this._relatorioRouter = new RelatorioRouter(this._dataBase);
-        this._recuperacaoSenhaRouter = new RecuperacaoSenhaRouter(this._dataBase);
+        this._configuracaoAlertaFaltaRouter = new ConfiguracaoAlertaFaltaRouter(this._dataBase);
     }
 
     async init(): Promise<void> {
@@ -67,10 +67,7 @@ export class Server {
         this._app.use(this._alunoRouter.getRouter());
         this._app.use(this._gradeHorarioRouter.getRouter());
         this._app.use(this._relatorioRouter.getRouter());
-        // Rotas públicas de recuperação de senha (sem JWT: quem esqueceu a senha não autentica)
-        this._app.use(this._recuperacaoSenhaRouter.getRouter());
-
-
+        this._app.use(this._configuracaoAlertaFaltaRouter.getRouter());
         this.setupErrorMiddleware();
     }
 

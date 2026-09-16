@@ -2,6 +2,7 @@ import { CargoDAO } from "../dao/CargoDAO";
 import { Cargo } from "../models/Cargo";
 import { ErrorResponse } from "../http/ErrorResponse";
 import { Funcionario } from "@/models/Funcionario";
+import { cargoAceito, CARGO_PROCESSO_PEDAGOGICO, nomeCargoCanonico } from "@/constants/Cargos";
 
 /**
  * Classe responsável pela camada de serviço para a entidade Cargo.
@@ -26,24 +27,32 @@ export class CargoService {
     /**
      * Cria um novo cargo.
      * 
-     * 🔹 Regra de negócio: apenas usuários com cargo "Administrador" podem criar novos cargos.
+     * 🔹 Regra de negócio: apenas Processo Pedagógico pode criar os cargos aceitos.
      * 🔹 Regra de negócio: não pode existir outro cargo com o mesmo nome.
      * 
      * @param cargo - Objeto Cargo a ser criado.
      * @param funcionarioLogado - Funcionário autenticado que está realizando a operação.
      * @returns O cargo criado com o ID preenchido.
-     * @throws {ErrorResponse} Se o usuário não for Administrador ou se o cargo já existir.
+     * @throws {ErrorResponse} Se o usuário não for Processo Pedagógico ou se o cargo já existir.
      */
     public create = async (cargo: Cargo, funcionarioLogado: Funcionario): Promise<Cargo> => {
         console.log("🟣 CargoService.createCargo()");
 
-        if (funcionarioLogado.cargo.nomeCargo !== "Administrador") {
+        if (funcionarioLogado.cargo.nomeCargo !== CARGO_PROCESSO_PEDAGOGICO) {
             throw new ErrorResponse(
                 403,
                 "Não autorizado",
                 { message: `O cargo "${funcionarioLogado.cargo.nomeCargo}" não é autorizado a criar cargos.` }
             );
         }
+
+        const nomeCanonico = nomeCargoCanonico(cargo.nomeCargo);
+        if (!nomeCanonico || !cargoAceito(cargo.nomeCargo)) {
+            throw new ErrorResponse(400, "Cargo inválido", {
+                message: "Os únicos cargos aceitos são Inspetor e Processo Pedagógico."
+            });
+        }
+        cargo.nomeCargo = nomeCanonico;
 
         // Verifica se já existe um cargo com o mesmo nome
         const resultado = await this._cargoDAO.findByField("nomeCargo", cargo.nomeCargo);
@@ -66,14 +75,15 @@ export class CargoService {
      */
     public findAll = async (): Promise<Cargo[]> => {
         console.log("🟣 CargoService.findAll()");
-        return await this._cargoDAO.findAll();
+        const cargos = await this._cargoDAO.findAll();
+        return cargos.filter(cargo => cargoAceito(cargo.nomeCargo));
     };
 
 
     /**
      * Retorna todos os cargos que foram deletados (soft delete).
      * 
-     * 🔹 Requer autenticação: apenas funcionários com cargo "Administrador" ou "Gerente" podem visualizar registros deletados.
+     * 🔹 Requer autenticação: apenas Processo Pedagógico pode visualizar registros deletados.
      * 
      * @param funcionarioLogado - Funcionário autenticado que está realizando a operação.
      * @returns Lista de cargos deletados.
@@ -82,7 +92,7 @@ export class CargoService {
         console.log("🟣 CargoService.findAllDeleted()");
 
         // Cargos autorizados a visualizar registros deletados
-        const cargosPermitidos = ["Administrador", "Diretor"];
+        const cargosPermitidos = [CARGO_PROCESSO_PEDAGOGICO];
         const cargoFuncionario = funcionarioLogado.cargo.nomeCargo;
 
         if (!cargosPermitidos.includes(cargoFuncionario)) {
@@ -93,7 +103,8 @@ export class CargoService {
             );
         }
 
-        return await this._cargoDAO.findAllDeleted();
+        const cargos = await this._cargoDAO.findAllDeleted();
+        return cargos.filter(cargo => cargoAceito(cargo.nomeCargo));
     };
 
 
@@ -120,6 +131,20 @@ export class CargoService {
      */
     public update = async (cargo: Cargo, funcionarioLogado: Funcionario): Promise<boolean> => {
         console.log("🟣 CargoService.updateCargo()");
+        if (funcionarioLogado.cargo.nomeCargo !== CARGO_PROCESSO_PEDAGOGICO) {
+            throw new ErrorResponse(403, "Não autorizado");
+        }
+        const nomeCanonico = nomeCargoCanonico(cargo.nomeCargo);
+        if (!nomeCanonico) {
+            throw new ErrorResponse(400, "Cargo inválido", {
+                message: "Os únicos cargos aceitos são Inspetor e Processo Pedagógico."
+            });
+        }
+        const cargoExistente = await this._cargoDAO.findById(cargo.idCargo);
+        if (!cargoExistente) {
+            return false;
+        }
+        cargo.nomeCargo = nomeCanonico;
         return await this._cargoDAO.update(cargo, funcionarioLogado);
     };
 

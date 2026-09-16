@@ -20,7 +20,7 @@ export class AbonoService {
     public create = async (abono: Abono, funcionarioLogado: Funcionario): Promise<Abono> => {
         console.log("🟣 AbonoService.create()");
 
-        const cargosPermitidos = ["Inspetor", "Coordenador", "Secretaria"];
+        const cargosPermitidos = ["Inspetor", "Processo Pedagógico"];
         if (!cargosPermitidos.includes(funcionarioLogado.cargo.nomeCargo)) {
             throw new ErrorResponse(
                 403,
@@ -57,7 +57,7 @@ export class AbonoService {
     public findAllDeleted = async (funcionarioLogado: Funcionario): Promise<Abono[]> => {
         console.log("🟣 AbonoService.findAllDeleted()");
 
-        const cargosPermitidos = ["Administrador", "Diretor"];
+        const cargosPermitidos = ["Processo Pedagógico"];
         const cargoFuncionario = funcionarioLogado.cargo.nomeCargo;
 
         if (!cargosPermitidos.includes(cargoFuncionario)) {
@@ -74,7 +74,7 @@ export class AbonoService {
     public update = async (abono: Abono, funcionarioLogado: Funcionario): Promise<boolean> => {
         console.log("🟣 AbonoService.update()");
 
-        const cargosPermitidos = ["Inspetor", "Coordenador", "Secretaria"];
+        const cargosPermitidos = ["Inspetor", "Processo Pedagógico"];
         if (!cargosPermitidos.includes(funcionarioLogado.cargo.nomeCargo)) {
             throw new ErrorResponse(
                 403,
@@ -95,11 +95,11 @@ export class AbonoService {
         return await this._abonoDAO.update(abono, funcionarioLogado);
     };
 
-    //aprovar: exclusivo de Coordenador (orientador). Ao aprovar, converte as faltas do período em Abonada.
+    //aprovar: Processo Pedagógico. Ao aprovar, converte as faltas do período em Abonada.
     public aprovar = async (idAbono: string, funcionarioLogado: Funcionario): Promise<Abono> => {
         console.log("🟣 AbonoService.aprovar()");
 
-        const cargosPermitidos = ["Coordenador"];
+        const cargosPermitidos = ["Processo Pedagógico"];
         if (!cargosPermitidos.includes(funcionarioLogado.cargo.nomeCargo)) {
             throw new ErrorResponse(
                 403,
@@ -131,11 +131,11 @@ export class AbonoService {
         return abono;
     };
 
-    //rejeitar: exclusivo de Coordenador (orientador)
+    //rejeitar: Processo Pedagógico
     public rejeitar = async (idAbono: string, funcionarioLogado: Funcionario): Promise<Abono> => {
         console.log("🟣 AbonoService.rejeitar()");
 
-        const cargosPermitidos = ["Coordenador"];
+        const cargosPermitidos = ["Processo Pedagógico"];
         if (!cargosPermitidos.includes(funcionarioLogado.cargo.nomeCargo)) {
             throw new ErrorResponse(
                 403,
@@ -162,7 +162,7 @@ export class AbonoService {
     public delete = async (abono: Abono, funcionarioLogado: Funcionario): Promise<boolean> => {
         console.log("🟣 AbonoService.delete()");
 
-        const cargosPermitidos = ["Coordenador", "Administrador"];
+        const cargosPermitidos = ["Processo Pedagógico"];
         if (!cargosPermitidos.includes(funcionarioLogado.cargo.nomeCargo)) {
             throw new ErrorResponse(
                 403,
