@@ -7,3 +7,5 @@
 - [Cargos aceitos](cargos-aceitos.md): cargos permitidos e preservação de permissões.
 - [Acesso ao sistema](acesso.md): autenticação por senha cadastrada, sem recuperação por e-mail.
 - [Alertas de faltas bimestrais](alertas-de-faltas.md): limites por disciplina e cálculo da carga semanal.
+- [Chamada e relatórios](chamada-e-relatorios.md): presença padrão, registro de faltas e filtro de turma.
+- [Exclusão de registros](exclusao-de-registros.md): exclusão lógica, atualização das listagens e mensagens de resultado.

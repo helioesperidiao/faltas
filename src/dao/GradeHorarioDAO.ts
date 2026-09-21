@@ -53,7 +53,10 @@ export class GradeHorarioDAO {
         grade.marcarDeletadoPor(funcionarioLogado.idFuncionario);
 
         const gradeExistente = await collection.findOne({ _id: new ObjectId(grade.idGradeHorario) });
-        const filter: Filter<Document> = { _id: new ObjectId(grade.idGradeHorario) };
+        const filter: Filter<Document> = {
+            _id: new ObjectId(grade.idGradeHorario),
+            "auditoria.deletadoEm": null
+        };
         const update: UpdateFilter<Document> = {
             $set: {
                 "auditoria.deletadoPor": grade.auditoria.deletadoPor,

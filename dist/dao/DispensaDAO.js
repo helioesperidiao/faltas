@@ -42,7 +42,10 @@ class DispensaDAO {
         console.log("🟢 DispensDAO.delete(" + dispensa.idDispensa + ")");
         const collection = await this.getCollection();
         dispensa.marcarDeletadoPor(funcionarioLogado.idFuncionario);
-        const filter = { _id: new mongodb_1.ObjectId(dispensa.idDispensa) };
+        const filter = {
+            _id: new mongodb_1.ObjectId(dispensa.idDispensa),
+            "auditoria.deletadoEm": null
+        };
         const update = {
             $set: {
                 "auditoria.deletadoPor": dispensa.auditoria.deletadoPor,

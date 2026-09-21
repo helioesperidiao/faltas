@@ -56,6 +56,9 @@ export class Server {
         this._app.use(cors({ origin: "*" }));
         this._app.use(express.json());
         this._app.use("/vendor/xlsx", express.static(path.resolve(__dirname, "../node_modules/xlsx/dist")));
+        // Tabelas completas de codificação para planilhas legadas (.xls/CSV),
+        // incluindo Windows-1252, usual em arquivos brasileiros.
+        this._app.use("/vendor/codepage", express.static(path.resolve(__dirname, "../node_modules/codepage/dist")));
         this._app.use(express.static(path.resolve(__dirname, "public")));
 
         // Rotas da API (os routers já têm seus prefixos internos)

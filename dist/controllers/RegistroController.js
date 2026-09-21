@@ -64,6 +64,17 @@ class RegistroController extends BaseController_1.BaseController {
             registros: ausentes
         }).send(response);
     };
+    findChamadaPorTurmaEDia = async (request, response) => {
+        const turma = request.query.turma?.toString() || '';
+        const diaTexto = request.query.dia?.toString() || '';
+        const dia = new Date(diaTexto);
+        if (!turma || !diaTexto || Number.isNaN(dia.getTime())) {
+            StandardResponse_1.StandardResponse.error("Parâmetros 'turma' e 'dia' são obrigatórios", null, 400).send(response);
+            return;
+        }
+        const registros = await this._registroService.findChamadaPorTurmaEDia(turma, dia);
+        StandardResponse_1.StandardResponse.success("Chamada consultada com sucesso", { registros }).send(response);
+    };
     findById = async (_request, response) => {
         console.log("🔵 RegistroController.findById()");
         const registroId = _request.params.idRegistro.toString();

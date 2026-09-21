@@ -60,6 +60,45 @@ export class RelatorioService {
         this._alertaFaltaDAO = alertaFaltaDAODependency;
     }
 
+    /** Normaliza os nomes de dia aceitos pela grade, inclusive `quarta-feira`. */
+    private normalizarDiaSemana = (valor: string): string => {
+        const texto = String(valor || '')
+            // Corrige as formas corrompidas mais comuns de dias em XLS legados.
+            .replace(/ter\uFFFDa/gi, 'terça')
+            .replace(/s\uFFFDbado/gi, 'sábado')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .replace(/[^a-z]+/g, ' ')
+            .trim();
+        const dias = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"];
+        return dias.find(dia => texto === dia || texto.startsWith(`${dia} `)) || texto;
+    };
+
+    /** A chamada usa YYYY-MM-DD; UTC evita trocar quinta por quarta no Brasil. */
+    private diaSemanaDaData = (data: Date): string => {
+        const dias = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"];
+        return dias[data.getUTCDay()];
+    };
+
+    /**
+     * Chave estável para identificar turmas importadas. Alguns arquivos legados
+     * usam siglas diferentes para a mesma turma (por exemplo, ETecInf e EConInf).
+     */
+    private normalizarTurma = (valor: string): string => String(valor || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '');
+
+    /**
+     * Compatibiliza as siglas históricas sem perder a preferência pela turma
+     * idêntica. É usada somente quando a grade não contém o nome exato salvo
+     * no registro de chamada.
+     */
+    private normalizarTurmaEquivalente = (valor: string): string =>
+        this.normalizarTurma(valor).replace(/^(etec|econ)/, '');
+
     //frequência de uma turma num dia: busca os alunos da turma, depois os registros do dia, e interpola via software
     public frequenciaPorTurma = async (turma: string, dia: Date): Promise<FrequenciaAluno[]> => {
         console.log("🟣 RelatorioService.frequenciaPorTurma()");
@@ -168,39 +207,85 @@ export class RelatorioService {
             configuracao.limiteFaltas
         ]));
 
-        const disciplinas = new Map<string, { disciplina: string; carga: number }>();
+        const gradesPorTurmaEDia = new Map<string, typeof grades>();
+        const gradesPorTurmaEquivalenteEDia = new Map<string, typeof grades>();
         grades.forEach(grade => {
-            disciplinas.set(`${grade.turma}\u0000${grade.cod}`, {
+            const dia = this.normalizarDiaSemana(grade.dia);
+            const chaveDia = `${this.normalizarTurma(grade.turma)}\u0000${dia}`;
+            const aulasDoDia = gradesPorTurmaEDia.get(chaveDia) || [];
+            aulasDoDia.push(grade);
+            gradesPorTurmaEDia.set(chaveDia, aulasDoDia);
+
+            const chaveEquivalente = `${this.normalizarTurmaEquivalente(grade.turma)}\u0000${dia}`;
+            const aulasDaTurmaEquivalente = gradesPorTurmaEquivalenteEDia.get(chaveEquivalente) || [];
+            aulasDaTurmaEquivalente.push(grade);
+            gradesPorTurmaEquivalenteEDia.set(chaveEquivalente, aulasDaTurmaEquivalente);
+        });
+
+        const aulasDaTurmaNoDia = (turma: string, dia: string): typeof grades => {
+            const chaveExata = `${this.normalizarTurma(turma)}\u0000${dia}`;
+            const aulasExatas = gradesPorTurmaEDia.get(chaveExata) || [];
+            if (aulasExatas.length > 0) return aulasExatas;
+
+            const chaveEquivalente = `${this.normalizarTurmaEquivalente(turma)}\u0000${dia}`;
+            return gradesPorTurmaEquivalenteEDia.get(chaveEquivalente) || [];
+        };
+
+        // A chamada diária é geral (código GERAL). Para cada ausência, ela é
+        // distribuída entre as disciplinas que a turma tinha naquele dia da semana.
+        // Registros já abonados ou dispensados foram removidos pela consulta do DAO.
+        const faltasPorAlunoEDisciplina = new Map<string, {
+            registro: Registro;
+            codDisciplina: string;
+            disciplina: string;
+            cargaHorariaSemanalMinutos: number;
+            totalFaltas: number;
+        }>();
+        const registrarFaltaDaDisciplina = (registro: Registro, grade: typeof grades[number]): void => {
+            const chave = `${registro.matricula}\u0000${registro.turma}\u0000${grade.turma}\u0000${grade.cod}`;
+            const falta = faltasPorAlunoEDisciplina.get(chave) || {
+                registro,
+                codDisciplina: grade.cod,
                 disciplina: grade.disciplina,
-                carga: grade.cargaHorariaSemanalMinutos
+                cargaHorariaSemanalMinutos: grade.cargaHorariaSemanalMinutos,
+                totalFaltas: 0
+            };
+            // Cada registro de chamada representa uma falta. Os dois horários
+            // consecutivos da mesma matéria são deduplicados antes deste ponto.
+            falta.totalFaltas += 1;
+            faltasPorAlunoEDisciplina.set(chave, falta);
+        };
+
+        registros.forEach(registro => {
+            const diaSemana = this.diaSemanaDaData(registro.dia);
+            const aulasDoDia = aulasDaTurmaNoDia(registro.turma, diaSemana);
+            if (registro.codDisciplina.trim().toUpperCase() !== "GERAL") {
+                const gradeDaDisciplina = aulasDoDia.find(grade => grade.cod === registro.codDisciplina);
+                if (gradeDaDisciplina) registrarFaltaDaDisciplina(registro, gradeDaDisciplina);
+                return;
+            }
+
+            const codigosDaChamada = new Set<string>();
+            aulasDoDia.forEach(grade => {
+                if (codigosDaChamada.has(grade.cod)) return;
+                codigosDaChamada.add(grade.cod);
+                registrarFaltaDaDisciplina(registro, grade);
             });
         });
 
-        const faltasPorAlunoEDisciplina = new Map<string, Registro[]>();
-        registros.forEach(registro => {
-            const chaveDisciplina = `${registro.turma}\u0000${registro.codDisciplina}`;
-            if (!disciplinas.has(chaveDisciplina)) return;
-            const chave = `${registro.matricula}\u0000${chaveDisciplina}`;
-            const faltas = faltasPorAlunoEDisciplina.get(chave) || [];
-            faltas.push(registro);
-            faltasPorAlunoEDisciplina.set(chave, faltas);
-        });
-
         const alertas: AlertaFaltaBimestral[] = [];
-        faltasPorAlunoEDisciplina.forEach(faltas => {
-            const registro = faltas[0];
-            const detalheDisciplina = disciplinas.get(`${registro.turma}\u0000${registro.codDisciplina}`)!;
-            const limiteFaltas = limitesPorCarga.get(detalheDisciplina.carga) || 0;
+        faltasPorAlunoEDisciplina.forEach(({ registro, codDisciplina, disciplina, cargaHorariaSemanalMinutos, totalFaltas }) => {
+            const limiteFaltas = limitesPorCarga.get(cargaHorariaSemanalMinutos) || 0;
 
-            if (limiteFaltas > 0 && faltas.length >= limiteFaltas) {
+            if (limiteFaltas > 0 && totalFaltas >= limiteFaltas) {
                 alertas.push({
                     matricula: registro.matricula,
                     alunoNome: registro.alunoNome,
                     turma: registro.turma,
-                    codDisciplina: registro.codDisciplina,
-                    disciplina: detalheDisciplina.disciplina,
-                    totalFaltas: faltas.length,
-                    cargaHorariaSemanalMinutos: detalheDisciplina.carga,
+                    codDisciplina,
+                    disciplina,
+                    totalFaltas,
+                    cargaHorariaSemanalMinutos,
                     limiteFaltas
                 });
             }

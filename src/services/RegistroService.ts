@@ -87,4 +87,9 @@ export class RegistroService {
 
         return await this._registroDAO.findAusentesEntrada(matriculas, dia);
     };
+
+    /** Consulta os registros gerais da chamada já concluída para restaurá-la na tela. */
+    public findChamadaPorTurmaEDia = async (turma: string, dia: Date): Promise<Registro[]> => {
+        return await this._registroDAO.findChamadaPorTurmaEDia(turma, dia);
+    };
 }

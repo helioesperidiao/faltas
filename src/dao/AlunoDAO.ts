@@ -69,7 +69,10 @@ export class AlunoDAO {
         const collection = await this.getCollection();
         aluno.marcarDeletadoPor(funcionarioLogado.idFuncionario);
 
-        const filter: Filter<Document> = { _id: new ObjectId(aluno.idAluno) };
+        const filter: Filter<Document> = {
+            _id: new ObjectId(aluno.idAluno),
+            "auditoria.deletadoEm": null
+        };
         const update: UpdateFilter<Document> = {
             $set: {
                 "auditoria.deletadoPor": aluno.auditoria.deletadoPor,
@@ -220,14 +223,26 @@ export class AlunoDAO {
     public async findByTurmaNoPeriodo(turma: string, dataInicio: Date, dataFim: Date): Promise<Aluno[]> {
         const alunos = await this.findAll();
         const agora = new Date();
+        const diaUtc = (data: Date): number => Date.UTC(
+            data.getUTCFullYear(),
+            data.getUTCMonth(),
+            data.getUTCDate()
+        );
+        const inicioConsulta = diaUtc(dataInicio);
+        const fimConsulta = diaUtc(dataFim);
+        const hoje = diaUtc(agora);
 
         return alunos.filter(aluno => {
-            const vinculoAtual = aluno.turma === turma && aluno.turmaInicioEm <= dataFim;
+            // A turma começa em um instante do dia, mas a tela consulta uma data sem
+            // horário (00:00). Comparar os instantes fazia o aluno sumir justamente
+            // no dia em que foi cadastrado ou teve a turma atualizada.
+            const inicioTurmaAtual = diaUtc(aluno.turmaInicioEm);
+            const vinculoAtual = aluno.turma === turma && inicioTurmaAtual <= fimConsulta;
             const vinculoHistorico = aluno.historicoTurmas.some(historico =>
                 historico.turma === turma &&
-                historico.inicioEm <= dataFim &&
-                historico.fimEm >= dataInicio &&
-                historico.disponivelAte >= agora
+                diaUtc(historico.inicioEm) <= fimConsulta &&
+                diaUtc(historico.fimEm) >= inicioConsulta &&
+                diaUtc(historico.disponivelAte) >= hoje
             );
             return vinculoAtual || vinculoHistorico;
         });

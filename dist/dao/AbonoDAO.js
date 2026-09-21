@@ -43,7 +43,10 @@ class AbonoDAO {
         console.log("🟢 AbonoDAO.delete(" + abono.idAbono + ")");
         const collection = await this.getCollection();
         abono.marcarDeletadoPor(funcionarioLogado.idFuncionario);
-        const filter = { _id: new mongodb_1.ObjectId(abono.idAbono) };
+        const filter = {
+            _id: new mongodb_1.ObjectId(abono.idAbono),
+            "auditoria.deletadoEm": null
+        };
         const update = {
             $set: {
                 "auditoria.deletadoPor": abono.auditoria.deletadoPor,

@@ -48,6 +48,39 @@ function normalizarTexto(valor) {
     .trim();
 }
 
+function pontuacaoCodificacao(texto) {
+  return (texto.match(/[\uFFFDÃÂ]/g) || []).length;
+}
+
+function exportarPrimeiraAbaComoCsv(dados, codigoPagina) {
+  const workbook = window.XLSX.read(dados, {
+    type: "array",
+    // Usa o valor original da célula, sem uma formatação intermediária que
+    // poderia trocar caracteres acentuados por símbolos.
+    cellText: false,
+    cellDates: true,
+    raw: true,
+    codepage: codigoPagina
+  });
+  const primeiraAba = workbook.SheetNames[0];
+  if (!primeiraAba) return null;
+
+  return window.XLSX.utils.sheet_to_csv(workbook.Sheets[primeiraAba], {
+    FS: ";",
+    RS: "\n",
+    blankrows: false,
+    forceQuotes: true,
+    raw: true
+  });
+}
+
+/** Escolhe UTF-8 ou Windows-1252 antes que um acento inválido se perca. */
+function decodificarTextoPlanilha(dados) {
+  const utf8 = new TextDecoder("utf-8", { fatal: false }).decode(dados);
+  const windows1252 = new TextDecoder("windows-1252", { fatal: false }).decode(dados);
+  return pontuacaoCodificacao(windows1252) < pontuacaoCodificacao(utf8) ? windows1252 : utf8;
+}
+
 function contarSeparadores(linha, separador) {
   let total = 0;
   let entreAspas = false;
@@ -112,6 +145,9 @@ function encontrarIndice(cabecalhos, apelidos) {
  * pela API. A posição das colunas é irrelevante: os nomes do cabeçalho fazem o mapeamento.
  */
 export function prepararImportacao(texto, esquema, obrigatorios, transformarLinha = null) {
+  if (texto == null) {
+    return { linhas: [], cabecalhos: [], mapeamento: {}, ausentes: [], finalizada: true };
+  }
   const linhas = String(texto || "").split(/\r?\n/).filter(linha => linha.trim());
   if (linhas.length < 2) {
     return { linhas: [], cabecalhos: [], mapeamento: {}, ausentes: obrigatorios };
@@ -154,24 +190,24 @@ export function normalizarLinhaGradeHorario(linha) {
 
 /** Lê a primeira aba de arquivos CSV, TSV e Excel sem alterar os cabeçalhos. */
 export async function lerArquivoPlanilha(arquivo) {
+  if (arquivo == null) {
+    return null;
+  }
   const extensao = (arquivo.name.split('.').pop() || '').toLowerCase();
   if (["xlsx", "xls", "xlsm"].includes(extensao)) {
     if (!window.XLSX) {
       throw new Error("Leitor de planilhas Excel indisponível.");
     }
     const dados = await arquivo.arrayBuffer();
-    const workbook = window.XLSX.read(dados, { type: "array", cellText: true, cellDates: true });
-    const primeiraAba = workbook.SheetNames[0];
-    if (!primeiraAba) {
-      throw new Error("A planilha não possui uma aba para importar.");
-    }
-    return window.XLSX.utils.sheet_to_csv(workbook.Sheets[primeiraAba], {
-      FS: ";",
-      RS: "\n",
-      blankrows: false,
-      forceQuotes: true,
-      rawNumbers: false
-    });
+    // Arquivos XLS antigos podem não declarar corretamente sua página de código.
+    // Lemos as duas codificações mais comuns e conservamos a que não introduz
+    // caracteres substitutos ou texto corrompido.
+    const codigosPagina = extensao === "xls" ? [1252, 65001] : [65001];
+    const tentativas = codigosPagina
+      .map(codigoPagina => exportarPrimeiraAbaComoCsv(dados, codigoPagina))
+      .filter(texto => texto !== null);
+    if (tentativas.length === 0) return null;
+    return tentativas.sort((a, b) => pontuacaoCodificacao(a) - pontuacaoCodificacao(b))[0];
   }
-  return arquivo.text();
+  return decodificarTextoPlanilha(await arquivo.arrayBuffer());
 }

@@ -91,6 +91,19 @@ export class RegistroController extends BaseController {
         }).send(response);
     };
 
+    /** Consulta uma chamada geral salva, para que a tela mostre as marcações existentes. */
+    public findChamadaPorTurmaEDia = async (request: Request, response: Response): Promise<void> => {
+        const turma = request.query.turma?.toString() || '';
+        const diaTexto = request.query.dia?.toString() || '';
+        const dia = new Date(diaTexto);
+        if (!turma || !diaTexto || Number.isNaN(dia.getTime())) {
+            StandardResponse.error("Parâmetros 'turma' e 'dia' são obrigatórios", null, 400).send(response);
+            return;
+        }
+        const registros = await this._registroService.findChamadaPorTurmaEDia(turma, dia);
+        StandardResponse.success("Chamada consultada com sucesso", { registros }).send(response);
+    };
+
     //findById
     public findById = async (_request: Request, response: Response): Promise<void> => {
         console.log("🔵 RegistroController.findById()");

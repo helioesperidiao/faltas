@@ -38,6 +38,10 @@ export declare class RelatorioService {
     private _configuracaoAlertaFaltaDAO;
     private _alertaFaltaDAO;
     constructor(alunoDAODependency: AlunoDAO, registroDAODependency: RegistroDAO, gradeHorarioDAODependency: GradeHorarioDAO, configuracaoAlertaFaltaDAODependency: ConfiguracaoAlertaFaltaDAO, alertaFaltaDAODependency: AlertaFaltaDAO);
+    private normalizarDiaSemana;
+    private diaSemanaDaData;
+    private normalizarTurma;
+    private normalizarTurmaEquivalente;
     frequenciaPorTurma: (turma: string, dia: Date) => Promise<FrequenciaAluno[]>;
     faltasPorTurmaEPeriodo: (turma: string, dataInicio: Date, dataFim: Date) => Promise<FaltasPorAluno[]>;
     faltasPorTurmaSemana: (turma: string, data: Date) => Promise<FaltasPorAluno[]>;

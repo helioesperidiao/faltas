@@ -78,7 +78,10 @@
           if (!window.confirm('Excluir esta regra de alerta?')) return;
           const respostaExcluir = await api.delete('api/v1/alertas-faltas/configuracoes', botao.dataset.excluir);
           mostrarMensagem(respostaExcluir.success ? 'Regra excluída.' : (respostaExcluir.message || 'Não foi possível excluir a regra.'), respostaExcluir.success ? 'success' : 'danger');
-          if (respostaExcluir.success) { limparFormulario(); carregarConfiguracoes(); carregarAlertas(); }
+          if (respostaExcluir.success) {
+            limparFormulario();
+            await Promise.all([carregarConfiguracoes(), carregarAlertas()]);
+          }
         });
       }
 

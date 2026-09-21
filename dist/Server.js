@@ -53,6 +53,7 @@ class Server {
         this._app.use((0, cors_1.default)({ origin: "*" }));
         this._app.use(express_1.default.json());
         this._app.use("/vendor/xlsx", express_1.default.static(path_1.default.resolve(__dirname, "../node_modules/xlsx/dist")));
+        this._app.use("/vendor/codepage", express_1.default.static(path_1.default.resolve(__dirname, "../node_modules/codepage/dist")));
         this._app.use(express_1.default.static(path_1.default.resolve(__dirname, "public")));
         this._app.use(this._cargoRouter.getRouter());
         this._app.use(this._funcionarioRouter.getRouter());

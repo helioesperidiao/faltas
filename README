@@ -138,3 +138,7 @@ O acesso é feito exclusivamente com o e-mail e a senha cadastrados. Não há re
 11. ALERTAS DE FALTAS
 
 No painel de `Processo Pedagógico`, o sistema avisa quando um aluno atinge o limite de faltas bimestral da disciplina, considerando a carga semanal da grade. Consulte `docs/alertas-de-faltas.md`.
+
+12. CHAMADA E RELATÓRIOS
+
+A chamada registra presença como padrão e grava a turma completa ao ser concluída. Os relatórios usam a mesma lista de turmas da chamada. Consulte `docs/chamada-e-relatorios.md`.

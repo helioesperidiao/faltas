@@ -14,5 +14,6 @@ export declare class RegistroService {
     delete: (registro: Registro, funcionarioLogado: Funcionario) => Promise<boolean>;
     count: () => Promise<number>;
     findAusentesEntrada: (turma: string, dia: Date) => Promise<Registro[]>;
+    findChamadaPorTurmaEDia: (turma: string, dia: Date) => Promise<Registro[]>;
 }
 //# sourceMappingURL=RegistroService.d.ts.map

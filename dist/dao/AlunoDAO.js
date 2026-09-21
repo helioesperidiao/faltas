@@ -60,7 +60,10 @@ class AlunoDAO {
         console.log("🟢 AlunoDAO.delete(" + aluno.idAluno + ")");
         const collection = await this.getCollection();
         aluno.marcarDeletadoPor(funcionarioLogado.idFuncionario);
-        const filter = { _id: new mongodb_1.ObjectId(aluno.idAluno) };
+        const filter = {
+            _id: new mongodb_1.ObjectId(aluno.idAluno),
+            "auditoria.deletadoEm": null
+        };
         const update = {
             $set: {
                 "auditoria.deletadoPor": aluno.auditoria.deletadoPor,
@@ -198,12 +201,17 @@ class AlunoDAO {
     async findByTurmaNoPeriodo(turma, dataInicio, dataFim) {
         const alunos = await this.findAll();
         const agora = new Date();
+        const diaUtc = (data) => Date.UTC(data.getUTCFullYear(), data.getUTCMonth(), data.getUTCDate());
+        const inicioConsulta = diaUtc(dataInicio);
+        const fimConsulta = diaUtc(dataFim);
+        const hoje = diaUtc(agora);
         return alunos.filter(aluno => {
-            const vinculoAtual = aluno.turma === turma && aluno.turmaInicioEm <= dataFim;
+            const inicioTurmaAtual = diaUtc(aluno.turmaInicioEm);
+            const vinculoAtual = aluno.turma === turma && inicioTurmaAtual <= fimConsulta;
             const vinculoHistorico = aluno.historicoTurmas.some(historico => historico.turma === turma &&
-                historico.inicioEm <= dataFim &&
-                historico.fimEm >= dataInicio &&
-                historico.disponivelAte >= agora);
+                diaUtc(historico.inicioEm) <= fimConsulta &&
+                diaUtc(historico.fimEm) >= inicioConsulta &&
+                diaUtc(historico.disponivelAte) >= hoje);
             return vinculoAtual || vinculoHistorico;
         });
     }

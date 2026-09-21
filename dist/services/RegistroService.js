@@ -63,6 +63,9 @@ class RegistroService {
         }
         return await this._registroDAO.findAusentesEntrada(matriculas, dia);
     };
+    findChamadaPorTurmaEDia = async (turma, dia) => {
+        return await this._registroDAO.findChamadaPorTurmaEDia(turma, dia);
+    };
 }
 exports.RegistroService = RegistroService;
 //# sourceMappingURL=RegistroService.js.map

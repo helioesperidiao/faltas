@@ -33,7 +33,10 @@ class CargoDAO {
         console.log("🟢 CargoDAO.delete(" + objCargoModel.idCargo + ")");
         const collection = await this.getCollection();
         objCargoModel.marcarDeletadoPor(funcionarioLogado.idFuncionario);
-        const filter = { _id: new mongodb_1.ObjectId(objCargoModel.idCargo) };
+        const filter = {
+            _id: new mongodb_1.ObjectId(objCargoModel.idCargo),
+            "auditoria.deletadoEm": null
+        };
         const update = {
             $set: {
                 "auditoria.deletadoPor": objCargoModel.auditoria.deletadoPor,

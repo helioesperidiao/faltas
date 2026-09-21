@@ -16,6 +16,28 @@ class RelatorioService {
         this._configuracaoAlertaFaltaDAO = configuracaoAlertaFaltaDAODependency;
         this._alertaFaltaDAO = alertaFaltaDAODependency;
     }
+    normalizarDiaSemana = (valor) => {
+        const texto = String(valor || '')
+            .replace(/ter\uFFFDa/gi, 'terça')
+            .replace(/s\uFFFDbado/gi, 'sábado')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .replace(/[^a-z]+/g, ' ')
+            .trim();
+        const dias = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"];
+        return dias.find(dia => texto === dia || texto.startsWith(`${dia} `)) || texto;
+    };
+    diaSemanaDaData = (data) => {
+        const dias = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"];
+        return dias[data.getUTCDay()];
+    };
+    normalizarTurma = (valor) => String(valor || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '');
+    normalizarTurmaEquivalente = (valor) => this.normalizarTurma(valor).replace(/^(etec|econ)/, '');
     frequenciaPorTurma = async (turma, dia) => {
         console.log("🟣 RelatorioService.frequenciaPorTurma()");
         const alunosDaTurma = await this._alunoDAO.findByTurmaNoPeriodo(turma, dia, dia);
@@ -94,37 +116,69 @@ class RelatorioService {
             configuracao.cargaHorariaSemanalMinutos,
             configuracao.limiteFaltas
         ]));
-        const disciplinas = new Map();
+        const gradesPorTurmaEDia = new Map();
+        const gradesPorTurmaEquivalenteEDia = new Map();
         grades.forEach(grade => {
-            disciplinas.set(`${grade.turma}\u0000${grade.cod}`, {
+            const dia = this.normalizarDiaSemana(grade.dia);
+            const chaveDia = `${this.normalizarTurma(grade.turma)}\u0000${dia}`;
+            const aulasDoDia = gradesPorTurmaEDia.get(chaveDia) || [];
+            aulasDoDia.push(grade);
+            gradesPorTurmaEDia.set(chaveDia, aulasDoDia);
+            const chaveEquivalente = `${this.normalizarTurmaEquivalente(grade.turma)}\u0000${dia}`;
+            const aulasDaTurmaEquivalente = gradesPorTurmaEquivalenteEDia.get(chaveEquivalente) || [];
+            aulasDaTurmaEquivalente.push(grade);
+            gradesPorTurmaEquivalenteEDia.set(chaveEquivalente, aulasDaTurmaEquivalente);
+        });
+        const aulasDaTurmaNoDia = (turma, dia) => {
+            const chaveExata = `${this.normalizarTurma(turma)}\u0000${dia}`;
+            const aulasExatas = gradesPorTurmaEDia.get(chaveExata) || [];
+            if (aulasExatas.length > 0)
+                return aulasExatas;
+            const chaveEquivalente = `${this.normalizarTurmaEquivalente(turma)}\u0000${dia}`;
+            return gradesPorTurmaEquivalenteEDia.get(chaveEquivalente) || [];
+        };
+        const faltasPorAlunoEDisciplina = new Map();
+        const registrarFaltaDaDisciplina = (registro, grade) => {
+            const chave = `${registro.matricula}\u0000${registro.turma}\u0000${grade.turma}\u0000${grade.cod}`;
+            const falta = faltasPorAlunoEDisciplina.get(chave) || {
+                registro,
+                codDisciplina: grade.cod,
                 disciplina: grade.disciplina,
-                carga: grade.cargaHorariaSemanalMinutos
+                cargaHorariaSemanalMinutos: grade.cargaHorariaSemanalMinutos,
+                totalFaltas: 0
+            };
+            falta.totalFaltas += 1;
+            faltasPorAlunoEDisciplina.set(chave, falta);
+        };
+        registros.forEach(registro => {
+            const diaSemana = this.diaSemanaDaData(registro.dia);
+            const aulasDoDia = aulasDaTurmaNoDia(registro.turma, diaSemana);
+            if (registro.codDisciplina.trim().toUpperCase() !== "GERAL") {
+                const gradeDaDisciplina = aulasDoDia.find(grade => grade.cod === registro.codDisciplina);
+                if (gradeDaDisciplina)
+                    registrarFaltaDaDisciplina(registro, gradeDaDisciplina);
+                return;
+            }
+            const codigosDaChamada = new Set();
+            aulasDoDia.forEach(grade => {
+                if (codigosDaChamada.has(grade.cod))
+                    return;
+                codigosDaChamada.add(grade.cod);
+                registrarFaltaDaDisciplina(registro, grade);
             });
         });
-        const faltasPorAlunoEDisciplina = new Map();
-        registros.forEach(registro => {
-            const chaveDisciplina = `${registro.turma}\u0000${registro.codDisciplina}`;
-            if (!disciplinas.has(chaveDisciplina))
-                return;
-            const chave = `${registro.matricula}\u0000${chaveDisciplina}`;
-            const faltas = faltasPorAlunoEDisciplina.get(chave) || [];
-            faltas.push(registro);
-            faltasPorAlunoEDisciplina.set(chave, faltas);
-        });
         const alertas = [];
-        faltasPorAlunoEDisciplina.forEach(faltas => {
-            const registro = faltas[0];
-            const detalheDisciplina = disciplinas.get(`${registro.turma}\u0000${registro.codDisciplina}`);
-            const limiteFaltas = limitesPorCarga.get(detalheDisciplina.carga) || 0;
-            if (limiteFaltas > 0 && faltas.length >= limiteFaltas) {
+        faltasPorAlunoEDisciplina.forEach(({ registro, codDisciplina, disciplina, cargaHorariaSemanalMinutos, totalFaltas }) => {
+            const limiteFaltas = limitesPorCarga.get(cargaHorariaSemanalMinutos) || 0;
+            if (limiteFaltas > 0 && totalFaltas >= limiteFaltas) {
                 alertas.push({
                     matricula: registro.matricula,
                     alunoNome: registro.alunoNome,
                     turma: registro.turma,
-                    codDisciplina: registro.codDisciplina,
-                    disciplina: detalheDisciplina.disciplina,
-                    totalFaltas: faltas.length,
-                    cargaHorariaSemanalMinutos: detalheDisciplina.carga,
+                    codDisciplina,
+                    disciplina,
+                    totalFaltas,
+                    cargaHorariaSemanalMinutos,
                     limiteFaltas
                 });
             }

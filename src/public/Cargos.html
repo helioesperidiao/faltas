@@ -67,7 +67,7 @@
   </div>
 
   <!-- FILTRO -->
-  <div class="card mb-3">
+  <div class="card mb-3" id="cardFiltro">
     <div class="card-header">Filtro de Cargo</div>
     <div class="card-body">
       <div class="row">
@@ -86,7 +86,7 @@
   </div>
 
   <!-- CADASTRO -->
-  <div class="card mb-3">
+  <div class="card mb-3" id="cardCadastro">
     <div class="card-header">Cadastro de Cargo</div>
     <div class="card-body">
       <div class="mb-3">
@@ -137,6 +137,7 @@
 
     const api = new ApiService(sessao.token);
     montarTopbar('cargos');
+    document.getElementById('cardFiltro').before(document.getElementById('cardCadastro'));
 
     let API_DATA;
     // Funcionários carregados uma vez e agrupados por cargo, para mostrar a contagem
@@ -230,13 +231,15 @@
       const btnConfirmDelete = document.getElementById("btnConfirmDelete");
       btnConfirmDelete.onclick = async () => {
         const resposta = await api.delete("api/v1/cargos", id);
-        if (resposta.success) {
-          mostrarMensagem(resposta.message || "Cargo excluído com sucesso", "success");
-          listAll();
+        if (resposta?.success) {
           txtId.value = "";
           txtNomeCargo.value = "";
+          const listaAtualizada = await listAll();
+          if (listaAtualizada) {
+            mostrarMensagem(resposta.message || "Cargo excluído com sucesso", "success");
+          }
         } else {
-          mostrarMensagem(resposta.message || "Erro ao excluir cargo", "danger");
+          mostrarMensagem(resposta?.message || "Erro ao excluir cargo", "danger");
           if (resposta.error) console.error(resposta.error);
         }
         modal.hide();
@@ -280,16 +283,18 @@
         carregarFuncionariosPorCargo()
       ]);
 
-      if (resposta.success) {
+      if (resposta?.success) {
         API_DATA = resposta.data;
         cargoExpandido = null;
         renderTable(API_DATA);
         // Não mexe na área de mensagem: criar, atualizar e excluir chamam listAll() logo
         // depois de mostrarMensagem(), e limpar aqui apagaria o aviso de sucesso — antes
         // sumia o texto inteiro, depois só a cor do alerta.
+        return true;
       } else {
-        mostrarMensagem(resposta.message || "Erro ao carregar cargos", "danger");
+        mostrarMensagem(resposta?.message || "Erro ao carregar cargos", "danger");
         if (resposta.error) console.error(resposta.error);
+        return false;
       }
     }
 

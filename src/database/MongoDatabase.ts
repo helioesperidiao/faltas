@@ -193,6 +193,7 @@ export class MongoDatabase {
             db.collection("aluno").createIndex({ turma: 1, turmaInicioEm: 1 }),
             db.collection("registro").createIndex({ turma: 1, dia: 1, matricula: 1 }),
             db.collection("abonos").createIndex({ turma: 1, dataInicio: 1 }),
+            db.collection("gradeHorario").createIndex({ turma: 1, dia: 1, cod: 1 }),
             db.collection("alertasFaltas").createIndex({ ano: 1, bimestre: 1, matricula: 1, turma: 1, codDisciplina: 1 })
         ]);
 

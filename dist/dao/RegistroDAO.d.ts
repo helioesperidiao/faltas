@@ -17,5 +17,6 @@ export declare class RegistroDAO {
     count(): Promise<number>;
     findByField(field: string, value: any): Promise<Registro[]>;
     findAusentesEntrada(matriculas: string[], dia: Date): Promise<Registro[]>;
+    findChamadaPorTurmaEDia(turma: string, dia: Date): Promise<Registro[]>;
 }
 //# sourceMappingURL=RegistroDAO.d.ts.map

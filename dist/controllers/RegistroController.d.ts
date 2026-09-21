@@ -8,6 +8,7 @@ export declare class RegistroController extends BaseController {
     findAll: (_request: Request, response: Response) => Promise<void>;
     findAllDeleted: (request: Request, response: Response) => Promise<void>;
     findAusentesEntrada: (request: Request, response: Response) => Promise<void>;
+    findChamadaPorTurmaEDia: (request: Request, response: Response) => Promise<void>;
     findById: (_request: Request, response: Response) => Promise<void>;
     update: (request: Request, response: Response) => Promise<void>;
     delete: (request: Request, response: Response) => Promise<void>;

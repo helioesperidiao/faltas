@@ -47,6 +47,11 @@ export class RegistroRouter {
             registroController.findAusentesEntrada
         );
 
+        this._router.get(RegistroRouter.PREFIX + "/chamada",
+            jwtMiddleware.validateToken,
+            registroController.findChamadaPorTurmaEDia
+        );
+
         this._router.get(RegistroRouter.PREFIX + "/:idRegistro",
             jwtMiddleware.validateToken,
             registroController.findById

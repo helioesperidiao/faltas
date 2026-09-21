@@ -59,6 +59,8 @@
   </main>
 
   <script src="vendor/xlsx/xlsx.full.min.js"></script>
+  <script src="vendor/codepage/cpexcel.full.js"></script>
+  <script>if (window.XLSX && window.cptable) window.XLSX.set_cptable(window.cptable);</script>
   <script type="module">
     import { montarTopbar } from './js/Topbar.js';
     import ApiService from './ApiService.js';
@@ -84,6 +86,7 @@
     const txtDisciplina = document.getElementById("txtDisciplina");
     const divBotoes = document.getElementById("divBotoes");
     const divResposta = document.getElementById("divResposta");
+    let gradesAtuais = [];
 
     function createButton(text, className) {
       const btn = document.createElement("button");
@@ -158,6 +161,7 @@
     async function listAll() {
       const resposta = await api.get("api/v1/gradehorarios");
       if (resposta.success) {
+        gradesAtuais = resposta.data.gradeHorarios || [];
         renderTable(resposta.data);
       } else {
         mostrarMensagem(resposta.message || "Erro ao carregar grades", "danger");
@@ -220,13 +224,28 @@
     const barraProgresso = document.getElementById("barraProgresso");
     const divFalhas = document.getElementById("divFalhas");
 
+    function chaveDaGrade(grade) {
+      const dia = String(grade.dia || '').replace(/^ter.a$/i, 'terça');
+      return [grade.turma, grade.horaInicio, grade.horaFim, dia, grade.cod]
+        .map(valor => String(valor || '')
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase()
+          .trim())
+        .join('|');
+    }
+
     btnImportar.onclick = async () => {
       if (!fileCsv.files.length) {
         mostrarMensagem("Selecione uma planilha", "warning");
         return;
       }
 
-      const texto = await lerArquivoPlanilha(fileCsv.files[0]);
+      const texto = await lerArquivoPlanilha(fileCsv.files[0] || null);
+      if (texto === null) {
+        mostrarMensagem("A leitura da planilha foi concluída sem dados para importar.", "warning");
+        return;
+      }
       const importacao = prepararImportacao(texto, ESQUEMAS_IMPORTACAO.gradeHorarios,
         ["turma", "horaInicio", "horaFim", "dia", "cod", "disciplina"], normalizarLinhaGradeHorario);
       const linhas = importacao.linhas;
@@ -243,22 +262,37 @@
       divProgressoWrap.style.display = "block";
       divFalhas.innerHTML = "";
       const falhas = [];
+      const respostaGradesAtuais = await api.get("api/v1/gradehorarios");
+      const gradesParaImportar = respostaGradesAtuais.success
+        ? respostaGradesAtuais.data.gradeHorarios || []
+        : gradesAtuais;
+      const gradesPorChave = new Map(gradesParaImportar.map(grade => [chaveDaGrade(grade), grade]));
+      let criadas = 0;
+      let atualizadas = 0;
 
       for (let i = 0; i < linhas.length; i++) {
         const linha = linhas[i];
         try {
-          const resposta = await api.post("api/v1/gradehorarios", {
-            gradeHorario: {
-              turma: linha.turma,
-              horaInicio: linha.horaInicio,
-              horaFim: linha.horaFim,
-              dia: linha.dia,
-              cod: linha.cod,
-              disciplina: linha.disciplina
-            }
-          });
+          const gradeHorario = {
+            turma: linha.turma,
+            horaInicio: linha.horaInicio,
+            horaFim: linha.horaFim,
+            dia: linha.dia,
+            cod: linha.cod,
+            disciplina: linha.disciplina
+          };
+          const chave = chaveDaGrade(gradeHorario);
+          const existente = gradesPorChave.get(chave);
+          const resposta = existente
+            ? await api.put("api/v1/gradehorarios", existente.idGradeHorario, { gradeHorario })
+            : await api.post("api/v1/gradehorarios", { gradeHorario });
           if (!resposta.success) {
             falhas.push({ linha: linha.__linha, motivo: resposta.message || "Falha desconhecida" });
+          } else if (existente) {
+            atualizadas += 1;
+          } else {
+            criadas += 1;
+            gradesPorChave.set(chave, resposta.data.gradeHorarios[0]);
           }
         } catch (erro) {
           falhas.push({ linha: linha.__linha, motivo: erro.message });
@@ -275,7 +309,7 @@
       } else {
         const cabecalhos = Object.entries(importacao.mapeamento).map(([campo, indice]) =>
           `${campo} ← ${importacao.cabecalhos[indice]}`).join(" · ");
-        divFalhas.innerHTML = `<div class="alert alert-success">Importação concluída sem falhas.<br><small>Cabeçalhos identificados: ${cabecalhos}</small></div>`;
+        divFalhas.innerHTML = `<div class="alert alert-success">Importação concluída sem falhas: ${criadas} criada(s) e ${atualizadas} atualizada(s).<br><small>Cabeçalhos identificados: ${cabecalhos}</small></div>`;
       }
 
       fileCsv.value = "";

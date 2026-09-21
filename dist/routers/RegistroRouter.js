@@ -25,6 +25,7 @@ class RegistroRouter {
         this._router.get(RegistroRouter.PREFIX + "/count", jwtMiddleware.validateToken, registroController.count);
         this._router.get(RegistroRouter.PREFIX + "/deleted", jwtMiddleware.validateToken, registroController.findAllDeleted);
         this._router.get(RegistroRouter.PREFIX + "/ausentes-entrada", jwtMiddleware.validateToken, registroController.findAusentesEntrada);
+        this._router.get(RegistroRouter.PREFIX + "/chamada", jwtMiddleware.validateToken, registroController.findChamadaPorTurmaEDia);
         this._router.get(RegistroRouter.PREFIX + "/:idRegistro", jwtMiddleware.validateToken, registroController.findById);
         this._router.put(RegistroRouter.PREFIX + "/:idRegistro", jwtMiddleware.validateToken, registroController.update);
         this._router.delete(RegistroRouter.PREFIX + "/:idRegistro", jwtMiddleware.validateToken, registroController.delete);

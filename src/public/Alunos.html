@@ -20,7 +20,55 @@
 
   <h1 class="mb-4">Gerenciamento de Alunos</h1>
 
-  <div class="card mb-3">
+  <div class="card mb-3" id="cardCadastroAluno">
+    <div class="card-header">Cadastro de Aluno</div>
+    <div class="card-body">
+      <input type="text" id="txtId" class="form-control mb-2" disabled placeholder="ID (para update)" aria-label="ID do aluno selecionado" />
+      <input type="text" id="txtMatricula" class="form-control mb-2" placeholder="Matrícula" aria-label="Matrícula do aluno" />
+      <input type="text" id="txtAlunoNome" class="form-control mb-2" placeholder="Nome do aluno" aria-label="Nome do aluno" />
+      <input type="text" id="txtTurma" class="form-control mb-2" placeholder="Turma" aria-label="Turma do aluno" />
+      <input type="text" id="txtCurso" class="form-control mb-2" placeholder="Curso" aria-label="Curso do aluno" />
+      <div class="row g-2 mb-2">
+        <div class="col-md-6"><input type="text" id="txtSerie" class="form-control" placeholder="Série" aria-label="Série do aluno" /></div>
+        <div class="col-md-6"><input type="number" id="txtAno" class="form-control" placeholder="Ano letivo" aria-label="Ano letivo" /></div>
+      </div>
+      <div class="row g-2 mb-2">
+        <div class="col-md-6"><input type="text" id="txtSituacao" class="form-control" placeholder="Situação do aluno" aria-label="Situação do aluno" value="Ativo" /></div>
+        <div class="col-md-6"><input type="text" id="txtDataNascimento" class="form-control" placeholder="Data de nascimento" aria-label="Data de nascimento" /></div>
+        <div class="col-md-6"><input type="text" id="txtAlunoRG" class="form-control" placeholder="RG do aluno" aria-label="RG do aluno" /></div>
+        <div class="col-md-6"><input type="text" id="txtAlunoFone" class="form-control" placeholder="Telefone do aluno" aria-label="Telefone do aluno" /></div>
+        <div class="col-md-6"><input type="email" id="txtAlunoEmail" class="form-control" placeholder="E-mail do aluno" aria-label="E-mail do aluno" /></div>
+        <div class="col-md-6"><input type="text" id="txtAlunoFoneCel" class="form-control" placeholder="Celular do aluno" aria-label="Celular do aluno" /></div>
+      </div>
+      <h3 class="h6 mt-3">Dados do pai</h3>
+      <div class="row g-2 mb-2">
+        <div class="col-md-6"><input type="text" id="txtPaiNome" class="form-control" placeholder="Nome do pai" /></div>
+        <div class="col-md-6"><input type="text" id="txtPaiFoneCel" class="form-control" placeholder="Celular do pai" /></div>
+        <div class="col-md-6"><input type="text" id="txtPaiFoneFixo" class="form-control" placeholder="Telefone do pai" /></div>
+        <div class="col-md-6"><input type="text" id="txtPaiFoneRecado" class="form-control" placeholder="Telefone para recado do pai" /></div>
+        <div class="col-md-12"><input type="email" id="txtPaiEmail" class="form-control" placeholder="E-mail do pai" /></div>
+      </div>
+      <h3 class="h6 mt-3">Dados da mãe</h3>
+      <div class="row g-2 mb-2">
+        <div class="col-md-6"><input type="text" id="txtMaeNome" class="form-control" placeholder="Nome da mãe" /></div>
+        <div class="col-md-6"><input type="text" id="txtMaeFoneCel" class="form-control" placeholder="Celular da mãe" /></div>
+        <div class="col-md-6"><input type="text" id="txtMaeFoneFixo" class="form-control" placeholder="Telefone da mãe" /></div>
+        <div class="col-md-6"><input type="text" id="txtMaeFoneRecado" class="form-control" placeholder="Telefone para recado da mãe" /></div>
+        <div class="col-md-12"><input type="email" id="txtMaeEmail" class="form-control" placeholder="E-mail da mãe" /></div>
+      </div>
+      <h3 class="h6 mt-3">Responsáveis financeiro e legal</h3>
+      <div class="row g-2 mb-2">
+        <div class="col-md-6"><input type="text" id="txtFinanNome" class="form-control" placeholder="Nome do responsável financeiro" /></div>
+        <div class="col-md-6"><input type="text" id="txtFinanFone" class="form-control" placeholder="Telefone do responsável financeiro" /></div>
+        <div class="col-md-6"><input type="text" id="txtLegalNome" class="form-control" placeholder="Nome do responsável legal" /></div>
+        <div class="col-md-6"><input type="text" id="txtLegalFone" class="form-control" placeholder="Telefone do responsável legal" /></div>
+      </div>
+      <div class="mb-3 d-flex gap-2" id="divBotoes"></div>
+      <div id="divResposta" role="status" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <div class="card mb-3" id="cardFiltroAluno">
     <div class="card-header">Filtro de Aluno</div>
     <div class="card-body">
       <div class="row">
@@ -36,24 +84,7 @@
     </div>
   </div>
 
-  <div class="card mb-3">
-    <div class="card-header">Cadastro de Aluno</div>
-    <div class="card-body">
-      <input type="text" id="txtId" class="form-control mb-2" disabled placeholder="ID (para update)" aria-label="ID do aluno selecionado" />
-      <input type="text" id="txtMatricula" class="form-control mb-2" placeholder="Matrícula" aria-label="Matrícula do aluno" />
-      <input type="text" id="txtAlunoNome" class="form-control mb-2" placeholder="Nome do aluno" aria-label="Nome do aluno" />
-      <input type="text" id="txtTurma" class="form-control mb-2" placeholder="Turma" aria-label="Turma do aluno" />
-      <input type="text" id="txtCurso" class="form-control mb-2" placeholder="Curso" aria-label="Curso do aluno" />
-      <div class="row g-2 mb-2">
-        <div class="col-md-6"><input type="text" id="txtSerie" class="form-control" placeholder="Série" aria-label="Série do aluno" /></div>
-        <div class="col-md-6"><input type="number" id="txtAno" class="form-control" placeholder="Ano letivo" aria-label="Ano letivo" /></div>
-      </div>
-      <div class="mb-3 d-flex gap-2" id="divBotoes"></div>
-      <div id="divResposta" role="status" aria-live="polite"></div>
-    </div>
-  </div>
-
-  <div class="card mb-3">
+  <div class="card mb-3" id="cardViradaAluno">
     <div class="card-header">Virada anual de turma</div>
     <div class="card-body">
       <p class="text-muted">Move todos os alunos de uma turma sem recriar cadastros. A turma anterior e seus registros ficam disponíveis por 12 meses.</p>
@@ -68,7 +99,7 @@
   </div>
 
   <!-- Importação em massa: a planilha é lida no navegador e cada linha validada vira um POST. -->
-  <div class="card mb-3">
+  <div class="card mb-3" id="cardImportacaoAluno">
     <div class="card-header">Importar Alunos via planilha</div>
     <div class="card-body">
       <p class="text-muted">Use os cabeçalhos ANO_REF, CURSO, TURMA_PREF, SERIE, SIT_ALUNO, ALUNO, NOME_COMPL e os dados de contato dos responsáveis. Todos os cabeçalhos da planilha são identificados antes da importação.</p>
@@ -91,6 +122,8 @@
   </main>
 
   <script src="vendor/xlsx/xlsx.full.min.js"></script>
+  <script src="vendor/codepage/cpexcel.full.js"></script>
+  <script>if (window.XLSX && window.cptable) window.XLSX.set_cptable(window.cptable);</script>
   <script type="module">
     import { montarTopbar } from './js/Topbar.js';
     import ApiService from './ApiService.js';
@@ -106,6 +139,13 @@
     const token = userData.data.token;
     const api = new ApiService(token);
     montarTopbar('alunos');
+    // Ordem de trabalho da secretaria: cadastro, importação, virada, filtro e lista.
+    const cardCadastroAluno = document.getElementById('cardCadastroAluno');
+    cardCadastroAluno.after(
+      document.getElementById('cardImportacaoAluno'),
+      document.getElementById('cardViradaAluno'),
+      document.getElementById('cardFiltroAluno')
+    );
 
     let API_DATA;
     let alunoSelecionado = null;
@@ -117,6 +157,17 @@
     const txtCurso = document.getElementById("txtCurso");
     const txtSerie = document.getElementById("txtSerie");
     const txtAno = document.getElementById("txtAno");
+    const camposComplementares = {
+      situacao: document.getElementById("txtSituacao"), dataNascimento: document.getElementById("txtDataNascimento"),
+      alunoRG: document.getElementById("txtAlunoRG"), alunoFone: document.getElementById("txtAlunoFone"),
+      alunoEmail: document.getElementById("txtAlunoEmail"), alunoFoneCel: document.getElementById("txtAlunoFoneCel"),
+      paiNome: document.getElementById("txtPaiNome"), paiFoneCel: document.getElementById("txtPaiFoneCel"),
+      paiFoneFixo: document.getElementById("txtPaiFoneFixo"), paiFoneRecado: document.getElementById("txtPaiFoneRecado"), paiEmail: document.getElementById("txtPaiEmail"),
+      maeNome: document.getElementById("txtMaeNome"), maeFoneCel: document.getElementById("txtMaeFoneCel"),
+      maeFoneFixo: document.getElementById("txtMaeFoneFixo"), maeFoneRecado: document.getElementById("txtMaeFoneRecado"), maeEmail: document.getElementById("txtMaeEmail"),
+      finanNome: document.getElementById("txtFinanNome"), finanFone: document.getElementById("txtFinanFone"),
+      legalNome: document.getElementById("txtLegalNome"), legalFone: document.getElementById("txtLegalFone")
+    };
     const txtFiltroNome = document.getElementById("txtFiltroNome");
     const txtFiltroTurma = document.getElementById("txtFiltroTurma");
     const divBotoes = document.getElementById("divBotoes");
@@ -143,10 +194,12 @@
       txtCurso.value = "";
       txtSerie.value = "";
       txtAno.value = new Date().getFullYear();
+      Object.entries(camposComplementares).forEach(([campo, input]) => {
+        input.value = campo === "situacao" ? "Ativo" : "";
+      });
     }
 
     function montarObjeto() {
-      const dadosPreservados = alunoSelecionado || {};
       return {
         aluno: {
           matricula: txtMatricula.value.trim(),
@@ -154,27 +207,17 @@
           turma: txtTurma.value.trim(),
           curso: txtCurso.value.trim(),
           serie: txtSerie.value.trim(),
-          situacao: dadosPreservados.situacao || "Ativo",
+          situacao: camposComplementares.situacao.value.trim() || "Ativo",
           ano: String(txtAno.value || new Date().getFullYear()),
-          dataNascimento: dadosPreservados.dataNascimento || "",
-          alunoRG: dadosPreservados.alunoRG || "",
-          alunoFone: dadosPreservados.alunoFone || "",
-          alunoEmail: dadosPreservados.alunoEmail || "",
-          alunoFoneCel: dadosPreservados.alunoFoneCel || "",
-          paiNome: dadosPreservados.paiNome || "",
-          paiFoneCel: dadosPreservados.paiFoneCel || "",
-          paiFoneFixo: dadosPreservados.paiFoneFixo || "",
-          paiFoneRecado: dadosPreservados.paiFoneRecado || "",
-          paiEmail: dadosPreservados.paiEmail || "",
-          maeNome: dadosPreservados.maeNome || "",
-          maeFoneCel: dadosPreservados.maeFoneCel || "",
-          maeFoneFixo: dadosPreservados.maeFoneFixo || "",
-          maeFoneRecado: dadosPreservados.maeFoneRecado || "",
-          maeEmail: dadosPreservados.maeEmail || "",
-          finanNome: dadosPreservados.finanNome || "",
-          finanFone: dadosPreservados.finanFone || "",
-          legalNome: dadosPreservados.legalNome || "",
-          legalFone: dadosPreservados.legalFone || ""
+          dataNascimento: camposComplementares.dataNascimento.value.trim(),
+          alunoRG: camposComplementares.alunoRG.value.trim(), alunoFone: camposComplementares.alunoFone.value.trim(),
+          alunoEmail: camposComplementares.alunoEmail.value.trim(), alunoFoneCel: camposComplementares.alunoFoneCel.value.trim(),
+          paiNome: camposComplementares.paiNome.value.trim(), paiFoneCel: camposComplementares.paiFoneCel.value.trim(),
+          paiFoneFixo: camposComplementares.paiFoneFixo.value.trim(), paiFoneRecado: camposComplementares.paiFoneRecado.value.trim(), paiEmail: camposComplementares.paiEmail.value.trim(),
+          maeNome: camposComplementares.maeNome.value.trim(), maeFoneCel: camposComplementares.maeFoneCel.value.trim(),
+          maeFoneFixo: camposComplementares.maeFoneFixo.value.trim(), maeFoneRecado: camposComplementares.maeFoneRecado.value.trim(), maeEmail: camposComplementares.maeEmail.value.trim(),
+          finanNome: camposComplementares.finanNome.value.trim(), finanFone: camposComplementares.finanFone.value.trim(),
+          legalNome: camposComplementares.legalNome.value.trim(), legalFone: camposComplementares.legalFone.value.trim()
         }
       };
     }
@@ -220,11 +263,13 @@
 
     async function listAll() {
       const resposta = await api.get("api/v1/alunos");
-      if (resposta.success) {
+      if (resposta?.success) {
         API_DATA = resposta.data;
         renderTable(API_DATA);
+        return true;
       } else {
-        mostrarMensagem(resposta.message || "Erro ao carregar alunos", "danger");
+        mostrarMensagem(resposta?.message || "Erro ao carregar alunos", "danger");
+        return false;
       }
     }
 
@@ -268,6 +313,9 @@
           txtCurso.value = aluno.curso;
           txtSerie.value = aluno.serie || "";
           txtAno.value = aluno.ano || new Date().getFullYear();
+          Object.entries(camposComplementares).forEach(([campo, input]) => {
+            input.value = aluno[campo] || (campo === "situacao" ? "Ativo" : "");
+          });
         };
         tdAcoes.appendChild(btnSel);
 
@@ -278,9 +326,11 @@
           }
           const resposta = await api.delete("api/v1/alunos", aluno.idAluno);
           if (resposta.success) {
-            mostrarMensagem("Aluno excluído do cadastro ativo.", "success");
             limparFormulario();
-            listAll();
+            const listaAtualizada = await listAll();
+            if (listaAtualizada) {
+              mostrarMensagem("Aluno excluído do cadastro ativo.", "success");
+            }
           } else {
             mostrarMensagem(resposta.message || "Não foi possível excluir o aluno", "danger");
           }
@@ -383,7 +433,11 @@
         return;
       }
 
-      const texto = await lerArquivoPlanilha(fileCsv.files[0]);
+      const texto = await lerArquivoPlanilha(fileCsv.files[0] || null);
+      if (texto === null) {
+        mostrarMensagem("A leitura da planilha foi concluída sem dados para importar.", "warning");
+        return;
+      }
       const importacao = prepararImportacao(texto, ESQUEMAS_IMPORTACAO.alunos, CAMPOS_PLANILHA_ALUNOS);
       const linhas = importacao.linhas;
 

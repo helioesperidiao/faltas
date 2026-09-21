@@ -44,7 +44,10 @@ class GradeHorarioDAO {
         const collection = await this.getCollection();
         grade.marcarDeletadoPor(funcionarioLogado.idFuncionario);
         const gradeExistente = await collection.findOne({ _id: new mongodb_1.ObjectId(grade.idGradeHorario) });
-        const filter = { _id: new mongodb_1.ObjectId(grade.idGradeHorario) };
+        const filter = {
+            _id: new mongodb_1.ObjectId(grade.idGradeHorario),
+            "auditoria.deletadoEm": null
+        };
         const update = {
             $set: {
                 "auditoria.deletadoPor": grade.auditoria.deletadoPor,

@@ -46,7 +46,10 @@ class RegistroDAO {
         console.log("🟢 RegistroDAO.delete(" + registro.idRegistro + ")");
         const collection = await this.getCollection();
         registro.marcarDeletadoPor(funcionarioLogado.idFuncionario);
-        const filter = { _id: new mongodb_1.ObjectId(registro.idRegistro) };
+        const filter = {
+            _id: new mongodb_1.ObjectId(registro.idRegistro),
+            "auditoria.deletadoEm": null
+        };
         const update = {
             $set: {
                 "auditoria.deletadoPor": registro.auditoria.deletadoPor,
@@ -198,6 +201,18 @@ class RegistroDAO {
         };
         const cursor = collection.find(filter);
         const docs = await cursor.toArray();
+        return docs.map(doc => this.toRegistro(doc));
+    }
+    async findChamadaPorTurmaEDia(turma, dia) {
+        const collection = await this.getCollection();
+        const inicioDia = new Date(Date.UTC(dia.getUTCFullYear(), dia.getUTCMonth(), dia.getUTCDate(), 0, 0, 0, 0));
+        const fimDia = new Date(Date.UTC(dia.getUTCFullYear(), dia.getUTCMonth(), dia.getUTCDate(), 23, 59, 59, 999));
+        const docs = await collection.find({
+            turma,
+            codDisciplina: "GERAL",
+            dia: { $gte: inicioDia, $lte: fimDia },
+            "auditoria.deletadoEm": null
+        }).toArray();
         return docs.map(doc => this.toRegistro(doc));
     }
 }

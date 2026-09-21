@@ -52,7 +52,10 @@ export class AbonoDAO {
         const collection = await this.getCollection();
         abono.marcarDeletadoPor(funcionarioLogado.idFuncionario);
 
-        const filter: Filter<Document> = { _id: new ObjectId(abono.idAbono) };
+        const filter: Filter<Document> = {
+            _id: new ObjectId(abono.idAbono),
+            "auditoria.deletadoEm": null
+        };
         const update: UpdateFilter<Document> = {
             $set: {
                 "auditoria.deletadoPor": abono.auditoria.deletadoPor,

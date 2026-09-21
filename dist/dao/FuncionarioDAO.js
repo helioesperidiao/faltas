@@ -42,10 +42,14 @@ class FuncionarioDAO {
         console.log(`🟢 FuncionarioDAO.delete(${objFuncionarioModel.idFuncionario})`);
         const collection = await this.getCollection();
         objFuncionarioModel.marcarDeletadoPor(funcionarioLogado.idFuncionario);
-        const filter = { _id: new mongodb_1.ObjectId(objFuncionarioModel.idFuncionario) };
+        const filter = {
+            _id: new mongodb_1.ObjectId(objFuncionarioModel.idFuncionario),
+            "auditoria.deletadoEm": null
+        };
         const update = {
             $set: {
-                auditoria: objFuncionarioModel.auditoria
+                "auditoria.deletadoPor": objFuncionarioModel.auditoria.deletadoPor,
+                "auditoria.deletadoEm": objFuncionarioModel.auditoria.deletadoEm
             }
         };
         const result = await collection.updateOne(filter, update);

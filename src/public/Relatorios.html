@@ -25,7 +25,7 @@
     <div class="card-body">
       <div class="row g-2 mb-2">
         <div class="col-md-6">
-          <input type="text" id="txtTurmaFreq" class="form-control" placeholder="Turma" aria-label="Turma para consultar frequência" />
+          <select id="txtTurmaFreq" class="form-select" aria-label="Turma para consultar frequência"><option value="">Selecione a turma</option></select>
         </div>
         <div class="col-md-6">
           <input type="date" id="txtDiaFreq" class="form-control" aria-label="Dia para consultar frequência" />
@@ -41,7 +41,7 @@
     <div class="card-body">
       <div class="row g-2 mb-2">
         <div class="col-md-4">
-          <input type="text" id="txtTurmaFaltas" class="form-control" placeholder="Turma" aria-label="Turma para consultar faltas" />
+          <select id="txtTurmaFaltas" class="form-select" aria-label="Turma para consultar faltas"><option value="">Selecione a turma</option></select>
         </div>
         <div class="col-md-4">
           <select id="cboTipoPeriodo" class="form-select" aria-label="Tipo de período do relatório de faltas">
@@ -98,6 +98,23 @@
     const api = new ApiService(token);
     montarTopbar('relatorios');
 
+    async function carregarTurmas() {
+      const resposta = await api.get("api/v1/alunos");
+      if (!resposta.success) return;
+      const turmas = [...new Set(resposta.data.alunos.map(aluno => aluno.turma).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, "pt-BR"));
+      ["txtTurmaFreq", "txtTurmaFaltas"].forEach(id => {
+        const select = document.getElementById(id);
+        turmas.forEach(turma => {
+          const opcao = document.createElement("option");
+          opcao.value = turma;
+          opcao.textContent = turma;
+          select.appendChild(opcao);
+        });
+      });
+    }
+    carregarTurmas();
+
     document.getElementById("btnFrequencia").onclick = async () => {
       const turma = document.getElementById("txtTurmaFreq").value.trim();
       const dia = document.getElementById("txtDiaFreq").value;
@@ -110,8 +127,13 @@
         return;
       }
 
+      const classeSituacao = situacao => {
+        if (situacao === "Ausente") return "text-danger fw-bold";
+        if (situacao === "Presente") return "text-success fw-bold";
+        return "";
+      };
       const linhas = resposta.data.frequencia.map(item =>
-        `<tr><td>${item.matricula}</td><td>${item.alunoNome}</td><td>${item.situacao}</td></tr>`
+        `<tr><td>${item.matricula}</td><td>${item.alunoNome}</td><td class="${classeSituacao(item.situacao)}">${item.situacao}</td></tr>`
       ).join("");
       divTabela.innerHTML = `<table class="table table-bordered table-striped">
         <thead><tr><th>Matrícula</th><th>Nome</th><th>Situação</th></tr></thead>
