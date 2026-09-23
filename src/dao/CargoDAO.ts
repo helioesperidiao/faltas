@@ -44,7 +44,10 @@ export class CargoDAO {
         // Marca soft delete na auditoria
         objCargoModel.marcarDeletadoPor(funcionarioLogado.idFuncionario);
 
-        const filter: Filter<Document> = { _id: new ObjectId(objCargoModel.idCargo) };
+        const filter: Filter<Document> = {
+            _id: new ObjectId(objCargoModel.idCargo),
+            "auditoria.deletadoEm": null
+        };
         const update: UpdateFilter<Document> = {
             $set: {
                 "auditoria.deletadoPor": objCargoModel.auditoria.deletadoPor,

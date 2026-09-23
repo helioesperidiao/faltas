@@ -170,6 +170,34 @@ export class AlunoController extends BaseController {
         }
     };
 
+    public promoverTurma = async (request: Request, response: Response): Promise<void> => {
+        console.log("🔵 AlunoController.promoverTurma()");
+        const funcionarioLogado = this.getFuncionarioLogado(request);
+        const turmaOrigem = String(request.body.turmaOrigem || '').trim();
+        const turmaDestino = String(request.body.turmaDestino || '').trim();
+        const anoDestino = String(request.body.anoDestino || new Date().getFullYear()).trim();
+        const serieDestino = String(request.body.serieDestino || '').trim();
+
+        if (!turmaOrigem || !turmaDestino) {
+            StandardResponse.error("Informe a turma atual e a nova turma", null, 400).send(response);
+            return;
+        }
+        if (turmaOrigem === turmaDestino) {
+            StandardResponse.error("A nova turma deve ser diferente da turma atual", null, 400).send(response);
+            return;
+        }
+
+        const total = await this._alunoService.promoverTurma(
+            turmaOrigem,
+            turmaDestino,
+            anoDestino,
+            serieDestino,
+            funcionarioLogado
+        );
+
+        StandardResponse.success("Turma atualizada e histórico anual preservado", { total }).send(response);
+    };
+
     public delete = async (request: Request, response: Response): Promise<void> => {
         console.log("🔵 AlunoController.delete()");
 

@@ -3,6 +3,8 @@ import { Dispensa } from "../models/Dispensa";
 import { ErrorResponse } from "../http/ErrorResponse";
 import { Funcionario } from "@/models/Funcionario";
 
+const CARGOS_ACESSO_TOTAL = ["Processo Pedagógico"];
+
 export class DispensaService {
     private _dispensaDAO: DispensaDAO;
 
@@ -15,16 +17,6 @@ export class DispensaService {
     //create
     public create = async (dispensa: Dispensa, funcionarioLogado: Funcionario): Promise<Dispensa> => {
         console.log("🟣 DispensaService.create()");
-
-        const cargosPermitidos = ["Inspetor", "Coordenador"];
-        if (!cargosPermitidos.includes(funcionarioLogado.cargo.nomeCargo)) {
-            throw new ErrorResponse(
-                403,
-                "Não autorizado",
-                { message: `O cargo "${funcionarioLogado.cargo.nomeCargo}" não pode cadastrar dispensa.` }
-            );
-        }
-
         return await this._dispensaDAO.create(dispensa, funcionarioLogado);
     };
 
@@ -46,50 +38,28 @@ export class DispensaService {
     public findAllDeleted = async (funcionarioLogado: Funcionario): Promise<Dispensa[]> => {
         console.log("🟣 DispensaService.findAllDeleted()");
 
-        const cargosPermitidos = ["Administrador", "Diretor"];
         const cargoFuncionario = funcionarioLogado.cargo.nomeCargo;
 
-        if (!cargosPermitidos.includes(cargoFuncionario)) {
+        if (!CARGOS_ACESSO_TOTAL.includes(cargoFuncionario)) {
             throw new ErrorResponse(
                 403,
                 "Não autorizado",
-                { message: `Apenas ${cargosPermitidos.join(" ou ")} podem visualizar dispensas deletadas.` }
+                { message: `Apenas ${CARGOS_ACESSO_TOTAL.join(", ")} podem visualizar dispensas deletadas.` }
             );
         }
 
         return await this._dispensaDAO.findAllDeleted();
     };
-    //modificar talvez os cargos permitidos
 
     //update
     public update = async (dispensa: Dispensa, funcionarioLogado: Funcionario): Promise<boolean> => {
         console.log("🟣 DispensaService.update()");
-
-        const cargosPermitidos = ["Inspetor", "Coordenador"];
-        if (!cargosPermitidos.includes(funcionarioLogado.cargo.nomeCargo)) {
-            throw new ErrorResponse(
-                403,
-                "Não autorizado",
-                { message: `O cargo "${funcionarioLogado.cargo.nomeCargo}" não pode corrigir dispensas.` }
-            );
-        }
-
         return await this._dispensaDAO.update(dispensa, funcionarioLogado);
     };
 
     //delete
     public delete = async (dispensa: Dispensa, funcionarioLogado: Funcionario): Promise<boolean> => {
         console.log("🟣 DispensaService.delete()");
-
-        const cargosPermitidos = ["Inspetor", "Coordenador"];
-        if (!cargosPermitidos.includes(funcionarioLogado.cargo.nomeCargo)) {
-            throw new ErrorResponse(
-                403,
-                "Não autorizado",
-                { message: `O cargo "${funcionarioLogado.cargo.nomeCargo}" não pode excluir dispensas.` }
-            );
-        }
-
         return await this._dispensaDAO.delete(dispensa, funcionarioLogado);
     };
 

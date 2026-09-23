@@ -6,6 +6,70 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Painel | UNIVAP - Controle de Faltas</title>
   <link href="css/univap-theme.css" rel="stylesheet" />
+  <style>
+    /* Só o que é exclusivo desta tela: os cartões de atalho dos módulos.
+       Layout, cards, títulos e cores vêm do css/univap-theme.css. */
+    .modulos {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 14px;
+    }
+    .modulo-link {
+      display: block;
+      height: 100%;
+      border: 1px solid var(--univap-cinza-borda);
+      border-left: 4px solid var(--univap-azul);
+      border-radius: 6px;
+      padding: 16px 18px;
+      text-decoration: none;
+      background: #ffffff;
+      transition: background .15s, border-color .15s, transform .15s;
+    }
+    .modulo-link:hover,
+    .modulo-link:focus {
+      background: var(--univap-azul-claro);
+      border-left-color: var(--univap-vermelho);
+      transform: translateY(-2px);
+    }
+    .modulo-titulo {
+      display: block;
+      font-size: 14.5px;
+      font-weight: bold;
+      color: var(--univap-azul-escuro);
+      margin-bottom: 6px;
+    }
+    .modulo-descricao {
+      display: block;
+      font-size: 12.5px;
+      color: var(--univap-texto-suave);
+      line-height: 1.5;
+    }
+
+    .aviso-sem-modulos {
+      font-size: 13px;
+      color: var(--univap-texto-suave);
+      margin: 0;
+    }
+    .alerta-faltas {
+      margin-bottom: 20px;
+      border: 1px solid #d98b86;
+      border-left: 5px solid var(--univap-vermelho);
+      background: #fff7f6;
+    }
+    .alerta-faltas .card-header { color: #7f1f1a; }
+    .alerta-faltas-lista { margin: 0; padding-left: 20px; }
+    .alerta-faltas-lista li { margin: 7px 0; font-size: 13px; color: #3c2523; }
+    .alerta-faltas-vazio { margin: 0; color: var(--univap-texto-suave); font-size: 13px; }
+
+    @media (max-width: 700px) {
+      .modulos {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
 </head>
 
 <body>
@@ -13,14 +77,20 @@
 
   <main class="conteudo-pagina" id="conteudo-principal">
     <div class="page-title">
-      <h1>Painel</h1>
-      <p id="mensagem-boas-vindas">Bem-vindo(a)! Escolha um módulo no menu acima para começar.</p>
+      <h1 id="titulo-painel">Painel</h1>
+      <p id="mensagem-boas-vindas">Escolha um módulo abaixo para começar.</p>
     </div>
+
+    <section class="card alerta-faltas" id="alerta-faltas-bimestral" hidden aria-live="polite">
+      <div class="card-header">Atenção: faltas no bimestre</div>
+      <div class="card-body" id="alerta-faltas-conteudo"></div>
+    </section>
 
     <div class="card">
       <div class="card-header">Acesso rápido</div>
       <div class="card-body">
         <nav aria-label="Acesso rápido aos módulos">
+<<<<<<< HEAD
           <ul style="list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:12px;">
             <li><a href="telaChamada.html" class="btn btn-primary" style="display:block; text-align:center; padding:14px; color:#fff; text-decoration:none;">Chamada</a></li>
             <li><a href="Movimentacoes.html" class="btn btn-primary" style="display:block; text-align:center; padding:14px; color:#fff; text-decoration:none;">Entradas e Saídas</a></li>
@@ -32,26 +102,84 @@
             <li><a href="Cargos.html" class="btn btn-primary" style="display:block; text-align:center; padding:14px; color:#fff; text-decoration:none;">Cargos</a></li>
             <li><a href="Funcionarios.html" class="btn btn-primary" style="display:block; text-align:center; padding:14px; color:#fff; text-decoration:none;">Funcionários</a></li>
           </ul>
+=======
+          <ul class="modulos" id="lista-modulos"></ul>
+          <p class="aviso-sem-modulos" id="aviso-sem-modulos" hidden>
+            Nenhum módulo está liberado para o seu cargo. Procure a coordenação.
+          </p>
+>>>>>>> 8d6eafe6845a986508c399927ba2309a45150037
         </nav>
       </div>
     </div>
   </main>
 
   <script type="module">
-    import { montarTopbar } from './js/Topbar.js';
+    import ApiService from './ApiService.js';
+    import { exigirSessao, montarTopbar, paginasPermitidas, escaparHtml, temAcessoTotal } from './js/Topbar.js';
 
-    let userData = localStorage.getItem("userData");
-    if (userData) {
-      userData = JSON.parse(userData);
-      const nome = userData?.data?.funcionario?.[0]?.nomeFuncionario;
-      if (nome) {
-        document.getElementById("mensagem-boas-vindas").textContent = "Bem-vindo(a), " + nome + "! Escolha um módulo no menu acima para começar.";
+    const sessao = exigirSessao();
+
+    if (sessao) {
+      montarTopbar('dashboard');
+      carregarAlertasDeFalta();
+
+      // ---------- SAUDAÇÃO COM O NOME DE QUEM ESTÁ LOGADO ----------
+      const primeiroNome = (sessao.nome || '').trim().split(/\s+/)[0];
+      const titulo = document.getElementById('titulo-painel');
+      const mensagem = document.getElementById('mensagem-boas-vindas');
+
+      if (primeiroNome) {
+        titulo.textContent = 'Olá, ' + primeiroNome + '!';
+        mensagem.innerHTML = 'Você está no <strong>Sistema de Controle de Faltas</strong>'
+          + (sessao.cargo ? ' como <strong>' + escaparHtml(sessao.cargo) + '</strong>' : '')
+          + '. Escolha abaixo o módulo que deseja usar.';
+      } else {
+        mensagem.textContent = 'Escolha abaixo o módulo que deseja usar.';
       }
-    } else {
-      window.location.href = "Login.html";
+
+      // ---------- ATALHOS FILTRADOS PELO CARGO ----------
+      // Usa a mesma regra do menu (paginasPermitidas), para que os atalhos nunca
+      // ofereçam um módulo que a barra de navegação esconde.
+      const modulos = paginasPermitidas(sessao.cargo).filter(pagina => pagina.chave !== 'dashboard');
+      const lista = document.getElementById('lista-modulos');
+
+      lista.innerHTML = modulos.map(pagina => `
+        <li>
+          <a class="modulo-link" href="${pagina.href}">
+            <span class="modulo-titulo">${escaparHtml(pagina.label)}</span>
+            <span class="modulo-descricao">${escaparHtml(pagina.descricao)}</span>
+          </a>
+        </li>
+      `).join('');
+
+      document.getElementById('aviso-sem-modulos').hidden = modulos.length > 0;
     }
 
-    montarTopbar('dashboard');
+    async function carregarAlertasDeFalta() {
+      if (!temAcessoTotal(sessao.cargo)) return;
+
+      const resposta = await new ApiService(sessao.token).get('api/v1/relatorios/alertas-faltas-bimestral');
+      if (!resposta.success) return;
+
+      const painel = document.getElementById('alerta-faltas-bimestral');
+      const conteudo = document.getElementById('alerta-faltas-conteudo');
+      const dados = resposta.data || {};
+      const alertas = dados.alertas || [];
+      painel.hidden = false;
+
+      if (alertas.length === 0) {
+        conteudo.innerHTML = '<p class="alerta-faltas-vazio">Nenhum aluno atingiu o limite de faltas neste bimestre.</p>';
+        return;
+      }
+
+      const titulo = 'Há ' + alertas.length + (alertas.length === 1 ? ' alerta' : ' alertas')
+        + ' no ' + dados.bimestre + 'º bimestre de ' + dados.ano + '.';
+      const itens = alertas.map(alerta => '<li><strong>' + escaparHtml(alerta.alunoNome) + '</strong>'
+        + ' — ' + escaparHtml(alerta.disciplina) + ' (' + escaparHtml(alerta.turma) + '): '
+        + alerta.totalFaltas + ' faltas; limite de ' + alerta.limiteFaltas
+        + ' para ' + alerta.cargaHorariaSemanalMinutos + ' minutos semanais.</li>').join('');
+      conteudo.innerHTML = '<p class="alerta-faltas-vazio">' + titulo + '</p><ul class="alerta-faltas-lista">' + itens + '</ul>';
+    }
   </script>
 </body>
 

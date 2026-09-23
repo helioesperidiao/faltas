@@ -10,7 +10,11 @@ import { AbonoRouter } from "./routers/AbonoRouter";
 import { AlunoRouter } from "./routers/AlunoRouter";
 import { GradeHorarioRouter } from "./routers/GradeHorarioRouter";
 import { RelatorioRouter } from "./routers/RelatorioRouter";
+<<<<<<< HEAD
 import { MovimentacaoRouter } from "./routers/MovimentacaoRouter";
+=======
+import { ConfiguracaoAlertaFaltaRouter } from "./routers/ConfiguracaoAlertaFaltaRouter";
+>>>>>>> 8d6eafe6845a986508c399927ba2309a45150037
 import { ErrorResponse } from "./http/ErrorResponse";
 import { StandardResponse } from "./http/StandardResponse";
 import { MongoDatabase } from "./database/MongoDatabase";
@@ -27,7 +31,11 @@ export class Server {
     private _alunoRouter: AlunoRouter;
     private _gradeHorarioRouter: GradeHorarioRouter;
     private _relatorioRouter: RelatorioRouter;
+<<<<<<< HEAD
     private _movimentacaoRouter: MovimentacaoRouter;
+=======
+    private _configuracaoAlertaFaltaRouter: ConfiguracaoAlertaFaltaRouter;
+>>>>>>> 8d6eafe6845a986508c399927ba2309a45150037
     private _dataBase: MongoDatabase;
 
     constructor(porta?: number) {
@@ -45,15 +53,24 @@ export class Server {
         this._alunoRouter = new AlunoRouter(this._dataBase);
         this._gradeHorarioRouter = new GradeHorarioRouter(this._dataBase);
         this._relatorioRouter = new RelatorioRouter(this._dataBase);
+<<<<<<< HEAD
         this._movimentacaoRouter = new MovimentacaoRouter(this._dataBase);
+=======
+        this._configuracaoAlertaFaltaRouter = new ConfiguracaoAlertaFaltaRouter(this._dataBase);
+>>>>>>> 8d6eafe6845a986508c399927ba2309a45150037
     }
 
     async init(): Promise<void> {
         console.log("⬆️ Server.init()");
 
+        await this._dataBase.initializeSchema();
 
         this._app.use(cors({ origin: "*" }));
         this._app.use(express.json());
+        this._app.use("/vendor/xlsx", express.static(path.resolve(__dirname, "../node_modules/xlsx/dist")));
+        // Tabelas completas de codificação para planilhas legadas (.xls/CSV),
+        // incluindo Windows-1252, usual em arquivos brasileiros.
+        this._app.use("/vendor/codepage", express.static(path.resolve(__dirname, "../node_modules/codepage/dist")));
         this._app.use(express.static(path.resolve(__dirname, "public")));
 
         // Rotas da API (os routers já têm seus prefixos internos)
@@ -65,9 +82,13 @@ export class Server {
         this._app.use(this._alunoRouter.getRouter());
         this._app.use(this._gradeHorarioRouter.getRouter());
         this._app.use(this._relatorioRouter.getRouter());
+<<<<<<< HEAD
         this._app.use(this._movimentacaoRouter.getRouter());
 
 
+=======
+        this._app.use(this._configuracaoAlertaFaltaRouter.getRouter());
+>>>>>>> 8d6eafe6845a986508c399927ba2309a45150037
         this.setupErrorMiddleware();
     }
 

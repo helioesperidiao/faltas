@@ -47,6 +47,8 @@ export class GradeHorarioDAO {
             dia: grade.dia,
             cod: grade.cod,
             disciplina: grade.disciplina,
+            duracaoAulaMinutos: GradeHorario.calcularDuracaoMinutos(grade.horaInicio, grade.horaFim),
+            cargaHorariaSemanalMinutos: GradeHorario.calcularDuracaoMinutos(grade.horaInicio, grade.horaFim),
             auditoria: grade.auditoria.toJSON()
         };
 
@@ -56,6 +58,9 @@ export class GradeHorarioDAO {
         }
 
         grade.idGradeHorario = result.insertedId.toString();
+        const carga = await this.recalcularCargaHorariaSemanal(grade.turma, grade.cod);
+        grade.duracaoAulaMinutos = GradeHorario.calcularDuracaoMinutos(grade.horaInicio, grade.horaFim);
+        grade.cargaHorariaSemanalMinutos = carga;
         return grade;
     }
 
@@ -64,7 +69,11 @@ export class GradeHorarioDAO {
         const collection = await this.getCollection();
         grade.marcarDeletadoPor(funcionarioLogado.idFuncionario);
 
-        const filter: Filter<Document> = { _id: new ObjectId(grade.idGradeHorario) };
+        const gradeExistente = await collection.findOne({ _id: new ObjectId(grade.idGradeHorario) });
+        const filter: Filter<Document> = {
+            _id: new ObjectId(grade.idGradeHorario),
+            "auditoria.deletadoEm": null
+        };
         const update: UpdateFilter<Document> = {
             $set: {
                 "auditoria.deletadoPor": grade.auditoria.deletadoPor,
@@ -72,6 +81,9 @@ export class GradeHorarioDAO {
             }
         };
         const result = await collection.updateOne(filter, update);
+        if (result.modifiedCount > 0 && gradeExistente) {
+            await this.recalcularCargaHorariaSemanal(gradeExistente.turma, gradeExistente.cod);
+        }
         return result.modifiedCount > 0;
     }
 
@@ -80,6 +92,8 @@ export class GradeHorarioDAO {
         const collection = await this.getCollection();
         grade.marcarAlteradoPor(funcionarioLogado.idFuncionario);
 
+        const gradeExistente = await collection.findOne({ _id: new ObjectId(grade.idGradeHorario) });
+        const duracaoAulaMinutos = GradeHorario.calcularDuracaoMinutos(grade.horaInicio, grade.horaFim);
         const filter: Filter<Document> = { _id: new ObjectId(grade.idGradeHorario) };
         const update: UpdateFilter<Document> = {
             $set: {
@@ -89,11 +103,20 @@ export class GradeHorarioDAO {
                 dia: grade.dia,
                 cod: grade.cod,
                 disciplina: grade.disciplina,
+                duracaoAulaMinutos,
                 "auditoria.alteradoPor": grade.auditoria.alteradoPor,
                 "auditoria.alteradoEm": grade.auditoria.alteradoEm
             }
         };
         const result = await collection.updateOne(filter, update);
+        if (result.modifiedCount > 0) {
+            if (gradeExistente) {
+                await this.recalcularCargaHorariaSemanal(gradeExistente.turma, gradeExistente.cod);
+            }
+            const carga = await this.recalcularCargaHorariaSemanal(grade.turma, grade.cod);
+            grade.duracaoAulaMinutos = duracaoAulaMinutos;
+            grade.cargaHorariaSemanalMinutos = carga;
+        }
         return result.modifiedCount > 0;
     }
 
@@ -103,9 +126,17 @@ export class GradeHorarioDAO {
         grade.turma = doc.turma;
         grade.horaInicio = doc.horaInicio;
         grade.horaFim = doc.horaFim;
+<<<<<<< HEAD
         grade.dia = this.corrigirAcentos(doc.dia);
         grade.cod = this.corrigirAcentos(doc.cod);
         grade.disciplina = this.corrigirAcentos(doc.disciplina);
+=======
+        grade.dia = doc.dia;
+        grade.cod = doc.cod;
+        grade.disciplina = doc.disciplina;
+        grade.duracaoAulaMinutos = doc.duracaoAulaMinutos || GradeHorario.calcularDuracaoMinutos(doc.horaInicio, doc.horaFim);
+        grade.cargaHorariaSemanalMinutos = doc.cargaHorariaSemanalMinutos || grade.duracaoAulaMinutos;
+>>>>>>> 8d6eafe6845a986508c399927ba2309a45150037
         if (doc.auditoria) {
             const auditoria = new Auditoria();
             auditoria.criadoPor = doc.auditoria.criadoPor || '';
@@ -172,5 +203,23 @@ export class GradeHorarioDAO {
         const cursor = collection.find(filter);
         const docs = await cursor.toArray();
         return docs.map(doc => this.toGradeHorario(doc));
+    }
+
+    /** Recalcula e persiste a carga semanal para todas as aulas da mesma disciplina/turma. */
+    public async recalcularCargaHorariaSemanal(turma: string, cod: string): Promise<number> {
+        const collection = await this.getCollection();
+        const aulas = await collection.find({ turma, cod, "auditoria.deletadoEm": null }).toArray();
+        const cargaHorariaSemanalMinutos = aulas.reduce(
+            (total, aula) => total + GradeHorario.calcularDuracaoMinutos(aula.horaInicio, aula.horaFim),
+            0
+        );
+
+        if (aulas.length > 0) {
+            await collection.updateMany(
+                { turma, cod, "auditoria.deletadoEm": null },
+                { $set: { cargaHorariaSemanalMinutos } }
+            );
+        }
+        return cargaHorariaSemanalMinutos;
     }
 }

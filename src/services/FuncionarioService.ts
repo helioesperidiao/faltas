@@ -5,6 +5,7 @@ import { Cargo } from "../models/Cargo";
 import { Funcionario } from "../models/Funcionario";
 import { ErrorResponse } from "../http/ErrorResponse";
 import { MeuTokenJWT } from "../http/MeuTokenJWT";
+import { cargoAceito, CARGO_INSPETOR, CARGO_PROCESSO_PEDAGOGICO } from "@/constants/Cargos";
 
 /**
  * Serviço responsável pelas regras de negócio da entidade Funcionario.
@@ -36,11 +37,11 @@ export class FuncionarioService {
     }
 
     /**
-     * Inicializa o administrador padrão e os cargos essenciais.
+     * Inicializa o usuário padrão e os dois cargos aceitos.
      *
-     * 🔹 Cria o cargo "Administrador" (usando um funcionário sistema para auditoria).
-     * 🔹 Cria o funcionário administrador com credenciais do .env (ou fallback).
-     * 🔹 Utiliza o administrador recém-criado para criar os demais cargos padrão.
+     * 🔹 Cria o cargo "Processo Pedagógico" (usando um funcionário sistema para auditoria).
+     * 🔹 Cria o usuário padrão com as credenciais do .env.
+     * 🔹 Cria também o cargo "Inspetor".
      *
      * @returns O Funcionario administrador criado, ou void se já houver funcionários.
      */
@@ -60,19 +61,19 @@ export class FuncionarioService {
         funcionarioSistema.nomeFuncionario = "Sistema";
         funcionarioSistema.email = "sistema@empresa.com";
 
-        // 3. Cria o cargo "Administrador" (se não existir)
-        console.log("🔧 Criando/verificando cargo Administrador...");
-        const cargoAdminExistente = await this._cargoDAO.findByField("nomeCargo", "Administrador");
-        let idCargoAdmin: string;
-        if (cargoAdminExistente && cargoAdminExistente.length > 0) {
-            idCargoAdmin = cargoAdminExistente[0].idCargo;
-            console.log(`🔍 Cargo "Administrador" já existe com ID: ${idCargoAdmin}`);
+        // 3. Cria o cargo Processo Pedagógico (se não existir)
+        console.log("🔧 Criando/verificando cargo Processo Pedagógico...");
+        const cargoProcessoExistente = await this._cargoDAO.findByField("nomeCargo", CARGO_PROCESSO_PEDAGOGICO);
+        let idCargoProcesso: string;
+        if (cargoProcessoExistente && cargoProcessoExistente.length > 0) {
+            idCargoProcesso = cargoProcessoExistente[0].idCargo;
+            console.log(`🔍 Cargo "${CARGO_PROCESSO_PEDAGOGICO}" já existe com ID: ${idCargoProcesso}`);
         } else {
-            const cargoAdmin = new Cargo();
-            cargoAdmin.nomeCargo = "Administrador";
-            const cargoCriado = await this._cargoDAO.create(cargoAdmin, funcionarioSistema);
-            idCargoAdmin = cargoCriado.idCargo;
-            console.log(`🆕 Cargo "Administrador" criado com ID: ${idCargoAdmin}`);
+            const cargoProcesso = new Cargo();
+            cargoProcesso.nomeCargo = CARGO_PROCESSO_PEDAGOGICO;
+            const cargoCriado = await this._cargoDAO.create(cargoProcesso, funcionarioSistema);
+            idCargoProcesso = cargoCriado.idCargo;
+            console.log(`🆕 Cargo "${CARGO_PROCESSO_PEDAGOGICO}" criado com ID: ${idCargoProcesso}`);
         }
 
         // 4. Carrega dados do administrador a partir das variáveis de ambiente (ou fallback)
@@ -81,50 +82,35 @@ export class FuncionarioService {
         const adminPassword = process.env.DEFAULT_ADMIN_PASSWORD || "@Helio123456";
         const adminValeTransporte = parseInt(process.env.DEFAULT_ADMIN_VALE_TRANSPORTE || "0", 10);
 
-        // 5. Cria o funcionário administrador
-        console.log(`👤 Criando administrador: ${adminName} (${adminEmail})`);
-        const funcionarioAdmin = new Funcionario();
-        funcionarioAdmin.nomeFuncionario = adminName;
-        funcionarioAdmin.email = adminEmail;
-        funcionarioAdmin.senha = await bcrypt.hash(adminPassword, 12);
-        funcionarioAdmin.recebeValeTransporte = adminValeTransporte;
+        // 5. Cria o usuário padrão com cargo Processo Pedagógico
+        console.log(`👤 Criando usuário padrão: ${adminName} (${adminEmail})`);
+        const funcionarioPadrao = new Funcionario();
+        funcionarioPadrao.nomeFuncionario = adminName;
+        funcionarioPadrao.email = adminEmail;
+        funcionarioPadrao.senha = await bcrypt.hash(adminPassword, 12);
+        funcionarioPadrao.recebeValeTransporte = adminValeTransporte;
 
         const cargo = new Cargo();
-        cargo.idCargo = idCargoAdmin;
-        funcionarioAdmin.cargo = cargo;
+        cargo.idCargo = idCargoProcesso;
+        funcionarioPadrao.cargo = cargo;
 
-        // Marca a auditoria do admin: criado pelo sistema (ID simbólico)
-        funcionarioAdmin.marcarCriadoPor(funcionarioSistema.idFuncionario);
+        // Marca a auditoria do usuário padrão: criado pelo sistema (ID simbólico)
+        funcionarioPadrao.marcarCriadoPor(funcionarioSistema.idFuncionario);
 
-        // Persiste o administrador
-        const adminCriado = await this._funcionarioDAO.create(funcionarioAdmin,funcionarioAdmin);
-        console.log(`✅ Administrador criado com ID: ${adminCriado.idFuncionario}`);
+        const usuarioCriado = await this._funcionarioDAO.create(funcionarioPadrao, funcionarioPadrao);
+        console.log(`✅ Usuário padrão criado com ID: ${usuarioCriado.idFuncionario}`);
 
-        // 6. Agora, com o administrador criado, criamos os demais cargos usando-o como logado
-        const cargosParaCriar = [
-            "Professor",
-            "Inspetor",
-            "Secretaria",
-            "Processos Pedagógicos",
-            "Coordenador",
-            "Diretor"
-        ];
-
-        console.log("🔄 Criando cargos adicionais com o administrador...");
-        for (const nomeCargo of cargosParaCriar) {
-            const cargoExistente = await this._cargoDAO.findByField("nomeCargo", nomeCargo);
-            if (cargoExistente && cargoExistente.length > 0) {
-                console.log(`🔍 Cargo "${nomeCargo}" já existe.`);
-                continue;
-            }
-            const cargo = new Cargo();
-            cargo.nomeCargo = nomeCargo;
-            await this._cargoDAO.create(cargo, adminCriado);
-            console.log(`🆕 Cargo "${nomeCargo}" criado pelo administrador.`);
+        // 6. Cria o cargo Inspetor
+        const cargoInspetorExistente = await this._cargoDAO.findByField("nomeCargo", CARGO_INSPETOR);
+        if (!cargoInspetorExistente || cargoInspetorExistente.length === 0) {
+            const cargoInspetor = new Cargo();
+            cargoInspetor.nomeCargo = CARGO_INSPETOR;
+            await this._cargoDAO.create(cargoInspetor, usuarioCriado);
+            console.log(`🆕 Cargo "${CARGO_INSPETOR}" criado.`);
         }
 
         console.log("✅ Inicialização concluída.");
-        return adminCriado;
+        return usuarioCriado;
     };
 
     /**
@@ -147,6 +133,11 @@ export class FuncionarioService {
         const cargoExiste = await this._cargoDAO.findByField("_id", funcionario.cargo.idCargo);
         if (!cargoExiste || cargoExiste.length === 0) {
             throw new ErrorResponse(400, "O cargo informado não existe");
+        }
+        if (!cargoAceito(cargoExiste[0].nomeCargo)) {
+            throw new ErrorResponse(400, "Cargo inválido", {
+                message: "Os únicos cargos aceitos são Inspetor e Processo Pedagógico."
+            });
         }
 
         // Verifica se o email já está cadastrado
@@ -188,6 +179,10 @@ export class FuncionarioService {
         const funcionarioBanco = await this._funcionarioDAO.findByEmail(funcionario.email);
         if (!funcionarioBanco) {
             console.log("❌ Funcionário não encontrado com email:", funcionario.email);
+            throw new ErrorResponse(401, "Usuário ou senha inválidos");
+        }
+
+        if (!cargoAceito(funcionarioBanco.cargo.nomeCargo)) {
             throw new ErrorResponse(401, "Usuário ou senha inválidos");
         }
 
@@ -263,6 +258,11 @@ export class FuncionarioService {
             const cargoExiste = await this._cargoDAO.findByField("_id", funcionario.cargo.idCargo);
             if (!cargoExiste || cargoExiste.length === 0) {
                 throw new ErrorResponse(400, "O cargo informado não existe");
+            }
+            if (!cargoAceito(cargoExiste[0].nomeCargo)) {
+                throw new ErrorResponse(400, "Cargo inválido", {
+                    message: "Os únicos cargos aceitos são Inspetor e Processo Pedagógico."
+                });
             }
         }
 

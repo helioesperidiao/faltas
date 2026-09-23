@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { RelatorioService } from "../services/RelatorioService";
 import { StandardResponse } from "@/http/StandardResponse";
 import { BaseController } from "./BaseController";
+import { Funcionario } from "@/models/Funcionario";
 
 export class RelatorioController extends BaseController {
     private _relatorioService: RelatorioService;
@@ -56,5 +57,17 @@ export class RelatorioController extends BaseController {
         const resultado = await this._relatorioService.faltasPorTurmaMes(turma, ano, mes);
 
         StandardResponse.success("Relatório gerado com sucesso", { faltas: resultado }).send(response);
+    };
+
+    public alertasFaltaBimestral = async (request: Request, response: Response): Promise<void> => {
+        const agora = new Date();
+        const ano = request.query.ano == null ? agora.getFullYear() : Number(request.query.ano);
+        const bimestreAtual = agora.getMonth() + 1;
+        const bimestre = request.query.bimestre == null
+            ? (bimestreAtual <= 3 ? 1 : bimestreAtual <= 7 ? 2 : bimestreAtual <= 9 ? 3 : 4)
+            : Number(request.query.bimestre);
+        const funcionarioLogado: Funcionario = this.getFuncionarioLogado(request);
+        const resultado = await this._relatorioService.alertasFaltaBimestral(ano, bimestre, funcionarioLogado);
+        StandardResponse.success("Alertas de faltas obtidos com sucesso", resultado).send(response);
     };
 }

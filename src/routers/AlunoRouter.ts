@@ -41,6 +41,11 @@ export class AlunoRouter {
             alunoController.findAllDeleted
         );
 
+        this._router.post(AlunoRouter.PREFIX + "/transicao-anual",
+            jwtMiddleware.validateToken,
+            alunoController.promoverTurma
+        );
+
         this._router.get(AlunoRouter.PREFIX + "/matricula/:matricula",
             jwtMiddleware.validateToken,
             alunoController.findByMatricula

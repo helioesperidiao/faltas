@@ -13,50 +13,6 @@
     font-family: Arial, Helvetica, sans-serif;
   }
 
-  /* ---------- CABEÇALHO ---------- */
-  .topbar {
-    background: #163b6b;
-    color: #ffffff;
-    padding: 14px 28px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .brand {
-    display: flex;
-    align-items: center;
-  }
-  .brand-mark {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: #ffffff;
-    color: #163b6b;
-    font-weight: bold;
-    font-size: 18px;
-    text-align: center;
-    line-height: 40px;
-    margin-right: 14px;
-  }
-  .brand-text {
-    font-size: 20px;
-    font-weight: bold;
-  }
-  .brand-sub {
-    font-size: 11px;
-    color: #c9d7ec;
-    margin-top: 2px;
-  }
-  .session-info {
-    text-align: right;
-    font-size: 12px;
-    line-height: 1.5;
-    color: #d7e2f2;
-  }
-  .session-info strong {
-    color: #ffffff;
-  }
-
   .crumbbar {
     background: #0f2a4d;
     color: #d7e2f2;
@@ -114,14 +70,20 @@
     color: #4a4f57;
     margin-bottom: 6px;
   }
-  .field select {
+  .field {
+    margin-bottom: 14px;
+  }
+  .field select,
+  .field input {
     width: 100%;
+    box-sizing: border-box;
     border: 1px solid #c7cbd1;
     border-radius: 4px;
     padding: 10px 12px;
     font-size: 14px;
     color: #1f2937;
     background: #ffffff;
+    font-family: Arial, Helvetica, sans-serif;
   }
 
   .turma-summary {
@@ -459,17 +421,8 @@
   }
 
   @media (max-width: 700px) {
-    .topbar {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 8px;
-      padding: 12px 16px;
-    }
     .navbar {
       overflow-x: auto;
-    }
-    .session-info {
-      text-align: left;
     }
     .crumbbar {
       padding: 8px 16px;
@@ -545,8 +498,8 @@
 </style>
 </head>
 <body>
-<a href="#conteudo-principal" class="skip-link">Pular para o conteúdo</a>
 
+<<<<<<< HEAD
 <div class="topbar">
   <div class="brand">
     <div class="brand-mark" aria-hidden="true">U</div>
@@ -575,6 +528,10 @@
     </tr>
   </table>
 </nav>
+=======
+<!-- O link "pular para o conteúdo" é injetado pelo js/Topbar.js junto do cabeçalho. -->
+<div id="app-topbar"></div>
+>>>>>>> 8d6eafe6845a986508c399927ba2309a45150037
 
 <div class="crumbbar">
   ENSINO BÁSICO &rsaquo; <span class="current">CHAMADA DE TURMA</span>
@@ -595,10 +552,6 @@
         <select id="turma-select" onchange="selecionarTurma()">
           <option value="">Selecione uma turma...</option>
         </select>
-      </div>
-      <div class="field">
-        <label>Código da disciplina</label>
-        <input type="text" id="cod-disciplina" value="GERAL">
       </div>
       <div class="field">
         <label>Data da chamada</label>
@@ -674,8 +627,7 @@
                             <span class="status-badge" id="student-badge">Pendente</span>
                           </td>
                           <td style="width:160px;">
-                            <button type="button" class="btn btn-present" id="btn-present" onclick="marcarPresenca('present')">Presente</button>
-                            <button type="button" class="btn btn-absent" id="btn-absent" onclick="marcarPresenca('absent')">Faltou</button>
+                            <button type="button" class="btn btn-absent" id="btn-absent" onclick="marcarFalta()">Faltou</button>
                           </td>
                         </tr>
                       </table>
@@ -710,15 +662,15 @@
 
 <script type="module">
   import ApiService from './ApiService.js';
+  import { exigirSessao, montarTopbar, escaparHtml } from './js/Topbar.js';
 
-  let userData = localStorage.getItem("userData");
-  if (userData) {
-    userData = JSON.parse(userData);
-  } else {
-    window.location.href = "Login.html";
+  const sessao = exigirSessao();
+  if (!sessao) {
+    // exigirSessao já redirecionou para o login; nada mais roda nesta página.
+    throw new Error('Sessão não encontrada.');
   }
-  const api = new ApiService(userData.data.token);
 
+<<<<<<< HEAD
   const funcionarioLogado = userData.data?.funcionario?.[0] || {};
   document.getElementById('usuario-nome').textContent = (funcionarioLogado.nomeFuncionario || 'Usuário').toUpperCase();
   document.getElementById('usuario-cargo').textContent = funcionarioLogado.cargo?.nomeCargo ? ' · ' + funcionarioLogado.cargo.nomeCargo : '';
@@ -727,30 +679,41 @@
     localStorage.removeItem('userData');
     window.location.href = 'Login.html';
   };
+=======
+  const api = new ApiService(sessao.token);
+>>>>>>> 8d6eafe6845a986508c399927ba2309a45150037
 
-  // ---------- RELÓGIO ----------
-  function atualizarRelogio() {
+  montarTopbar('chamada');
+
+  // ---------- DATA PADRÃO (hoje) ----------
+  // Montada a partir dos componentes locais da data; toISOString() devolveria o dia
+  // em UTC e, à noite, deixaria o campo com a data do dia seguinte.
+  function preencherDataDeHoje() {
     var d = new Date();
     var dia = String(d.getDate()).padStart(2, '0');
     var mes = String(d.getMonth() + 1).padStart(2, '0');
     var ano = d.getFullYear();
-    var hora = String(d.getHours()).padStart(2, '0');
-    var min = String(d.getMinutes()).padStart(2, '0');
-    document.getElementById('relogio').innerHTML = dia + '/' + mes + '/' + ano + ' - ' + hora + ':' + min;
 
     var campoData = document.getElementById('data-chamada');
     if (campoData.value === '') {
       campoData.value = ano + '-' + mes + '-' + dia;
     }
   }
-  atualizarRelogio();
-  setInterval(atualizarRelogio, 30000);
+  preencherDataDeHoje();
 
   var turmaAtual = "";
   var alunosDaTurma = []; // { matricula, alunoNome }
   var alunoAtual = 0;
   var statusAlunos = [];
   var registroIds = []; // guarda o id do registro já criado para permitir corrigir via PUT
+  var chamadaEmSalvamento = false;
+
+  document.getElementById('data-chamada').addEventListener('change', async () => {
+    if (!turmaAtual) return;
+    await carregarChamadaSalva();
+    montarLista();
+    mostrarAluno();
+  });
 
   // ---------- CARREGAR TURMAS DISPONÍVEIS (a partir dos alunos cadastrados) ----------
   async function carregarTurmas() {
@@ -762,7 +725,7 @@
     turmas.forEach(turma => {
       const opcao = document.createElement('option');
       opcao.value = turma;
-      opcao.innerHTML = turma;
+      opcao.textContent = turma;
       select.appendChild(opcao);
     });
   }
@@ -785,8 +748,11 @@
     alunosDaTurma = resposta.success ? resposta.data.alunos : [];
     alunoAtual = 0;
 
-    statusAlunos = alunosDaTurma.map(() => 'pending');
+    // A chamada trabalha como um booleano: sem marcação de falta, o aluno está presente.
+    // Se já houver uma chamada nesta data, o estado é substituído pelos dados salvos.
+    statusAlunos = alunosDaTurma.map(() => 'present');
     registroIds = alunosDaTurma.map(() => null);
+    await carregarChamadaSalva();
 
     document.getElementById('empty-card').style.display = 'none';
     document.getElementById('turma-summary').style.display = 'block';
@@ -796,11 +762,31 @@
     mostrarAluno();
   }
 
+  async function carregarChamadaSalva() {
+    const dia = document.getElementById('data-chamada').value;
+    if (!turmaAtual || !dia || alunosDaTurma.length === 0) return;
+
+    const resposta = await api.get(`api/v1/registro/chamada?turma=${encodeURIComponent(turmaAtual)}&dia=${encodeURIComponent(dia)}`);
+    if (!resposta.success) {
+      window.alert(resposta.message || 'Não foi possível carregar a chamada já salva.');
+      return;
+    }
+
+    const registrosPorMatricula = new Map((resposta.data.registros || [])
+      .map(registro => [registro.matricula, registro]));
+    statusAlunos = alunosDaTurma.map(aluno =>
+      registrosPorMatricula.get(aluno.matricula)?.falta ? 'absent' : 'present'
+    );
+    registroIds = alunosDaTurma.map(aluno =>
+      registrosPorMatricula.get(aluno.matricula)?.idRegistro || null
+    );
+  }
+
   // ---------- ABRIR/FECHAR O POPUP DA CHAMADA ----------
   function abrirChamada() {
     if (alunosDaTurma.length === 0) return;
 
-    document.getElementById('modal-turma-titulo').innerHTML = turmaAtual;
+    document.getElementById('modal-turma-titulo').textContent = turmaAtual;
     document.getElementById('modal-overlay').classList.add('ativo');
     document.body.classList.add('modal-aberto');
 
@@ -815,12 +801,12 @@
 
   // ---------- INICIAIS DO NOME (avatar) ----------
   function pegarIniciais(nome) {
-    var partes = nome.split(' ');
-    var iniciais = partes[0].charAt(0);
+    var partes = String(nome || '').trim().split(/\s+/);
+    var iniciais = (partes[0] || '').charAt(0);
     if (partes.length > 1) {
       iniciais = iniciais + partes[1].charAt(0);
     }
-    return iniciais.toUpperCase();
+    return iniciais.toUpperCase() || '?';
   }
 
   // ---------- MOSTRAR ALUNO ATUAL ----------
@@ -829,29 +815,26 @@
     var aluno = alunosDaTurma[alunoAtual];
     var status = statusAlunos[alunoAtual];
 
-    document.getElementById('student-avatar').innerHTML = pegarIniciais(aluno.alunoNome);
-    document.getElementById('student-name').innerHTML = aluno.alunoNome;
-    document.getElementById('student-meta').innerHTML = turmaAtual + ' · Matrícula ' + aluno.matricula;
-    document.getElementById('student-count').innerHTML = 'Aluno ' + (alunoAtual + 1) + ' de ' + alunosDaTurma.length;
+    document.getElementById('student-avatar').textContent = pegarIniciais(aluno.alunoNome);
+    document.getElementById('student-name').textContent = aluno.alunoNome;
+    document.getElementById('student-meta').textContent = turmaAtual + ' · Matrícula ' + aluno.matricula;
+    document.getElementById('student-count').textContent = 'Aluno ' + (alunoAtual + 1) + ' de ' + alunosDaTurma.length;
 
     var card = document.getElementById('student-card');
     card.className = 'student-card';
     var badge = document.getElementById('student-badge');
-    var btnPresente = document.getElementById('btn-present');
     var btnFaltou = document.getElementById('btn-absent');
-    btnPresente.className = 'btn btn-present';
     btnFaltou.className = 'btn btn-absent';
 
     if (status === 'present') {
       card.className = 'student-card status-present';
       badge.innerHTML = 'Presente';
-      btnPresente.className = 'btn btn-present active';
     } else if (status === 'absent') {
       card.className = 'student-card status-absent';
       badge.innerHTML = 'Faltou';
       btnFaltou.className = 'btn btn-absent active';
     } else {
-      badge.innerHTML = 'Pendente';
+      badge.innerHTML = 'Presente';
     }
 
     document.getElementById('btn-prev').disabled = (alunoAtual === 0);
@@ -886,7 +869,7 @@
       linha.innerHTML =
         '<table><tr>' +
         '<td style="width:30px;"><span class="idx">' + (i + 1) + '</span></td>' +
-        '<td>' + alunosDaTurma[i].alunoNome + '</td>' +
+        '<td>' + escaparHtml(alunosDaTurma[i].alunoNome) + '</td>' +
         '<td style="width:100px;text-align:right;"><span class="rstatus" id="roster-status-' + i + '">Pendente</span></td>' +
         '</tr></table>';
 
@@ -919,26 +902,34 @@
     }
   }
 
-  // ---------- AÇÕES (persistem no backend a cada clique) ----------
-  async function marcarPresenca(tipo) {
-    var aluno = alunosDaTurma[alunoAtual];
-    var falta = tipo === 'absent';
+  // ---------- AÇÕES ----------
+  function objetoDoRegistro(indice) {
+    var aluno = alunosDaTurma[indice];
     var dia = document.getElementById('data-chamada').value;
-    var codDisciplina = document.getElementById('cod-disciplina').value || 'GERAL';
-
-    const objeto = {
+    return {
       registro: {
+<<<<<<< HEAD
         ano: new Date(dia).getFullYear(),
         codDisciplina: codDisciplina,
         horaInicio: new Date().getHours(),
         horaFim: new Date().getHours(),
+=======
+        ano: Number(String(dia).split('-')[0]),
+        // A chamada é diária e geral. As disciplinas são identificadas depois,
+        // pelos horários da turma na data da ausência.
+        codDisciplina: 'GERAL',
+        horaInicio: 0,
+        horaFim: 0,
+>>>>>>> 8d6eafe6845a986508c399927ba2309a45150037
         matricula: aluno.matricula,
-        falta: falta,
+        falta: statusAlunos[indice] === 'absent',
         dia: dia,
         atrasado: 'Não'
       }
     };
+  }
 
+<<<<<<< HEAD
     if (registroIds[alunoAtual]) {
       // já existe um registro para este aluno: corrige via PUT (ex.: usado pelo botão "voltar")
       const resposta = await api.put("api/v1/registro", registroIds[alunoAtual], objeto);
@@ -953,15 +944,34 @@
         return;
       }
       registroIds[alunoAtual] = resposta.data.registros[0].idRegistro;
+=======
+  async function gravarRegistroDoAluno(indice) {
+    const objeto = objetoDoRegistro(indice);
+    if (registroIds[indice]) {
+      const resposta = await api.put("api/v1/registro", registroIds[indice], objeto);
+      if (!resposta.success) throw new Error(resposta.message || 'Não foi possível atualizar o registro.');
+      return;
+>>>>>>> 8d6eafe6845a986508c399927ba2309a45150037
     }
+    const resposta = await api.post("api/v1/registro", objeto);
+    if (!resposta.success) throw new Error(resposta.message || 'Não foi possível salvar o registro.');
+    registroIds[indice] = resposta.data.registros[0].idRegistro;
+  }
 
-    statusAlunos[alunoAtual] = tipo;
-    mostrarAluno();
-
+  async function marcarFalta() {
+    statusAlunos[alunoAtual] = statusAlunos[alunoAtual] === 'absent' ? 'present' : 'absent';
+    try {
+      await gravarRegistroDoAluno(alunoAtual);
+    } catch (erro) {
+      statusAlunos[alunoAtual] = statusAlunos[alunoAtual] === 'absent' ? 'present' : 'absent';
+      window.alert(erro.message || 'Não foi possível registrar a falta.');
+      mostrarAluno();
+      return;
+    }
     if (alunoAtual < alunosDaTurma.length - 1) {
       alunoAtual = alunoAtual + 1;
-      mostrarAluno();
     }
+    mostrarAluno();
   }
 
   function alunoAnterior() {
@@ -984,11 +994,29 @@
   }
 
   function limparChamada() {
-    statusAlunos = alunosDaTurma.map(() => 'pending');
+    if (!window.confirm('Limpar as marcações desta chamada e recomeçar do primeiro aluno?')) {
+      return;
+    }
+    statusAlunos = alunosDaTurma.map(() => 'present');
+    alunoAtual = 0;
+    // registroIds é preservado de propósito: o registro já gravado no backend continua
+    // existindo, e marcar de novo o corrige via PUT em vez de criar uma duplicata.
     mostrarAluno();
   }
 
-  function salvarChamada() {
+  async function salvarChamada() {
+    if (chamadaEmSalvamento) return;
+    chamadaEmSalvamento = true;
+    try {
+      for (let indice = 0; indice < alunosDaTurma.length; indice += 1) {
+        await gravarRegistroDoAluno(indice);
+      }
+    } catch (erro) {
+      window.alert(erro.message || 'A chamada não foi salva. Confira a conexão e tente novamente.');
+      chamadaEmSalvamento = false;
+      return;
+    }
+    chamadaEmSalvamento = false;
     var toast = document.getElementById('toast');
     toast.style.display = 'block';
     setTimeout(function () {
@@ -1000,7 +1028,7 @@
   window.selecionarTurma = selecionarTurma;
   window.abrirChamada = abrirChamada;
   window.fecharChamada = fecharChamada;
-  window.marcarPresenca = marcarPresenca;
+  window.marcarFalta = marcarFalta;
   window.alunoAnterior = alunoAnterior;
   window.proximoAluno = proximoAluno;
   window.irParaAluno = irParaAluno;

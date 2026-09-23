@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8" />
-  <title>CRUD Cargos com ApiService</title>
+  <title>Cargos | UNIVAP - Controle de Faltas</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link href="css/bootstrap.min.css" rel="stylesheet" />
   <link href="css/univap-theme.css" rel="stylesheet" />
@@ -11,6 +11,45 @@
   <style>
     body { margin: 0; }
     table { margin-top: 1em; }
+
+    /* linha de funcionários que abre logo abaixo do cargo */
+    .linha-funcionarios td {
+      background: var(--univap-azul-claro);
+    }
+    .lista-funcionarios {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 8px;
+    }
+    .lista-funcionarios li {
+      background: #ffffff;
+      border: 1px solid var(--univap-cinza-borda);
+      border-radius: 4px;
+      padding: 8px 12px;
+      font-size: 13px;
+    }
+    .lista-funcionarios .func-nome {
+      display: block;
+      font-weight: bold;
+      color: var(--univap-azul-escuro);
+    }
+    .lista-funcionarios .func-email {
+      display: block;
+      font-size: 12px;
+      color: var(--univap-texto-suave);
+      word-break: break-all;
+    }
+    .sem-funcionarios {
+      font-size: 13px;
+      color: var(--univap-texto-suave);
+      margin: 0;
+    }
+    .qtd-funcionarios {
+      font-weight: bold;
+    }
   </style>
 </head>
 
@@ -18,10 +57,17 @@
   <div id="app-topbar"></div>
   <main class="container conteudo-pagina" id="conteudo-principal">
 
-  <h1 class="mb-4">Gerenciamento de Cargos</h1>
+  <div class="page-title">
+    <h1>Gerenciamento de Cargos</h1>
+    <p>
+      Cadastre os cargos do sistema e veja quantos funcionários ocupam cada um.
+      Use <strong>Ver funcionários</strong> na linha do cargo para listar quem o ocupa
+      &mdash; por exemplo, todos os administradores.
+    </p>
+  </div>
 
   <!-- FILTRO -->
-  <div class="card mb-3">
+  <div class="card mb-3" id="cardFiltro">
     <div class="card-header">Filtro de Cargo</div>
     <div class="card-body">
       <div class="row">
@@ -40,7 +86,7 @@
   </div>
 
   <!-- CADASTRO -->
-  <div class="card mb-3">
+  <div class="card mb-3" id="cardCadastro">
     <div class="card-header">Cadastro de Cargo</div>
     <div class="card-body">
       <div class="mb-3">
@@ -80,21 +126,24 @@
   </main>
 
   <script type="module">
-    import { montarTopbar } from './js/Topbar.js';
+    import { exigirSessao, montarTopbar, escaparHtml } from './js/Topbar.js';
     import ApiService from './ApiService.js';
 
-    let userData = localStorage.getItem("userData");
-    if (userData) {
-      userData = JSON.parse(userData);
-    } else {
-      window.location.href = "login.html";
+    const sessao = exigirSessao();
+    if (!sessao) {
+      // exigirSessao já redirecionou para o login; nada mais roda nesta página.
+      throw new Error('Sessão não encontrada.');
     }
-    const token = userData.data.token;
-    const api = new ApiService(token);
+
+    const api = new ApiService(sessao.token);
     montarTopbar('cargos');
+    document.getElementById('cardFiltro').before(document.getElementById('cardCadastro'));
 
     let API_DATA;
-    let endpointAtual = "api/v1/cargos"; // padrão: ativos
+    // Funcionários carregados uma vez e agrupados por cargo, para mostrar a contagem
+    // de cada cargo e a lista de quem o ocupa sem uma requisição por linha.
+    let funcionariosPorCargo = {};
+    let cargoExpandido = null;
 
     const txtId = document.getElementById("txtId");
     const txtNomeCargo = document.getElementById("txtNomeCargo");
@@ -116,7 +165,10 @@
     }
 
     // ---------- BOTÕES ----------
-    const btnListar = createButton("Listar", "btn-primary");
+    // "Atualizar lista" apenas recarrega a tabela de cargos do servidor. A tabela já é
+    // carregada sozinha ao abrir a tela; o rótulo antigo ("Listar") dava a entender que
+    // era ele quem trazia os dados, ou que listaria os funcionários de cada cargo.
+    const btnListar = createButton("Atualizar lista", "btn-primary");
     btnListar.onclick = () => listAll();
     divBotoes.appendChild(btnListar);
 
@@ -179,13 +231,15 @@
       const btnConfirmDelete = document.getElementById("btnConfirmDelete");
       btnConfirmDelete.onclick = async () => {
         const resposta = await api.delete("api/v1/cargos", id);
-        if (resposta.success) {
-          mostrarMensagem(resposta.message || "Cargo excluído com sucesso", "success");
-          listAll();
+        if (resposta?.success) {
           txtId.value = "";
           txtNomeCargo.value = "";
+          const listaAtualizada = await listAll();
+          if (listaAtualizada) {
+            mostrarMensagem(resposta.message || "Cargo excluído com sucesso", "success");
+          }
         } else {
-          mostrarMensagem(resposta.message || "Erro ao excluir cargo", "danger");
+          mostrarMensagem(resposta?.message || "Erro ao excluir cargo", "danger");
           if (resposta.error) console.error(resposta.error);
         }
         modal.hide();
@@ -193,19 +247,54 @@
     };
     divBotoes.appendChild(btnExcluir);
 
+    // ---------- FUNCIONÁRIOS AGRUPADOS POR CARGO ----------
+    // Uma única chamada a api/v1/funcionarios alimenta tanto a contagem por cargo
+    // quanto a lista de quem ocupa cada um — em vez de uma requisição de count por
+    // linha da tabela.
+    async function carregarFuncionariosPorCargo() {
+      const resposta = await api.get("api/v1/funcionarios");
+      funcionariosPorCargo = {};
+
+      if (!resposta.success) {
+        // A tela de cargos continua utilizável sem essa informação: as colunas de
+        // funcionários apenas ficam vazias.
+        console.error("Não foi possível carregar os funcionários:", resposta.message);
+        return;
+      }
+
+      (resposta.data?.funcionarios || []).forEach(funcionario => {
+        const idCargo = funcionario?.cargo?.idCargo;
+        if (!idCargo) return;
+        if (!funcionariosPorCargo[idCargo]) funcionariosPorCargo[idCargo] = [];
+        funcionariosPorCargo[idCargo].push(funcionario);
+      });
+
+      Object.values(funcionariosPorCargo).forEach(lista =>
+        lista.sort((a, b) => String(a.nomeFuncionario).localeCompare(String(b.nomeFuncionario), 'pt-BR'))
+      );
+    }
+
     // ---------- LISTAR (com suporte a inativos) ----------
     async function listAll() {
       const endpoint = chkMostrarInativos.checked ? "api/v1/cargos/deleted" : "api/v1/cargos";
-      endpointAtual = endpoint;
 
-      const resposta = await api.get(endpoint);
-      if (resposta.success) {
+      const [resposta] = await Promise.all([
+        api.get(endpoint),
+        carregarFuncionariosPorCargo()
+      ]);
+
+      if (resposta?.success) {
         API_DATA = resposta.data;
+        cargoExpandido = null;
         renderTable(API_DATA);
-        divResposta.className = "";
+        // Não mexe na área de mensagem: criar, atualizar e excluir chamam listAll() logo
+        // depois de mostrarMensagem(), e limpar aqui apagaria o aviso de sucesso — antes
+        // sumia o texto inteiro, depois só a cor do alerta.
+        return true;
       } else {
-        mostrarMensagem(resposta.message || "Erro ao carregar cargos", "danger");
+        mostrarMensagem(resposta?.message || "Erro ao carregar cargos", "danger");
         if (resposta.error) console.error(resposta.error);
+        return false;
       }
     }
 
@@ -220,7 +309,7 @@
       const thead = document.createElement("thead");
       thead.className = "table-light";
       const trHead = document.createElement("tr");
-      ["ID", "Nome Cargo", "Ações"].forEach(text => {
+      ["ID", "Nome Cargo", "Funcionários", "Ações"].forEach(text => {
         const th = document.createElement("th");
         th.textContent = text;
         trHead.appendChild(th);
@@ -231,6 +320,8 @@
       const tbody = document.createElement("tbody");
       const cargos = dados?.cargos || [];
       cargos.forEach(cargo => {
+        const doCargo = funcionariosPorCargo[cargo.idCargo] || [];
+
         const tr = document.createElement("tr");
         const tdId = document.createElement("td");
         tdId.textContent = cargo.idCargo;
@@ -239,6 +330,11 @@
         const tdNome = document.createElement("td");
         tdNome.textContent = cargo.nomeCargo;
         tr.appendChild(tdNome);
+
+        const tdQtd = document.createElement("td");
+        tdQtd.className = "qtd-funcionarios";
+        tdQtd.textContent = doCargo.length;
+        tr.appendChild(tdQtd);
 
         const tdAcoes = document.createElement("td");
         const divBtns = document.createElement("div");
@@ -253,13 +349,60 @@
         };
         divBtns.appendChild(btnSel);
 
+        // Mostra/esconde a lista de quem ocupa este cargo, logo abaixo da linha.
+        const expandido = cargoExpandido === cargo.idCargo;
+        const btnVer = createButton(expandido ? "Ocultar funcionários" : "Ver funcionários", "btn-info");
+        btnVer.setAttribute("aria-expanded", expandido ? "true" : "false");
+        btnVer.onclick = () => {
+          cargoExpandido = expandido ? null : cargo.idCargo;
+          renderTable(dados);
+        };
+        divBtns.appendChild(btnVer);
+
         tdAcoes.appendChild(divBtns);
         tr.appendChild(tdAcoes);
         tbody.appendChild(tr);
+
+        if (expandido) {
+          tbody.appendChild(linhaDeFuncionarios(cargo, doCargo));
+        }
       });
 
       table.appendChild(tbody);
       divTabela.appendChild(table);
+    }
+
+    // ---------- LINHA COM OS FUNCIONÁRIOS DE UM CARGO ----------
+    function linhaDeFuncionarios(cargo, funcionarios) {
+      const tr = document.createElement("tr");
+      tr.className = "linha-funcionarios";
+
+      const td = document.createElement("td");
+      td.colSpan = 4;
+
+      if (funcionarios.length === 0) {
+        const aviso = document.createElement("p");
+        aviso.className = "sem-funcionarios";
+        aviso.textContent = 'Nenhum funcionário com o cargo "' + cargo.nomeCargo + '".';
+        td.appendChild(aviso);
+      } else {
+        const ul = document.createElement("ul");
+        ul.className = "lista-funcionarios";
+        ul.setAttribute("aria-label", 'Funcionários com o cargo ' + cargo.nomeCargo);
+
+        funcionarios.forEach(funcionario => {
+          const li = document.createElement("li");
+          li.innerHTML =
+            '<span class="func-nome">' + escaparHtml(funcionario.nomeFuncionario) + '</span>' +
+            '<span class="func-email">' + escaparHtml(funcionario.email || '') + '</span>';
+          ul.appendChild(li);
+        });
+
+        td.appendChild(ul);
+      }
+
+      tr.appendChild(td);
+      return tr;
     }
 
     // ---------- FILTRO ----------

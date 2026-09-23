@@ -28,12 +28,21 @@ export class GradeHorarioController extends BaseController {
         }
 
         const novaGrade = new GradeHorario();
+<<<<<<< HEAD
         novaGrade.turma = dados.turma;
         novaGrade.horaInicio = horaInicio;
         novaGrade.horaFim = horaFim;
         novaGrade.dia = dados.dia;
         novaGrade.cod = dados.cod;
         novaGrade.disciplina = dados.disciplina;
+=======
+        novaGrade.turma = request.body.gradeHorario.turma;
+        novaGrade.horaInicio = request.body.gradeHorario.horaInicio;
+        novaGrade.horaFim = request.body.gradeHorario.horaFim;
+        novaGrade.dia = request.body.gradeHorario.dia;
+        novaGrade.cod = request.body.gradeHorario.cod;
+        novaGrade.disciplina = request.body.gradeHorario.disciplina;
+>>>>>>> 8d6eafe6845a986508c399927ba2309a45150037
 
         const resultado = await this._gradeHorarioService.create(novaGrade, funcionarioLogado);
 
@@ -93,8 +102,8 @@ export class GradeHorarioController extends BaseController {
         const grade = new GradeHorario();
         grade.idGradeHorario = request.params.idGradeHorario.toString();
         grade.turma = request.body.gradeHorario.turma;
-        grade.horaInicio = Number(request.body.gradeHorario.horaInicio);
-        grade.horaFim = Number(request.body.gradeHorario.horaFim);
+        grade.horaInicio = request.body.gradeHorario.horaInicio;
+        grade.horaFim = request.body.gradeHorario.horaFim;
         grade.dia = request.body.gradeHorario.dia;
         grade.cod = request.body.gradeHorario.cod;
         grade.disciplina = request.body.gradeHorario.disciplina;

@@ -29,7 +29,7 @@
   <h1 class="mb-4">Gerenciamento de Funcionários</h1>
 
   <!-- ======================== FILTRO DE FUNCIONÁRIOS ======================== -->
-  <div class="card mb-3">
+  <div class="card mb-3" id="cardFiltro">
     <div class="card-header">Filtro de Funcionário</div>
     <div class="card-body">
       <!-- Campo de filtro por nome -->
@@ -48,7 +48,7 @@
   </div>
 
   <!-- ======================== FORMULÁRIO DE CADASTRO ======================== -->
-  <div class="card mb-4">
+  <div class="card mb-4" id="cardCadastro">
     <div class="card-header">Cadastro de Funcionário</div>
     <div class="card-body">
       <div class="mb-3">
@@ -56,9 +56,9 @@
         <input type="text" id="txtId" class="form-control mb-2" disabled placeholder="ID (para update ou delete)" aria-label="ID do funcionário selecionado" />
 
         <!-- Campos de entrada de dados -->
-        <input type="text" id="txtNomeFuncionario" class="form-control mb-2" placeholder="Nome" aria-label="Nome do funcionário" value ="maria" />
-        <input type="text" id="txtEmail" class="form-control mb-2" placeholder="Email" aria-label="E-mail do funcionário" value ="maria@gmail.com"/>
-        <input type="password" id="txtSenha" class="form-control mb-2" placeholder="Senha" aria-label="Senha do funcionário" value ="@Helio123456" />
+        <input type="text" id="txtNomeFuncionario" class="form-control mb-2" placeholder="Nome" aria-label="Nome do funcionário" />
+        <input type="text" id="txtEmail" class="form-control mb-2" placeholder="Email" aria-label="E-mail do funcionário" />
+        <input type="password" id="txtSenha" class="form-control mb-2" placeholder="Senha (qualquer combinação não vazia)" aria-label="Senha do funcionário" />
 
         <!-- Combobox para selecionar o cargo -->
         <select id="cboCargos" class="form-select mb-3" aria-label="Cargo do funcionário">
@@ -130,11 +130,12 @@
     // Recupera os dados do usuário logado (armazenados no localStorage após o login)
     let userData = localStorage.getItem("userData");
     if (userData) userData = JSON.parse(userData);
-    else window.location.href = "login.html"; // Se não estiver logado, volta para a página de login
+    else window.location.href = "Login.html"; // Se não estiver logado, volta para a página de login
 
     const token = userData.data.token; // Pega o token JWT do usuário autenticado
     const api = new ApiService(token); // Cria um objeto para fazer chamadas autenticadas à API
     montarTopbar('funcionarios');
+    document.getElementById('cardFiltro').before(document.getElementById('cardCadastro'));
 
     let API_DATA; // Variável global que guarda os dados dos funcionários retornados pela API
 
@@ -189,18 +190,10 @@
         divResposta.className = "alert alert-warning";
         return;
       }
-      // Regex (expressão regular) que verifica:
-      // - Pelo menos 6 caracteres
-      // - Pelo menos 1 número
-      // - Pelo menos 1 letra maiúscula
-      // - Pelo menos 1 caractere especial
-      const senhaRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{6,}$/;
-
-      if (!senhaRegex.test(txtSenha.value)) {
-        // Se não passar na validação, exibe mensagem no divResposta
-        divResposta.textContent = "Senha inválida: deve ter no mínimo 6 caracteres, 1 número, 1 letra maiúscula e 1 caractere especial";
+      if (txtSenha.value.trim() === "") {
+        divResposta.textContent = "Informe uma senha.";
         divResposta.className = "alert alert-warning";
-        return; // interrompe a execução para evitar envio inválido
+        return;
       }
       if (cboCargos.value == -1) {
         divResposta.textContent = "Selecione um cargo";
@@ -291,11 +284,17 @@
 
       newBtnConfirm.onclick = async function () {
         try {
-          await api.delete("api/v1/funcionarios", id);
-          listAll(); // Atualiza tabela após exclusão
-          divResposta.textContent = `Funcionário ID ${id} excluído com sucesso.`;
-          divResposta.className = "alert alert-success";
+          const resposta = await api.delete("api/v1/funcionarios", id);
+          if (!resposta?.success) {
+            throw new Error(resposta?.message || "Não foi possível excluir o funcionário.");
+          }
+
           limparFormulario();
+          const listaAtualizada = await listAll();
+          if (listaAtualizada) {
+            divResposta.textContent = `Funcionário ID ${id} excluído com sucesso.`;
+            divResposta.className = "alert alert-success";
+          }
         } catch (error) {
           divResposta.textContent = `Erro ao excluir funcionário: ${error.message}`;
           divResposta.className = "alert alert-danger";
@@ -310,8 +309,16 @@
 
     // Busca todos os funcionários na API e chama a renderização
     async function listAll() {
-      API_DATA = await api.get("api/v1/funcionarios");
-      if (API_DATA.success) renderTable(filterData());
+      const resposta = await api.get("api/v1/funcionarios");
+      if (!resposta?.success) {
+        divResposta.textContent = resposta?.message || "Não foi possível atualizar a lista de funcionários.";
+        divResposta.className = "alert alert-danger";
+        return false;
+      }
+
+      API_DATA = resposta;
+      renderTable(filterData());
+      return true;
     }
 
     // Limpa o formulário após uma operação
@@ -510,9 +517,9 @@
       // Isso garante que a busca não seja sensível a maiúsculas/minúsculas.
       const nomeFiltro = txtFiltroNome.value.trim().toLowerCase();
 
-      // Converte o valor selecionado no combo de cargos (que vem como string) em número.
-      // Se nenhum cargo for escolhido, o valor será -1.
-      const cargoFiltro = parseInt(cboCargosFiltro.value);
+      // IDs do MongoDB são textos alfanuméricos. Convertê-los para número fazia a
+      // comparação falhar mesmo quando havia funcionário no cargo selecionado.
+      const cargoFiltro = cboCargosFiltro.value;
 
       // Se a caixa de vale-transporte estiver marcada, valeFiltro = 1; caso contrário, 0.
       // Isso é útil porque o campo na API provavelmente é numérico (1 = sim, 0 = não).
@@ -540,8 +547,8 @@
         // 2️⃣ Filtro por cargo:
         // Só aplica o filtro se um cargo específico tiver sido escolhido (diferente de -1).
         // Compara o id do cargo do funcionário com o cargo selecionado.
-        if (!isNaN(cargoFiltro) && cargoFiltro != -1) {
-          match = match && f.cargo.idCargo === cargoFiltro;
+        if (cargoFiltro !== "-1") {
+          match = match && String(f.cargo.idCargo) === cargoFiltro;
         }
 
         // 3️⃣ Filtro por vale-transporte:

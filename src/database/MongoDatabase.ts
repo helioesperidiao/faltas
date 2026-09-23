@@ -1,5 +1,7 @@
-import { MongoClient, Db, MongoClientOptions } from "mongodb";
+import { MongoClient, Db, MongoClientOptions, Document } from "mongodb";
 import dotenv from "dotenv";
+import { CARGOS_ACEITOS, CARGO_PROCESSO_PEDAGOGICO } from "@/constants/Cargos";
+import { GradeHorario } from "@/models/GradeHorario";
 
 // Carrega variáveis de ambiente do arquivo .env
 dotenv.config();
@@ -36,6 +38,8 @@ export class MongoDatabase {
     private static _client: MongoClient | null = null;
     /** Instância do banco de dados singleton. */
     private static _db: Db | null = null;
+    /** Promessa compartilhada para impedir acesso ao banco antes da conexão terminar. */
+    private static _connectionPromise: Promise<MongoClient> | null = null;
 
     // ======================== CONFIGURAÇÃO ========================
 
@@ -123,18 +127,28 @@ export class MongoDatabase {
      */
     public async connect(): Promise<MongoClient> {
         if (!MongoDatabase._client) {
-            try {
-                MongoDatabase._client = new MongoClient(this._uri, this._options);
-                await MongoDatabase._client.connect();
-                console.log("⬆️ Conectado ao MongoDB com sucesso!");
-
-                // Inicializa o banco de dados
-                MongoDatabase._db = MongoDatabase._client.db(this._databaseName);
-            } catch (error: any) {
-                console.error("❌ Falha ao conectar ao MongoDB:", error.message);
-                process.exit(1);
-            }
+            MongoDatabase._client = new MongoClient(this._uri, this._options);
+            MongoDatabase._connectionPromise = MongoDatabase._client.connect()
+                .then(client => {
+                    MongoDatabase._db = client.db(this._databaseName);
+                    console.log("⬆️ Conectado ao MongoDB com sucesso!");
+                    return client;
+                })
+                .catch((error: Error) => {
+                    MongoDatabase._client = null;
+                    MongoDatabase._connectionPromise = null;
+                    throw error;
+                });
         }
+
+        try {
+            await MongoDatabase._connectionPromise;
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : String(error);
+            console.error("❌ Falha ao conectar ao MongoDB:", message);
+            throw error;
+        }
+
         return MongoDatabase._client;
     }
 
@@ -168,6 +182,192 @@ export class MongoDatabase {
     }
 
     /**
+     * Cria os índices da consulta histórica e completa, uma única vez, os
+     * vínculos de turma dos documentos antigos. MongoDB não exige migrações de
+     * schema, portanto este passo torna a evolução segura para bases já em uso.
+     */
+    public async initializeSchema(): Promise<void> {
+        const db = await this.getDb();
+
+        await Promise.all([
+            db.collection("aluno").createIndex({ turma: 1, turmaInicioEm: 1 }),
+            db.collection("registro").createIndex({ turma: 1, dia: 1, matricula: 1 }),
+            db.collection("abonos").createIndex({ turma: 1, dataInicio: 1 }),
+            db.collection("gradeHorario").createIndex({ turma: 1, dia: 1, cod: 1 }),
+            db.collection("alertasFaltas").createIndex({ ano: 1, bimestre: 1, matricula: 1, turma: 1, codDisciplina: 1 })
+        ]);
+
+        await this.migrarVinculosLegados(db);
+        await this.migrarCargosAceitos(db);
+        await this.migrarCargaHorariaDasGrades(db);
+        await this.criarConfiguracoesPadraoDeAlertas(db);
+    }
+
+    /** Mantém no banco somente os dois cargos permitidos pela aplicação. */
+    private async migrarCargosAceitos(db: Db): Promise<void> {
+        const cargos = db.collection<Document>("cargo");
+        const funcionarios = db.collection<Document>("funcionario");
+        const filtroAtivo = { "auditoria.deletadoEm": null };
+        const cargoPlural = await cargos.findOne({
+            nomeCargo: "Processos Pedagógicos",
+            ...filtroAtivo
+        });
+        const cargoCanonico = await cargos.findOne({
+            nomeCargo: CARGO_PROCESSO_PEDAGOGICO,
+            ...filtroAtivo
+        });
+
+        if (cargoPlural && cargoCanonico) {
+            await funcionarios.updateMany(
+                { cargoId: cargoPlural._id, ...filtroAtivo },
+                { $set: { cargoId: cargoCanonico._id } }
+            );
+            await cargos.updateOne(
+                { _id: cargoPlural._id },
+                { $set: { "auditoria.deletadoPor": "sistema", "auditoria.deletadoEm": new Date() } }
+            );
+        } else if (cargoPlural) {
+            await cargos.updateOne(
+                { _id: cargoPlural._id },
+                { $set: { nomeCargo: CARGO_PROCESSO_PEDAGOGICO, "auditoria.alteradoPor": "sistema", "auditoria.alteradoEm": new Date() } }
+            );
+        }
+
+        await cargos.updateMany(
+            { nomeCargo: { $nin: [...CARGOS_ACEITOS] }, ...filtroAtivo },
+            { $set: { "auditoria.deletadoPor": "sistema", "auditoria.deletadoEm": new Date() } }
+        );
+    }
+
+    private async migrarVinculosLegados(db: Db): Promise<void> {
+        const alunos = db.collection<Document>("aluno");
+        const registros = db.collection<Document>("registro");
+        const abonos = db.collection<Document>("abonos");
+
+        const alunosSemInicio = await alunos.find({ turmaInicioEm: { $exists: false } }).toArray();
+        if (alunosSemInicio.length > 0) {
+            await alunos.bulkWrite(alunosSemInicio.map(aluno => {
+                const ano = Number(aluno.ano);
+                const inicio = new Date(Number.isInteger(ano) && ano >= 2000 ? ano : new Date().getFullYear(), 0, 1);
+                return {
+                    updateOne: {
+                        filter: { _id: aluno._id },
+                        update: { $set: { turmaInicioEm: inicio, historicoTurmas: aluno.historicoTurmas || [] } }
+                    }
+                }
+            }));
+        }
+
+        const registrosSemTurma = await registros.find({ turma: { $exists: false } }).toArray();
+        for (const registro of registrosSemTurma) {
+            const aluno = await alunos.findOne({ matricula: registro.matricula });
+            if (!aluno) {
+                // O documento é preservado mesmo se o aluno já tiver sido removido
+                // definitivamente da base anterior à migração. Não há como inferir
+                // sua turma com segurança, por isso ele fica identificado como legado.
+                await registros.updateOne(
+                    { _id: registro._id },
+                    { $set: { turma: '', curso: '', serie: '', alunoNome: '', vinculoHistoricoIndisponivel: true } }
+                );
+                continue;
+            }
+            await registros.updateOne(
+                { _id: registro._id },
+                {
+                    $set: {
+                        turma: aluno.turma || '',
+                        curso: aluno.curso || '',
+                        serie: aluno.serie || '',
+                        alunoNome: aluno.alunoNome || ''
+                    }
+                }
+            );
+        }
+
+        const abonosSemTurma = await abonos.find({ turma: { $exists: false } }).toArray();
+        for (const abono of abonosSemTurma) {
+            const aluno = await alunos.findOne({ matricula: abono.matricula });
+            if (!aluno) {
+                await abonos.updateOne(
+                    { _id: abono._id },
+                    { $set: { turma: '', curso: '', serie: '', alunoNome: '', vinculoHistoricoIndisponivel: true } }
+                );
+                continue;
+            }
+            await abonos.updateOne(
+                { _id: abono._id },
+                {
+                    $set: {
+                        turma: aluno.turma || '',
+                        curso: aluno.curso || '',
+                        serie: aluno.serie || '',
+                        alunoNome: aluno.alunoNome || ''
+                    }
+                }
+            );
+        }
+    }
+
+    /** Calcula a duração e a carga semanal das grades já existentes na base. */
+    private async migrarCargaHorariaDasGrades(db: Db): Promise<void> {
+        const grades = db.collection<Document>("gradeHorario");
+        const aulasAtivas = await grades.find({ "auditoria.deletadoEm": null }).toArray();
+        const cargas = new Map<string, { total: number; aulas: Document[] }>();
+
+        aulasAtivas.forEach(aula => {
+            try {
+                const duracao = GradeHorario.calcularDuracaoMinutos(aula.horaInicio, aula.horaFim);
+                const chave = `${aula.turma}\u0000${aula.cod}`;
+                const grupo = cargas.get(chave) || { total: 0, aulas: [] };
+                grupo.total += duracao;
+                grupo.aulas.push({ ...aula, duracaoAulaMinutos: duracao });
+                cargas.set(chave, grupo);
+            } catch {
+                // Uma grade legada inválida não pode impedir a aplicação de iniciar.
+                // Ela não entra nos alertas até ser corrigida no cadastro da grade.
+            }
+        });
+
+        const atualizacoes = Array.from(cargas.values()).flatMap(grupo =>
+            grupo.aulas.map(aula => ({
+                updateOne: {
+                    filter: { _id: aula._id },
+                    update: {
+                        $set: {
+                            duracaoAulaMinutos: aula.duracaoAulaMinutos,
+                            cargaHorariaSemanalMinutos: grupo.total
+                        }
+                    }
+                }
+            }))
+        );
+        if (atualizacoes.length > 0) {
+            await grades.bulkWrite(atualizacoes);
+        }
+    }
+
+    /** Garante as regras iniciais, que podem ser alteradas pelo Processo Pedagógico. */
+    private async criarConfiguracoesPadraoDeAlertas(db: Db): Promise<void> {
+        const configuracoes = db.collection<Document>("configuracoesAlertasFaltas");
+        if (await configuracoes.countDocuments() > 0) return;
+        const padroes = [
+            { cargaHorariaSemanalMinutos: 50, limiteFaltas: 3 },
+            { cargaHorariaSemanalMinutos: 100, limiteFaltas: 5 }
+        ].map(configuracao => ({
+            ...configuracao,
+            auditoria: {
+                criadoPor: "sistema",
+                criadoEm: new Date(),
+                alteradoPor: "",
+                alteradoEm: null,
+                deletadoPor: "",
+                deletadoEm: null
+            }
+        }));
+        await configuracoes.insertMany(padroes);
+    }
+
+    /**
      * Fecha a conexão com o MongoDB.
      * 
      * Útil para encerrar a aplicação de forma limpa, liberando recursos.
@@ -187,6 +387,7 @@ export class MongoDatabase {
             await MongoDatabase._client.close();
             MongoDatabase._client = null;
             MongoDatabase._db = null;
+            MongoDatabase._connectionPromise = null;
             console.log("⬆️ Conexão com MongoDB fechada.");
         }
     }

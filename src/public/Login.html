@@ -1,167 +1,72 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
   <meta charset="UTF-8" />
   <title>Login | UNIVAP - Controle de Faltas</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link href="css/univap-theme.css" rel="stylesheet" />
   <style>
-    .login-wrap {
-      display: flex;
-      justify-content: center;
-      padding: 60px 20px;
-    }
-    .login-card {
-      width: 100%;
-      max-width: 420px;
-    }
-    .login-logo {
-      width: 72px;
-      height: 72px;
-      border-radius: 50%;
-      background: var(--univap-azul);
-      color: #ffffff;
-      font-size: 30px;
-      font-weight: bold;
-      text-align: center;
-      line-height: 72px;
-      margin: 0 auto 14px auto;
-    }
-    .login-titulo {
-      text-align: center;
-      margin-bottom: 4px;
-    }
-    .login-subtitulo {
-      text-align: center;
-      color: var(--univap-texto-suave);
-      font-size: 13px;
-      margin-bottom: 20px;
-    }
-    .campo-login {
-      margin-bottom: 16px;
-    }
-    .campo-login input {
-      width: 100%;
-      border: 1px solid var(--univap-cinza-borda);
-      border-radius: 4px;
-      padding: 11px 12px;
-      font-size: 14px;
-    }
-    .btn-entrar {
-      display: block;
-      width: 100%;
-      border: none;
-      border-radius: 4px;
-      padding: 12px 16px;
-      font-size: 14px;
-      font-weight: bold;
-      cursor: pointer;
-      background: var(--univap-vermelho);
-      color: #ffffff;
-    }
+    .login-wrap { display: flex; justify-content: center; padding: 60px 20px; }
+    .login-card { width: 100%; max-width: 420px; }
+    .login-logo { width: 72px; height: 72px; border-radius: 50%; background: var(--univap-azul); color: #ffffff; font-size: 30px; font-weight: bold; text-align: center; line-height: 72px; margin: 0 auto 14px; }
+    .login-titulo { text-align: center; margin-bottom: 4px; }
+    .login-subtitulo { text-align: center; color: var(--univap-texto-suave); font-size: 13px; margin-bottom: 20px; }
+    .campo-login { margin-bottom: 16px; }
+    .campo-login input { width: 100%; border: 1px solid var(--univap-cinza-borda); border-radius: 4px; padding: 11px 12px; font-size: 14px; }
+    .btn-entrar { display: block; width: 100%; border: none; border-radius: 4px; padding: 12px 16px; font-size: 14px; font-weight: bold; cursor: pointer; background: var(--univap-vermelho); color: #ffffff; }
+    .btn-entrar:disabled { opacity: .6; cursor: progress; }
   </style>
 </head>
-
 <body>
   <header class="topbar">
     <div class="brand">
       <div class="brand-mark" aria-hidden="true">U</div>
-      <div>
-        <div class="brand-text">UNIVAP</div>
-        <div class="brand-sub">Sistema de Controle de Faltas</div>
-      </div>
+      <div><div class="brand-text">UNIVAP</div><div class="brand-sub">Sistema de Controle de Faltas</div></div>
     </div>
   </header>
-
   <main class="login-wrap" id="conteudo-principal">
-    <div class="card login-card">
-      <div class="card-body">
-        <div class="login-logo" aria-hidden="true">U</div>
-        <h1 class="login-titulo">Entrar no sistema</h1>
-        <p class="login-subtitulo">Informe seu e-mail e senha cadastrados.</p>
-
-        <form id="formLogin" novalidate>
-          <div class="campo-login">
-            <label for="txtUsuario">E-mail</label>
-            <input type="email" id="txtUsuario" autocomplete="username" required />
-          </div>
-          <div class="campo-login">
-            <label for="txtSenha">Senha</label>
-            <input type="password" id="txtSenha" autocomplete="current-password" required />
-          </div>
-
-          <div id="divResposta" role="alert" aria-live="polite"></div>
-
-          <button type="submit" class="btn-entrar" id="btnLogin">Entrar</button>
-        </form>
-      </div>
-      <div>
-        "usuario": "helioesperidiao@gmail.com",<br>
-        "senha": "@Helio123456" <br>
-        posicione os arquivos na pasta htdocs.<br>
-        Não esqueça de inicar o servidor de banco de dados<br>
-        os arquivos de banco estão na pasta docs<br>
-        Acesse http://localhost:80/view/Login.html<br>
-        Troque a porta para 8080 caso seja necessário
-
-    </div>
-    </div>
+    <div class="card login-card"><div class="card-body">
+      <div class="login-logo" aria-hidden="true">U</div>
+      <h1 class="login-titulo">Entrar no sistema</h1>
+      <p class="login-subtitulo">Informe seu e-mail e senha cadastrados.</p>
+      <form id="formLogin" novalidate>
+        <div class="campo-login"><label for="txtUsuario">E-mail</label><input type="email" id="txtUsuario" autocomplete="username" required /></div>
+        <div class="campo-login"><label for="txtSenha">Senha</label><input type="password" id="txtSenha" autocomplete="current-password" required /></div>
+        <div id="divResposta" role="alert" aria-live="polite"></div>
+        <button type="submit" class="btn-entrar" id="btnLogin">Entrar</button>
+      </form>
+    </div></div>
   </main>
-
   <script type="module">
     import ApiService from './ApiService.js';
-
     const api = new ApiService();
-
     const formLogin = document.getElementById("formLogin");
     const txtUsuario = document.getElementById("txtUsuario");
     const txtSenha = document.getElementById("txtSenha");
     const divResposta = document.getElementById("divResposta");
     const btnLogin = document.getElementById("btnLogin");
-
     function mostrarErro(mensagem) {
       divResposta.textContent = mensagem;
       divResposta.className = "alert alert-danger";
     }
-
     formLogin.addEventListener("submit", async (evento) => {
       evento.preventDefault();
-
-      if (txtUsuario.value.trim() === "") {
-        mostrarErro("Informe o e-mail.");
-        txtUsuario.focus();
-        return;
-      }
-      if (txtSenha.value.trim() === "") {
-        mostrarErro("Informe a senha.");
-        txtSenha.focus();
-        return;
-      }
-
+      if (txtUsuario.value.trim() === "") { mostrarErro("Informe o e-mail."); txtUsuario.focus(); return; }
+      if (txtSenha.value.trim() === "") { mostrarErro("Informe a senha."); txtSenha.focus(); return; }
       btnLogin.disabled = true;
       btnLogin.textContent = "Entrando...";
-
-      const dadosLogin = {
-        funcionario: {
-          email: txtUsuario.value.trim(),
-          senha: txtSenha.value.trim()
-        }
-      };
-
-      const respostaAPI = await api.post("api/v1/funcionarios/login", dadosLogin);
-
+      const respostaAPI = await api.post("api/v1/funcionarios/login", {
+        funcionario: { email: txtUsuario.value.trim(), senha: txtSenha.value.trim() }
+      });
       if (respostaAPI.success === true) {
         localStorage.setItem("userData", JSON.stringify(respostaAPI));
         window.location.href = "dashboard.html";
         return;
       }
-
       mostrarErro(respostaAPI.message || "Usuário ou senha inválidos.");
       btnLogin.disabled = false;
       btnLogin.textContent = "Entrar";
     });
   </script>
 </body>
-
 </html>

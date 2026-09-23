@@ -3,107 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Painel do Administrador | UNIVAP - Controle de Faltas</title>
+<title>Frequência | UNIVAP - Controle de Faltas</title>
 <link href="css/univap-theme.css" rel="stylesheet">
 <style>
-  body {
-    margin: 0;
-    background: #eef2f8;
-    color: #1f2937;
-    font-family: Arial, Helvetica, sans-serif;
-  }
-
-  /* ---------- CABEÇALHO ---------- */
-  .topbar {
-    background: #163b6b;
-    color: #ffffff;
-    padding: 14px 28px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .brand {
-    display: flex;
-    align-items: center;
-  }
-  .brand-mark {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: #ffffff;
-    color: #163b6b;
-    font-weight: bold;
-    font-size: 18px;
-    text-align: center;
-    line-height: 40px;
-    margin-right: 14px;
-  }
-  .brand-text {
-    font-size: 20px;
-    font-weight: bold;
-  }
-  .brand-sub {
-    font-size: 11px;
-    color: #c9d7ec;
-    margin-top: 2px;
-  }
-  .session-info {
-    text-align: right;
-    font-size: 12px;
-    line-height: 1.5;
-    color: #d7e2f2;
-  }
-  .session-info strong {
-    color: #ffffff;
-  }
-
-  /* ---------- NAVBAR ---------- */
-  .navbar {
-    background: #0f2a4d;
-    padding: 0 28px;
-  }
-  .navbar table {
-    border-collapse: collapse;
-  }
-  .navbar td {
-    padding: 0;
-  }
-  .navbar a {
-    display: block;
-    padding: 13px 16px;
-    color: #d7e2f2;
-    text-decoration: none;
-    font-size: 12.5px;
-    font-weight: bold;
-    letter-spacing: .3px;
-    border-bottom: 3px solid transparent;
-  }
-  .navbar a:hover {
-    color: #ffffff;
-    background: #163b6b;
-  }
-  .navbar a.ativo {
-    color: #ffffff;
-    border-bottom: 3px solid #a6231e;
-    background: #163b6b;
-  }
-
-  /* ---------- LAYOUT ---------- */
-  main {
-    max-width: 1080px;
-    margin: 28px auto 60px auto;
-    padding: 0 20px;
-  }
-  .page-title h1 {
-    font-size: 22px;
-    color: #0f2a4d;
-    margin: 0;
-  }
-  .page-title p {
-    margin: 4px 0 20px 0;
-    font-size: 13px;
-    color: #7a7f88;
-  }
+  /* O cabeçalho (topbar + menu) é montado pelo js/Topbar.js a partir do cargo do
+     usuário logado, e o visual vem do css/univap-theme.css. Esta tela NÃO declara
+     topbar nem navbar próprias: era isso que fazia o menu trocar de botões e o nome
+     do usuário virar "Administrador do sistema" ao entrar aqui. */
 
   /* ---------- CARDS DE RESUMO ---------- */
   table.resumo-table {
@@ -113,65 +19,46 @@
     margin: 0 -14px 20px -14px;
   }
   .resumo-card {
-    border: 1px solid #c7cbd1;
+    border: 1px solid var(--univap-cinza-borda);
     border-radius: 6px;
     background: #ffffff;
     padding: 16px 18px;
   }
   .resumo-lbl {
     font-size: 11.5px;
-    color: #7a7f88;
+    color: var(--univap-texto-suave);
     text-transform: uppercase;
     font-weight: bold;
   }
   .resumo-num {
     font-size: 26px;
     font-weight: bold;
-    color: #0f2a4d;
+    color: var(--univap-azul-escuro);
     margin-top: 4px;
   }
-  .resumo-num.cor-vermelha { color: #a6231e; }
-  .resumo-num.cor-verde { color: #1c7a3e; }
+  .resumo-num.cor-vermelha { color: var(--univap-vermelho); }
+  .resumo-num.cor-verde { color: var(--univap-verde); }
 
-  /* ---------- CARD PRINCIPAL ---------- */
-  .card {
-    background: #ffffff;
-    border: 1px solid #c7cbd1;
-    border-radius: 6px;
-    margin-bottom: 22px;
-  }
-  .card-header {
-    background: #f1f2f4;
-    border-bottom: 1px solid #c7cbd1;
-    padding: 12px 22px;
-  }
-  .card-header h2 {
-    font-size: 14px;
-    margin: 0;
-    color: #0f2a4d;
-    text-transform: uppercase;
-  }
-  .card-body {
-    padding: 22px;
+  /* ---------- CABEÇALHO DO CARD COM BOTÃO ---------- */
+  .card-header.com-acao {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
   }
 
-  .field label {
-    display: block;
-    font-size: 12.5px;
-    font-weight: bold;
-    color: #4a4f57;
-    margin-bottom: 6px;
-  }
+  /* ---------- FILTRO ---------- */
   .field select,
   .field input {
-    border: 1px solid #c7cbd1;
+    border: 1px solid var(--univap-cinza-borda);
     border-radius: 4px;
     padding: 9px 11px;
     font-size: 13.5px;
-    color: #1f2937;
+    color: var(--univap-texto);
     background: #ffffff;
+    font-family: inherit;
   }
-
   table.filtro-table {
     width: 100%;
     border-spacing: 14px 0;
@@ -181,34 +68,55 @@
     width: 100%;
   }
 
+  /* ---------- BOTÃO DE PDF ---------- */
+  .btn-pdf {
+    background: var(--univap-azul);
+    border: 1.5px solid var(--univap-azul);
+    color: #ffffff;
+    border-radius: 4px;
+    padding: 9px 18px;
+    font-size: 12.5px;
+    font-weight: bold;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .btn-pdf:hover {
+    background: var(--univap-azul-escuro);
+    border-color: var(--univap-azul-escuro);
+  }
+  .btn-pdf:disabled {
+    background: var(--univap-cinza-borda);
+    border-color: var(--univap-cinza-borda);
+    cursor: not-allowed;
+  }
+
   /* ---------- TABELA DE ALUNOS ---------- */
   table.alunos-table {
     width: 100%;
     border-collapse: collapse;
-    margin-top: 18px;
   }
   .alunos-table th {
     text-align: left;
     font-size: 11.5px;
     text-transform: uppercase;
-    color: #7a7f88;
-    border-bottom: 2px solid #c7cbd1;
+    color: var(--univap-texto-suave);
+    border-bottom: 2px solid var(--univap-cinza-borda);
     padding: 8px 10px;
   }
   .alunos-table td {
     padding: 10px;
-    border-bottom: 1px solid #f1f2f4;
+    border-bottom: 1px solid var(--univap-cinza-fundo);
     font-size: 13.5px;
   }
   .alunos-table tr:hover td {
-    background: #eef2f8;
+    background: var(--univap-azul-claro);
   }
 
   .avatar-mini {
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    background: #163b6b;
+    background: var(--univap-azul);
     color: #ffffff;
     font-weight: bold;
     font-size: 12px;
@@ -219,6 +127,7 @@
     vertical-align: middle;
   }
 
+  /* as cores de cada badge vêm do tema (.badge-presente / .badge-falta / .badge-pendente) */
   .badge {
     display: inline-block;
     font-size: 10.5px;
@@ -227,21 +136,18 @@
     padding: 4px 10px;
     border-radius: 12px;
   }
-  .badge-presente { background: #e7f4ec; color: #1c7a3e; }
-  .badge-falta { background: #fbe9e8; color: #a6231e; }
-  .badge-pendente { background: #f1f2f4; color: #7a7f88; }
 
   .faltas-total {
     font-weight: bold;
   }
   .faltas-total.alerta {
-    color: #a6231e;
+    color: var(--univap-vermelho);
   }
 
   .empty-state {
     text-align: center;
     padding: 50px 20px;
-    color: #7a7f88;
+    color: var(--univap-texto-suave);
   }
   .empty-state .icon {
     font-size: 32px;
@@ -252,67 +158,135 @@
     display: none;
   }
 
+  /* ---------- CABEÇALHO QUE SÓ APARECE NO PDF/IMPRESSÃO ---------- */
+  #print-cabecalho {
+    display: none;
+  }
+
   @media (max-width: 700px) {
-    .topbar {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 8px;
-      padding: 12px 16px;
-    }
-    .session-info { text-align: left; }
-    .navbar { overflow-x: auto; }
-    main { padding: 0 14px; }
+    /* !important porque os <td> carregam width inline (25% / 60% / 40%), que de outro
+       modo vence o CSS e deixa os cards espremidos numa coluna estreita no celular. */
     table.resumo-table, table.resumo-table tbody, table.resumo-table tr, table.resumo-table td {
       display: block;
-      width: 100%;
+      width: 100% !important;
       margin-bottom: 12px;
+    }
+    table.resumo-table {
+      border-spacing: 0;
+      margin: 0 0 8px 0;
     }
     table.filtro-table, table.filtro-table tbody, table.filtro-table tr, table.filtro-table td {
       display: block;
-      width: 100%;
+      width: 100% !important;
       margin-bottom: 10px;
     }
-    #tabela-wrap { overflow-x: auto; }
+    table.filtro-table {
+      border-spacing: 0;
+    }
+    #tabela-wrap .card-body { overflow-x: auto; }
     table.alunos-table { min-width: 480px; }
+  }
+
+  /* ---------- IMPRESSÃO / SALVAR COMO PDF ---------- */
+  @media print {
+    body {
+      background: #ffffff;
+    }
+    .crumbbar,
+    .page-title,
+    .resumo-table,
+    #card-filtro,
+    #empty-card,
+    .btn-pdf {
+      display: none !important;
+    }
+    main.conteudo-pagina {
+      margin: 0;
+      padding: 0;
+      max-width: none;
+    }
+    body.com-turma #print-cabecalho {
+      display: block;
+      margin-bottom: 16px;
+    }
+    #print-cabecalho h1 {
+      font-size: 18px;
+      color: #000000;
+      margin: 0 0 4px 0;
+    }
+    #print-cabecalho .print-sub {
+      font-size: 12px;
+      color: #333333;
+      margin: 0 0 10px 0;
+    }
+    #print-cabecalho .print-totais {
+      font-size: 12px;
+      color: #000000;
+      border-top: 1px solid #999999;
+      border-bottom: 1px solid #999999;
+      padding: 6px 0;
+    }
+    /* Sem !important de propósito: quando nenhuma turma foi escolhida, #tabela-wrap
+       continua com display:none e a impressão sai sem uma tabela vazia. */
+    #tabela-wrap {
+      border: none;
+      margin: 0;
+    }
+    #tabela-wrap .card-header {
+      display: none;
+    }
+    #tabela-wrap .card-body {
+      padding: 0;
+      overflow: visible;
+    }
+    .alunos-table th,
+    .alunos-table td {
+      border-bottom: 1px solid #999999;
+      color: #000000;
+    }
+    .alunos-table tr:hover td {
+      background: transparent;
+    }
+    .alunos-table tr {
+      page-break-inside: avoid;
+    }
+    .avatar-mini {
+      display: none;
+    }
+    .badge {
+      background: transparent !important;
+      color: #000000 !important;
+      padding: 0;
+      font-size: 11px;
+    }
+    .faltas-total.alerta {
+      color: #000000;
+    }
+    @page {
+      margin: 14mm;
+    }
   }
 </style>
 </head>
 <body>
-<a href="#conteudo-principal" class="skip-link">Pular para o conteúdo</a>
 
-<div class="topbar">
-  <div class="brand">
-    <div class="brand-mark" aria-hidden="true">U</div>
-    <div>
-      <div class="brand-text">UNIVAP</div>
-      <div class="brand-sub">Sistema de Controle de Faltas</div>
-    </div>
-  </div>
-  <div class="session-info">
-    USUÁRIO: <strong>ADMINISTRADOR DO SISTEMA</strong><br>
-    <span id="relogio"></span>
-    <button type="button" class="btn-sair" id="btn-sair">Sair</button>
-  </div>
+<div id="app-topbar"></div>
+
+<div class="crumbbar">
+  ENSINO BÁSICO &rsaquo; <span class="current">FREQUÊNCIA POR TURMA</span>
 </div>
 
-<nav class="navbar" aria-label="Menu principal">
-  <table>
-    <tr>
-      <td><a href="telaAdministrador.html" aria-current="page">Painel</a></td>
-      <td><a href="GradeHorarios.html">Turmas</a></td>
-      <td><a href="Alunos.html">Alunos</a></td>
-      <td><a href="telaChamada.html">Faltas</a></td>
-      <td><a href="Funcionarios.html">Funcionários</a></td>
-      <td><a href="Relatorios.html">Relatórios</a></td>
-      <td><a href="Cargos.html">Configurações</a></td>
-    </tr>
-  </table>
-</nav>
-
-<main id="conteudo-principal">
+<main class="conteudo-pagina" id="conteudo-principal">
   <div class="page-title">
-    <h1>Painel de Faltas</h1>
+    <h1>Frequência por Turma</h1>
     <p>Escolha uma turma para ver a lista de alunos e a situação de frequência de cada um.</p>
+  </div>
+
+  <!-- CABEÇALHO EXCLUSIVO DO PDF -->
+  <div id="print-cabecalho">
+    <h1>UNIVAP &mdash; Relatório de Frequência</h1>
+    <p class="print-sub" id="print-sub"></p>
+    <div class="print-totais" id="print-totais"></div>
   </div>
 
   <!-- CARDS DE RESUMO -->
@@ -346,14 +320,14 @@
   </table>
 
   <!-- FILTRO -->
-  <div class="card">
+  <div class="card" id="card-filtro">
     <div class="card-header"><h2>Selecionar Turma</h2></div>
     <div class="card-body">
       <table class="filtro-table">
         <tr>
           <td style="width:60%;">
             <div class="field">
-              <label>Turma</label>
+              <label for="turma-select">Turma</label>
               <select id="turma-select" onchange="selecionarTurma()">
                 <option value="">Selecione uma turma...</option>
               </select>
@@ -361,7 +335,7 @@
           </td>
           <td style="width:40%;">
             <div class="field">
-              <label>Data de referência</label>
+              <label for="data-referencia">Data de referência</label>
               <input type="date" id="data-referencia" onchange="mostrarTurma()">
             </div>
           </td>
@@ -380,7 +354,10 @@
 
   <!-- TABELA DE ALUNOS -->
   <div class="card" id="tabela-wrap">
-    <div class="card-header"><h2 id="titulo-turma">Alunos da Turma</h2></div>
+    <div class="card-header com-acao">
+      <h2 id="titulo-turma">Alunos da Turma</h2>
+      <button type="button" class="btn-pdf" id="btn-pdf" onclick="baixarPdf()">Baixar PDF da frequência</button>
+    </div>
     <div class="card-body">
       <table class="alunos-table">
         <thead>
@@ -398,156 +375,233 @@
 
 <script type="module">
   import ApiService from './ApiService.js';
+  import { exigirSessao, montarTopbar, escaparHtml } from './js/Topbar.js';
 
-  let userData = localStorage.getItem("userData");
-  if (userData) {
-    userData = JSON.parse(userData);
-  } else {
-    window.location.href = "Login.html";
+  const sessao = exigirSessao();
+
+  if (sessao) {
+    const api = new ApiService(sessao.token);
+    montarTopbar('frequencia');
+    iniciar(api);
   }
-  const api = new ApiService(userData.data.token);
 
-  document.getElementById('btn-sair').onclick = () => {
-    localStorage.removeItem('userData');
-    window.location.href = 'Login.html';
-  };
-
-  // ---------- RELÓGIO ----------
-  function atualizarRelogio() {
-    var d = new Date();
-    var dia = String(d.getDate()).padStart(2, '0');
-    var mes = String(d.getMonth() + 1).padStart(2, '0');
-    var ano = d.getFullYear();
-    var hora = String(d.getHours()).padStart(2, '0');
-    var min = String(d.getMinutes()).padStart(2, '0');
-    document.getElementById('relogio').innerHTML = dia + '/' + mes + '/' + ano + ' - ' + hora + ':' + min;
-
-    var campoData = document.getElementById('data-referencia');
+  function iniciar(api) {
+    // ---------- DATA PADRÃO (hoje) ----------
+    // Preenchida a partir dos componentes locais da data: usar toISOString() aqui
+    // devolveria o dia em UTC e, à noite, apontaria para o dia seguinte.
+    const campoData = document.getElementById('data-referencia');
     if (campoData.value === '') {
-      campoData.value = ano + '-' + mes + '-' + dia;
+      const agora = new Date();
+      campoData.value = agora.getFullYear()
+        + '-' + String(agora.getMonth() + 1).padStart(2, '0')
+        + '-' + String(agora.getDate()).padStart(2, '0');
     }
-  }
-  atualizarRelogio();
-  setInterval(atualizarRelogio, 30000);
 
-  var turmaAtual = "";
-  var todosAlunos = [];
-  var turmas = [];
+    var turmaAtual = "";
+    var todosAlunos = [];
+    var turmas = [];
 
-  // ---------- CARREGA ALUNOS/TURMAS E MONTA O RESUMO GERAL ----------
-  async function carregarResumoGeral() {
-    const respostaAlunos = await api.get("api/v1/alunos");
-    todosAlunos = respostaAlunos.success ? respostaAlunos.data.alunos : [];
-    turmas = [...new Set(todosAlunos.map(a => a.turma))];
+    /**
+     * Quebra 'AAAA-MM-DD' em números sem passar por new Date(): o construtor trata
+     * essa string como UTC e, em fuso negativo, devolve o dia (e às vezes o mês/ano)
+     * anterior — o que fazia o relatório mensal buscar o mês errado todo dia 1º.
+     */
+    function partesDaData(texto) {
+      const partes = String(texto || '').split('-');
+      return {
+        ano: Number(partes[0]),
+        mes: Number(partes[1]),
+        dia: Number(partes[2])
+      };
+    }
 
-    const select = document.getElementById('turma-select');
-    turmas.forEach(turma => {
-      const opcao = document.createElement('option');
-      opcao.value = turma;
-      opcao.innerHTML = turma;
-      select.appendChild(opcao);
-    });
+    function formatarDataBr(texto) {
+      const { ano, mes, dia } = partesDaData(texto);
+      if (!ano || !mes || !dia) return texto || '';
+      return String(dia).padStart(2, '0') + '/' + String(mes).padStart(2, '0') + '/' + ano;
+    }
 
-    const hoje = document.getElementById('data-referencia').value;
-    let totalFaltasHoje = 0;
-
-    for (const turma of turmas) {
-      const resposta = await api.get(`api/v1/relatorios/frequencia?turma=${encodeURIComponent(turma)}&dia=${hoje}`);
-      if (resposta.success) {
-        totalFaltasHoje += resposta.data.frequencia.filter(a => a.situacao === 'Ausente').length;
+    function pegarIniciais(nome) {
+      var partes = String(nome || '').trim().split(/\s+/);
+      var iniciais = (partes[0] || '').charAt(0);
+      if (partes.length > 1) {
+        iniciais = iniciais + partes[1].charAt(0);
       }
+      return iniciais.toUpperCase() || '?';
     }
 
-    const totalAlunos = todosAlunos.length;
-    const frequencia = totalAlunos > 0 ? Math.round(((totalAlunos - totalFaltasHoje) / totalAlunos) * 100) : 100;
+    // ---------- CARREGA ALUNOS/TURMAS E MONTA O RESUMO GERAL ----------
+    async function carregarResumoGeral() {
+      const respostaAlunos = await api.get("api/v1/alunos");
+      todosAlunos = respostaAlunos.success ? respostaAlunos.data.alunos : [];
+      turmas = [...new Set(todosAlunos.map(a => a.turma))];
 
-    document.getElementById('resumo-total-alunos').innerHTML = totalAlunos;
-    document.getElementById('resumo-turmas').innerHTML = turmas.length;
-    document.getElementById('resumo-faltas-hoje').innerHTML = totalFaltasHoje;
-    document.getElementById('resumo-frequencia').innerHTML = frequencia + '%';
-  }
-  carregarResumoGeral();
+      const agora = new Date();
+      const turmasHistoricas = [...new Set(todosAlunos.flatMap(aluno =>
+        (aluno.historicoTurmas || [])
+          .filter(historico => new Date(historico.disponivelAte) >= agora)
+          .map(historico => historico.turma)
+      ).filter(turma => !turmas.includes(turma)))];
 
-  // ---------- SELECIONAR TURMA ----------
-  function selecionarTurma() {
-    var valor = document.getElementById('turma-select').value;
+      const select = document.getElementById('turma-select');
+      const adicionarOpcoes = (lista, titulo) => {
+        if (lista.length === 0) return;
+        const grupo = document.createElement('optgroup');
+        grupo.label = titulo;
+        lista.forEach(turma => {
+          const opcao = document.createElement('option');
+          opcao.value = turma;
+          opcao.textContent = turma;
+          grupo.appendChild(opcao);
+        });
+        select.appendChild(grupo);
+      };
+      adicionarOpcoes(turmas, 'Turmas ativas');
+      adicionarOpcoes(turmasHistoricas, 'Histórico disponível por 12 meses');
 
-    if (valor === '') {
-      turmaAtual = "";
-      document.getElementById('empty-card').style.display = 'block';
-      document.getElementById('tabela-wrap').style.display = 'none';
-      return;
+      const hoje = document.getElementById('data-referencia').value;
+
+      // Uma requisição por turma, todas em paralelo: em série a tela ficava
+      // vários segundos sem mostrar número nenhum quando havia muitas turmas.
+      const respostas = await Promise.all(
+        turmas.map(turma =>
+          api.get(`api/v1/relatorios/frequencia?turma=${encodeURIComponent(turma)}&dia=${hoje}`)
+        )
+      );
+
+      let totalFaltasHoje = 0;
+      respostas.forEach(resposta => {
+        if (resposta.success) {
+          totalFaltasHoje += resposta.data.frequencia.filter(a => a.situacao === 'Ausente').length;
+        }
+      });
+
+      const totalAlunos = todosAlunos.length;
+      const frequencia = totalAlunos > 0
+        ? Math.round(((totalAlunos - totalFaltasHoje) / totalAlunos) * 100)
+        : 100;
+
+      document.getElementById('resumo-total-alunos').textContent = totalAlunos;
+      document.getElementById('resumo-turmas').textContent = turmas.length;
+      document.getElementById('resumo-faltas-hoje').textContent = totalFaltasHoje;
+      document.getElementById('resumo-frequencia').textContent = frequencia + '%';
     }
 
-    turmaAtual = valor;
-    mostrarTurma();
-  }
+    // ---------- SELECIONAR TURMA ----------
+    function selecionarTurma() {
+      var valor = document.getElementById('turma-select').value;
 
-  function pegarIniciais(nome) {
-    var partes = nome.split(' ');
-    var iniciais = partes[0].charAt(0);
-    if (partes.length > 1) {
-      iniciais = iniciais + partes[1].charAt(0);
-    }
-    return iniciais.toUpperCase();
-  }
-
-  // ---------- MOSTRAR TABELA DA TURMA (frequência do dia + faltas do mês) ----------
-  async function mostrarTurma() {
-    if (turmaAtual === "") {
-      return;
-    }
-
-    document.getElementById('empty-card').style.display = 'none';
-    document.getElementById('tabela-wrap').style.display = 'block';
-    document.getElementById('titulo-turma').innerHTML = turmaAtual;
-
-    const dia = document.getElementById('data-referencia').value;
-    const dataRef = new Date(dia);
-
-    const [respostaFrequencia, respostaFaltas] = await Promise.all([
-      api.get(`api/v1/relatorios/frequencia?turma=${encodeURIComponent(turmaAtual)}&dia=${dia}`),
-      api.get(`api/v1/relatorios/faltas/mes?turma=${encodeURIComponent(turmaAtual)}&ano=${dataRef.getFullYear()}&mes=${dataRef.getMonth() + 1}`)
-    ]);
-
-    const frequencia = respostaFrequencia.success ? respostaFrequencia.data.frequencia : [];
-    const faltasPorMatricula = {};
-    if (respostaFaltas.success) {
-      respostaFaltas.data.faltas.forEach(item => { faltasPorMatricula[item.matricula] = item.totalFaltas; });
-    }
-
-    var corpo = document.getElementById('corpo-tabela');
-    corpo.innerHTML = '';
-
-    frequencia.forEach(aluno => {
-      var textoBadge = 'Pendente';
-      var classeBadge = 'badge-pendente';
-      if (aluno.situacao === 'Presente') {
-        textoBadge = 'Presente';
-        classeBadge = 'badge-presente';
-      } else if (aluno.situacao === 'Ausente') {
-        textoBadge = 'Falta';
-        classeBadge = 'badge-falta';
-      } else if (aluno.situacao === 'Abonada' || aluno.situacao === 'Dispensada') {
-        textoBadge = aluno.situacao;
-        classeBadge = 'badge-presente';
+      if (valor === '') {
+        turmaAtual = "";
+        document.getElementById('empty-card').style.display = 'block';
+        document.getElementById('tabela-wrap').style.display = 'none';
+        document.body.classList.remove('com-turma');
+        return;
       }
 
-      var totalFaltas = faltasPorMatricula[aluno.matricula] || 0;
-      var classeFaltas = totalFaltas >= 5 ? 'faltas-total alerta' : 'faltas-total';
+      turmaAtual = valor;
+      mostrarTurma();
+    }
 
-      var linha = document.createElement('tr');
-      linha.innerHTML =
-        '<td><span class="avatar-mini">' + pegarIniciais(aluno.alunoNome) + '</span>' + aluno.alunoNome + '</td>' +
-        '<td><span class="badge ' + classeBadge + '">' + textoBadge + '</span></td>' +
-        '<td><span class="' + classeFaltas + '">' + totalFaltas + '</span></td>';
+    // ---------- MOSTRAR TABELA DA TURMA (frequência do dia + faltas do mês) ----------
+    async function mostrarTurma() {
+      if (turmaAtual === "") {
+        return;
+      }
 
-      corpo.appendChild(linha);
-    });
+      document.getElementById('empty-card').style.display = 'none';
+      document.getElementById('tabela-wrap').style.display = 'block';
+      document.getElementById('titulo-turma').textContent = turmaAtual;
+      document.body.classList.add('com-turma');
+
+      const dia = document.getElementById('data-referencia').value;
+      const { ano, mes } = partesDaData(dia);
+
+      const [respostaFrequencia, respostaFaltas] = await Promise.all([
+        api.get(`api/v1/relatorios/frequencia?turma=${encodeURIComponent(turmaAtual)}&dia=${dia}`),
+        api.get(`api/v1/relatorios/faltas/mes?turma=${encodeURIComponent(turmaAtual)}&ano=${ano}&mes=${mes}`)
+      ]);
+
+      const frequencia = respostaFrequencia.success ? respostaFrequencia.data.frequencia : [];
+      const faltasPorMatricula = {};
+      if (respostaFaltas.success) {
+        respostaFaltas.data.faltas.forEach(item => {
+          faltasPorMatricula[item.matricula] = item.totalFaltas;
+        });
+      }
+
+      var corpo = document.getElementById('corpo-tabela');
+      corpo.innerHTML = '';
+
+      var presentes = 0;
+      var ausentes = 0;
+
+      frequencia.forEach(aluno => {
+        var textoBadge = 'Pendente';
+        var classeBadge = 'badge-pendente';
+        if (aluno.situacao === 'Presente') {
+          textoBadge = 'Presente';
+          classeBadge = 'badge-presente';
+          presentes++;
+        } else if (aluno.situacao === 'Ausente') {
+          textoBadge = 'Falta';
+          classeBadge = 'badge-falta';
+          ausentes++;
+        } else if (aluno.situacao === 'Abonada' || aluno.situacao === 'Dispensada') {
+          textoBadge = aluno.situacao;
+          classeBadge = 'badge-presente';
+          presentes++;
+        }
+
+        var totalFaltas = faltasPorMatricula[aluno.matricula] || 0;
+        var classeFaltas = totalFaltas >= 5 ? 'faltas-total alerta' : 'faltas-total';
+
+        var linha = document.createElement('tr');
+        linha.innerHTML =
+          '<td><span class="avatar-mini">' + escaparHtml(pegarIniciais(aluno.alunoNome)) + '</span>'
+            + escaparHtml(aluno.alunoNome) + '</td>' +
+          '<td><span class="badge ' + classeBadge + '">' + escaparHtml(textoBadge) + '</span></td>' +
+          '<td><span class="' + classeFaltas + '">' + totalFaltas + '</span></td>';
+
+        corpo.appendChild(linha);
+      });
+
+      prepararCabecalhoDoPdf(dia, frequencia.length, presentes, ausentes);
+      document.getElementById('btn-pdf').disabled = frequencia.length === 0;
+    }
+
+    // ---------- PDF DA FREQUÊNCIA DA TURMA ----------
+    // Monta o bloco que só aparece na impressão e abre a caixa de impressão do
+    // navegador, onde o usuário escolhe "Salvar como PDF".
+    function prepararCabecalhoDoPdf(dia, total, presentes, ausentes) {
+      const agora = new Date();
+      const emitidoEm = String(agora.getDate()).padStart(2, '0')
+        + '/' + String(agora.getMonth() + 1).padStart(2, '0')
+        + '/' + agora.getFullYear();
+
+      document.getElementById('print-sub').textContent =
+        'Turma ' + turmaAtual + ' · Data de referência: ' + formatarDataBr(dia);
+
+      document.getElementById('print-totais').textContent =
+        'Alunos: ' + total
+        + '   |   Presentes: ' + presentes
+        + '   |   Faltas: ' + ausentes
+        + '   |   Emitido em: ' + emitidoEm;
+    }
+
+    function baixarPdf() {
+      if (turmaAtual === '' || document.getElementById('corpo-tabela').children.length === 0) {
+        return;
+      }
+      window.print();
+    }
+
+    window.selecionarTurma = selecionarTurma;
+    window.mostrarTurma = mostrarTurma;
+    window.baixarPdf = baixarPdf;
+
+    carregarResumoGeral();
   }
-
-  window.selecionarTurma = selecionarTurma;
-  window.mostrarTurma = mostrarTurma;
 </script>
 
 </body>

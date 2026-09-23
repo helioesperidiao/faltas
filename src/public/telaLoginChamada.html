@@ -271,17 +271,12 @@
             <table class="perfil-table">
               <tr>
                 <td>
-                  <span class="perfil-opt ativo" id="perfil-administrador" onclick="escolherPerfil('administrador')">Administrador</span>
+                  <span class="perfil-opt ativo" id="perfil-processo-pedagogico" onclick="escolherPerfil('processo-pedagogico')">Processo Pedagógico</span>
                 </td>
               </tr>
               <tr>
                 <td>
                   <span class="perfil-opt" id="perfil-inspetor" onclick="escolherPerfil('inspetor')">Inspetor</span>
-                </td>
-              </tr>
-              <tr>
-                <td>
-                  <span class="perfil-opt" id="perfil-funcionario" onclick="escolherPerfil('funcionario')">Funcionário</span>
                 </td>
               </tr>
             </table>
@@ -333,10 +328,10 @@
   const api = new ApiService();
 
   // ---------- PERFIL SELECIONADO ----------
-  var perfilAtual = 'administrador';
+  var perfilAtual = 'processo-pedagogico';
 
   function escolherPerfil(perfil) {
-    var perfis = ['administrador', 'inspetor', 'funcionario'];
+    var perfis = ['processo-pedagogico', 'inspetor'];
     for (var i = 0; i < perfis.length; i++) {
       var elemento = document.getElementById('perfil-' + perfis[i]);
       if (perfis[i] === perfil) {

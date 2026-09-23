@@ -1,1 +1,0 @@
-{"version":3,"file":"FuncionarioRouter.d.ts","sourceRoot":"","sources":["../../src/routers/FuncionarioRouter.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,MAAM,EAAE,MAAM,SAAS,CAAC;AAMjC,OAAO,EAAE,aAAa,EAAE,MAAM,2BAA2B,CAAC;AAyB1D,qBAAa,iBAAiB;IAYd,OAAO,CAAC,SAAS;IAV7B,gBAAuB,MAAM,0BAA0B;IAEvD,OAAO,CAAC,OAAO,CAAS;gBAQJ,SAAS,EAAE,aAAa;IAwErC,SAAS,QAAO,MAAM,CAE3B;CACL"}
