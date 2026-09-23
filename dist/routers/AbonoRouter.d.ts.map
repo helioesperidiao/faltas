@@ -1,0 +1,1 @@
+{"version":3,"file":"AbonoRouter.d.ts","sourceRoot":"","sources":["../../src/routers/AbonoRouter.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,MAAM,EAAE,MAAM,SAAS,CAAC;AAOjC,OAAO,EAAE,aAAa,EAAE,MAAM,2BAA2B,CAAC;AAE1D,qBAAa,WAAW;IACpB,gBAAuB,MAAM,oBAAoB;IAEjD,OAAO,CAAC,OAAO,CAAS;IACxB,OAAO,CAAC,SAAS,CAAgB;gBAErB,QAAQ,EAAE,aAAa;IA+D5B,SAAS,QAAO,MAAM,CAE3B;CACL"}

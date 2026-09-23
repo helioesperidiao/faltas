@@ -556,7 +556,7 @@
     </div>
   </div>
   <div class="session-info">
-    USUÁRIO: <strong>JOSÉ CARLOS SOUZA</strong> · Inspetor<br>
+    USUÁRIO: <strong id="usuario-nome">Usuário</strong><span id="usuario-cargo"></span><br>
     <span id="relogio"></span>
     <button type="button" class="btn-sair" id="btn-sair">Sair</button>
   </div>
@@ -568,7 +568,7 @@
       <td><a href="telaAdministrador.html">Painel</a></td>
       <td><a href="GradeHorarios.html">Turmas</a></td>
       <td><a href="Alunos.html">Alunos</a></td>
-      <td><a href="telaChamada.html" aria-current="page">Faltas</a></td>
+      <td><a href="telaChamada.html" aria-current="page">Chamada</a></td>
       <td><a href="Funcionarios.html">Funcionários</a></td>
       <td><a href="Relatorios.html">Relatórios</a></td>
       <td><a href="Cargos.html">Configurações</a></td>
@@ -718,6 +718,10 @@
     window.location.href = "Login.html";
   }
   const api = new ApiService(userData.data.token);
+
+  const funcionarioLogado = userData.data?.funcionario?.[0] || {};
+  document.getElementById('usuario-nome').textContent = (funcionarioLogado.nomeFuncionario || 'Usuário').toUpperCase();
+  document.getElementById('usuario-cargo').textContent = funcionarioLogado.cargo?.nomeCargo ? ' · ' + funcionarioLogado.cargo.nomeCargo : '';
 
   document.getElementById('btn-sair').onclick = () => {
     localStorage.removeItem('userData');
@@ -926,8 +930,8 @@
       registro: {
         ano: new Date(dia).getFullYear(),
         codDisciplina: codDisciplina,
-        horaInicio: 0,
-        horaFim: 0,
+        horaInicio: new Date().getHours(),
+        horaFim: new Date().getHours(),
         matricula: aluno.matricula,
         falta: falta,
         dia: dia,
@@ -937,12 +941,18 @@
 
     if (registroIds[alunoAtual]) {
       // já existe um registro para este aluno: corrige via PUT (ex.: usado pelo botão "voltar")
-      await api.put("api/v1/registro", registroIds[alunoAtual], objeto);
+      const resposta = await api.put("api/v1/registro", registroIds[alunoAtual], objeto);
+      if (!resposta || !resposta.success) {
+        alert(resposta?.message || 'Não foi possível atualizar a chamada.');
+        return;
+      }
     } else {
       const resposta = await api.post("api/v1/registro", objeto);
-      if (resposta.success) {
-        registroIds[alunoAtual] = resposta.data.registros[0].idRegistro;
+      if (!resposta || !resposta.success) {
+        alert(resposta?.message || 'Não foi possível registrar a chamada.');
+        return;
       }
+      registroIds[alunoAtual] = resposta.data.registros[0].idRegistro;
     }
 
     statusAlunos[alunoAtual] = tipo;

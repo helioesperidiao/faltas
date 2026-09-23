@@ -17,6 +17,23 @@ export class GradeHorarioDAO {
         return db.collection("gradeHorario");
     }
 
+    private corrigirAcentos(valor: string): string {
+        if (!/[ÃÂ�]/.test(valor)) return valor;
+        try {
+            return decodeURIComponent(escape(valor))
+                .replace(/Administra�+o/g, "Administração")
+                .replace(/Ter�+a-feira/g, "Terça-feira")
+                .replace(/Organiza��o/g, "Organização")
+                .replace(/M�todos/g, "Métodos");
+        } catch {
+            return valor
+                .replace(/Administra�+o/g, "Administração")
+                .replace(/Ter�+a-feira/g, "Terça-feira")
+                .replace(/Organiza��o/g, "Organização")
+                .replace(/M�todos/g, "Métodos");
+        }
+    }
+
     public async create(grade: GradeHorario, funcionarioLogado: Funcionario): Promise<GradeHorario> {
         console.log("🟢 GradeHorarioDAO.create()");
         const collection = await this.getCollection();
@@ -86,9 +103,9 @@ export class GradeHorarioDAO {
         grade.turma = doc.turma;
         grade.horaInicio = doc.horaInicio;
         grade.horaFim = doc.horaFim;
-        grade.dia = doc.dia;
-        grade.cod = doc.cod;
-        grade.disciplina = doc.disciplina;
+        grade.dia = this.corrigirAcentos(doc.dia);
+        grade.cod = this.corrigirAcentos(doc.cod);
+        grade.disciplina = this.corrigirAcentos(doc.disciplina);
         if (doc.auditoria) {
             const auditoria = new Auditoria();
             auditoria.criadoPor = doc.auditoria.criadoPor || '';

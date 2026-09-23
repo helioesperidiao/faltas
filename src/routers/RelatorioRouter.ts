@@ -4,6 +4,7 @@ import { RelatorioController } from "../controllers/RelatorioController";
 import { RelatorioService } from "../services/RelatorioService";
 import { AlunoDAO } from "../dao/AlunoDAO";
 import { RegistroDAO } from "../dao/RegistroDAO";
+import { MovimentacaoDAO } from "../dao/MovimentacaoDAO";
 import { MongoDatabase } from "../database/MongoDatabase";
 
 export class RelatorioRouter {
@@ -19,7 +20,8 @@ export class RelatorioRouter {
 
         const alunoDAO = new AlunoDAO(this._dataBase);
         const registroDAO = new RegistroDAO(this._dataBase);
-        const relatorioService = new RelatorioService(alunoDAO, registroDAO);
+        const movimentacaoDAO = new MovimentacaoDAO(this._dataBase);
+        const relatorioService = new RelatorioService(alunoDAO, registroDAO, movimentacaoDAO);
         const relatorioController = new RelatorioController(relatorioService);
         const jwtMiddleware = new JwtMiddleware();
 

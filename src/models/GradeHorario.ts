@@ -45,8 +45,8 @@ export class GradeHorario {
         return this._horaInicio;
     }
     set horaInicio(value: number) {
-        if (typeof value !== "number" || isNaN(value) || value < 0 || value > 23) {
-            throw new Error(`horaInicio inválido: "${value}". Deve ser entre 0 e 23.`);
+        if (!GradeHorario.isHorarioValido(value)) {
+            throw new Error(`horaInicio inválido: "${value}". Use hora inteira ou formato HHMM.`);
         }
         this._horaInicio = value;
     }
@@ -55,10 +55,17 @@ export class GradeHorario {
         return this._horaFim;
     }
     set horaFim(value: number) {
-        if (typeof value !== "number" || isNaN(value) || value < 0 || value > 23) {
-            throw new Error(`horaFim inválido: "${value}". Deve ser entre 0 e 23.`);
+        if (!GradeHorario.isHorarioValido(value)) {
+            throw new Error(`horaFim inválido: "${value}". Use hora inteira ou formato HHMM.`);
         }
         this._horaFim = value;
+    }
+
+    public static isHorarioValido(value: number): boolean {
+        if (!Number.isInteger(value) || value < 0) return false;
+        if (value <= 23) return true;
+        const minutos = value % 100;
+        return value <= 2359 && minutos < 60;
     }
 
     get dia(): string {

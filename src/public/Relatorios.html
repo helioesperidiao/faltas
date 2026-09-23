@@ -25,7 +25,10 @@
     <div class="card-body">
       <div class="row g-2 mb-2">
         <div class="col-md-6">
-          <input type="text" id="txtTurmaFreq" class="form-control" placeholder="Turma" aria-label="Turma para consultar frequência" />
+          <div class="input-group">
+            <input type="text" id="txtTurmaFreq" class="form-control" placeholder="Nenhuma turma selecionada" aria-label="Turma para consultar frequência" readonly />
+            <button type="button" class="btn btn-outline-primary" id="btnSelecionarTurmaFreq">Selecionar turma</button>
+          </div>
         </div>
         <div class="col-md-6">
           <input type="date" id="txtDiaFreq" class="form-control" aria-label="Dia para consultar frequência" />
@@ -83,6 +86,27 @@
 
   </main>
 
+  <div class="modal fade" id="modalSelecionarTurmaFreq" tabindex="-1" aria-labelledby="modalSelecionarTurmaFreqLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title fs-5" id="modalSelecionarTurmaFreqLabel">Selecionar turma</h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <label for="selectTurmaFreq" class="form-label">Turma do relatório</label>
+          <select id="selectTurmaFreq" class="form-select">
+            <option value="">Selecione uma turma...</option>
+          </select>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="btnConfirmarTurmaFreq">Confirmar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script type="module">
     import { montarTopbar } from './js/Topbar.js';
     import ApiService from './ApiService.js';
@@ -98,6 +122,40 @@
     const api = new ApiService(token);
     montarTopbar('relatorios');
 
+    const txtTurmaFreq = document.getElementById("txtTurmaFreq");
+    const selectTurmaFreq = document.getElementById("selectTurmaFreq");
+    const modalTurmaFreq = new bootstrap.Modal(document.getElementById("modalSelecionarTurmaFreq"));
+
+    async function carregarTurmasFrequencia() {
+      const resposta = await api.get("api/v1/alunos/");
+      if (!resposta.success) return;
+      const turmas = [...new Set((resposta.data.alunos || []).map(aluno => aluno.turma).filter(Boolean))].sort();
+      selectTurmaFreq.innerHTML = '<option value="">Selecione uma turma...</option>';
+      turmas.forEach(turma => {
+        const opcao = document.createElement("option");
+        opcao.value = turma;
+        opcao.textContent = turma;
+        selectTurmaFreq.appendChild(opcao);
+      });
+    }
+
+    document.getElementById("btnSelecionarTurmaFreq").onclick = async () => {
+      await carregarTurmasFrequencia();
+      selectTurmaFreq.value = txtTurmaFreq.value;
+      modalTurmaFreq.show();
+    };
+
+    document.getElementById("btnConfirmarTurmaFreq").onclick = () => {
+      if (!selectTurmaFreq.value) return;
+      txtTurmaFreq.value = selectTurmaFreq.value;
+      modalTurmaFreq.hide();
+    };
+
+    function textoMovimentacao(movimentacao) {
+      if (!movimentacao) return "Sem registro";
+      return `${movimentacao.tipo === "entrada" ? "Entrou" : "Saiu"} às ${movimentacao.horario}`;
+    }
+
     document.getElementById("btnFrequencia").onclick = async () => {
       const turma = document.getElementById("txtTurmaFreq").value.trim();
       const dia = document.getElementById("txtDiaFreq").value;
@@ -111,10 +169,10 @@
       }
 
       const linhas = resposta.data.frequencia.map(item =>
-        `<tr><td>${item.matricula}</td><td>${item.alunoNome}</td><td>${item.situacao}</td></tr>`
+        `<tr><td>${item.matricula}</td><td>${item.alunoNome}</td><td>${item.situacao}</td><td>${textoMovimentacao(item.movimentacao)}</td></tr>`
       ).join("");
       divTabela.innerHTML = `<table class="table table-bordered table-striped">
-        <thead><tr><th>Matrícula</th><th>Nome</th><th>Situação</th></tr></thead>
+        <thead><tr><th>Matrícula</th><th>Nome</th><th>Situação</th><th>Entrada/Saída</th></tr></thead>
         <tbody>${linhas}</tbody></table>`;
     };
 
@@ -154,10 +212,10 @@
       }
 
       const linhas = resposta.data.faltas.map(item =>
-        `<tr><td>${item.matricula}</td><td>${item.alunoNome}</td><td>${item.totalFaltas}</td></tr>`
+        `<tr><td>${item.matricula}</td><td>${item.alunoNome}</td><td>${item.totalFaltas}</td><td>${textoMovimentacao(item.movimentacao)}</td></tr>`
       ).join("");
       divTabela.innerHTML = `<table class="table table-bordered table-striped">
-        <thead><tr><th>Matrícula</th><th>Nome</th><th>Total de Faltas</th></tr></thead>
+        <thead><tr><th>Matrícula</th><th>Nome</th><th>Total de Faltas</th><th>Entrada/Saída</th></tr></thead>
         <tbody>${linhas}</tbody></table>`;
     };
   </script>

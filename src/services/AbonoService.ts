@@ -17,7 +17,7 @@ export class AbonoService {
     public create = async (abono: Abono, funcionarioLogado: Funcionario): Promise<Abono> => {
         console.log("🟣 AbonoService.create()");
 
-        const cargosPermitidos = ["Inspetor", "Coordenador", "Secretaria"];
+        const cargosPermitidos = ["Inspetor", "Coordenador", "Secretaria", "Administrador"];
         if (!cargosPermitidos.includes(funcionarioLogado.cargo.nomeCargo)) {
             throw new ErrorResponse(
                 403,
@@ -62,7 +62,7 @@ export class AbonoService {
     public update = async (abono: Abono, funcionarioLogado: Funcionario): Promise<boolean> => {
         console.log("🟣 AbonoService.update()");
 
-        const cargosPermitidos = ["Inspetor", "Coordenador", "Secretaria"];
+        const cargosPermitidos = ["Inspetor", "Coordenador", "Secretaria", "Administrador"];
         if (!cargosPermitidos.includes(funcionarioLogado.cargo.nomeCargo)) {
             throw new ErrorResponse(
                 403,
@@ -78,7 +78,7 @@ export class AbonoService {
     public aprovar = async (idAbono: string, funcionarioLogado: Funcionario): Promise<Abono> => {
         console.log("🟣 AbonoService.aprovar()");
 
-        const cargosPermitidos = ["Coordenador"];
+        const cargosPermitidos = ["Coordenador", "Administrador"];
         if (!cargosPermitidos.includes(funcionarioLogado.cargo.nomeCargo)) {
             throw new ErrorResponse(
                 403,
@@ -110,11 +110,11 @@ export class AbonoService {
         return abono;
     };
 
-    //rejeitar: exclusivo de Coordenador (orientador)
+    //Rejeitar abono pendente.
     public rejeitar = async (idAbono: string, funcionarioLogado: Funcionario): Promise<Abono> => {
         console.log("🟣 AbonoService.rejeitar()");
 
-        const cargosPermitidos = ["Coordenador"];
+        const cargosPermitidos = ["Coordenador", "Administrador"];
         if (!cargosPermitidos.includes(funcionarioLogado.cargo.nomeCargo)) {
             throw new ErrorResponse(
                 403,

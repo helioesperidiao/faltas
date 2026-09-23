@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Entradas e Saídas | UNIVAP - Controle de Faltas</title>
+  <link href="css/univap-theme.css" rel="stylesheet">
+  <style>
+    body { background: #eef2f8; }
+    main { max-width: 1100px; margin: 28px auto 60px; padding: 0 20px; }
+    .page-title h1 { margin: 0; color: #0f2a4d; font-size: 24px; }
+    .page-title p { margin: 5px 0 22px; color: #667085; font-size: 14px; }
+    .grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(360px, .9fr); gap: 20px; align-items: start; }
+    .card { background: #fff; border: 1px solid #c7cbd1; border-radius: 6px; margin-bottom: 20px; }
+    .card-header { background: #f1f2f4; border-bottom: 1px solid #c7cbd1; padding: 13px 20px; }
+    .card-header h2 { color: #0f2a4d; font-size: 14px; margin: 0; text-transform: uppercase; }
+    .card-body { padding: 20px; }
+    .field { margin-bottom: 16px; }
+    label { display: block; color: #4a4f57; font-size: 12.5px; font-weight: bold; margin-bottom: 6px; }
+    input, select { box-sizing: border-box; width: 100%; padding: 10px 11px; border: 1px solid #c7cbd1; border-radius: 4px; color: #1f2937; background: #fff; font: inherit; }
+    .mode { display: flex; gap: 8px; margin-bottom: 20px; }
+    .mode label { flex: 1; margin: 0; }
+    .mode input { position: absolute; opacity: 0; }
+    .mode span { display: block; padding: 10px; border: 1px solid #c7cbd1; border-radius: 4px; text-align: center; cursor: pointer; font-size: 13px; }
+    .mode input:checked + span { border-color: #163b6b; background: #eaf1fb; color: #163b6b; }
+    .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .tipo { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .tipo label { margin: 0; }
+    .tipo input { position: absolute; opacity: 0; }
+    .tipo span { display: block; padding: 11px; border: 1px solid #c7cbd1; border-radius: 4px; text-align: center; cursor: pointer; font-size: 13px; }
+    .tipo input:checked + span { color: #fff; border-color: transparent; }
+    .tipo .entrada input:checked + span { background: #1c7a3e; }
+    .tipo .saida input:checked + span { background: #a6231e; }
+    .hint { color: #667085; font-size: 12px; margin: -8px 0 16px; }
+    .selected { display: none; background: #f6f8fb; border-left: 3px solid #163b6b; padding: 10px 12px; margin-top: -7px; margin-bottom: 16px; font-size: 13px; }
+    .manual { display: none; }
+    .btn { width: 100%; border: 0; border-radius: 4px; padding: 11px 16px; background: #163b6b; color: #fff; font-weight: bold; cursor: pointer; }
+    .btn:disabled { opacity: .6; cursor: wait; }
+    .message { min-height: 18px; margin-top: 12px; font-size: 13px; }
+    .message.ok { color: #1c7a3e; } .message.error { color: #a6231e; }
+    table { width: 100%; border-collapse: collapse; }
+    th { color: #667085; font-size: 11px; text-align: left; text-transform: uppercase; border-bottom: 2px solid #c7cbd1; padding: 8px; }
+    td { border-bottom: 1px solid #eef0f3; padding: 10px 8px; font-size: 13px; }
+    .badge { border-radius: 12px; padding: 4px 9px; font-size: 11px; font-weight: bold; }
+    .badge.entrada { color: #1c7a3e; background: #e7f4ec; } .badge.saida { color: #a6231e; background: #fbe9e8; }
+    .empty { color: #667085; text-align: center; padding: 25px 10px; font-size: 13px; }
+    @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } .two { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div id="app-topbar"></div>
+  <main id="conteudo-principal">
+    <div class="page-title"><h1>Entradas e saídas</h1><p>Registre quando um aluno chegou atrasado ou saiu do colégio durante o período.</p></div>
+    <div class="grid">
+      <section class="card">
+        <div class="card-header"><h2>Nova movimentação</h2></div>
+        <div class="card-body">
+          <div class="mode" role="radiogroup" aria-label="Origem do aluno">
+            <label><input type="radio" name="origem" value="cadastrado" checked><span>Aluno cadastrado</span></label>
+            <label><input type="radio" name="origem" value="manual"><span>Adicionar manualmente</span></label>
+          </div>
+          <div id="cadastrado">
+            <div class="field"><label for="busca-aluno">Pesquisar aluno</label><input id="busca-aluno" list="lista-alunos" placeholder="Nome ou matrícula" autocomplete="off"><datalist id="lista-alunos"></datalist></div>
+            <div id="aluno-selecionado" class="selected"></div>
+          </div>
+          <div id="manual" class="manual">
+            <div class="two">
+              <div class="field"><label for="nome-manual">Nome completo</label><input id="nome-manual" placeholder="Nome do aluno"></div>
+              <div class="field"><label for="matricula-manual">Matrícula</label><input id="matricula-manual" placeholder="Matrícula"></div>
+            </div>
+            <p class="hint">Use esta opção quando o aluno ainda não estiver cadastrado.</p>
+          </div>
+          <div class="two">
+            <div class="field"><label for="data">Data</label><input id="data" type="date"></div>
+              <div class="field"><label for="horario">Horário</label><select id="horario"><option value="07:50">07:50</option><option value="08:40">08:40 a 09:00</option><option value="09:50">09:50</option><option value="10:40">10:40</option><option value="11:40">11:40</option></select></div>
+          </div>
+          <div class="field"><label>Movimento</label><div class="tipo"><label class="entrada"><input type="radio" name="tipo" value="entrada" checked><span>Entrada</span></label><label class="saida"><input type="radio" name="tipo" value="saida"><span>Saída</span></label></div></div>
+          <button class="btn" id="salvar" type="button">Registrar movimentação</button>
+          <div id="mensagem" class="message" role="status"></div>
+        </div>
+      </section>
+      <section class="card">
+        <div class="card-header"><h2>Registros recentes</h2></div>
+        <div class="card-body" style="padding:12px 16px"><div id="historico" class="empty">Carregando registros...</div></div>
+      </section>
+    </div>
+  </main>
+  <script type="module">
+    import ApiService from './ApiService.js';
+    import { montarTopbar } from './js/Topbar.js';
+
+    const userData = JSON.parse(localStorage.getItem('userData') || 'null');
+    const token = userData?.data?.token || userData?.token;
+    if (!token) window.location.href = 'Login.html';
+    montarTopbar('movimentacoes');
+    const api = new ApiService(token);
+    let alunos = [];
+    let selecionado = null;
+    const $ = id => document.getElementById(id);
+    const hoje = new Date();
+    $('data').value = hoje.toISOString().slice(0, 10);
+
+    function mostrarMensagem(texto, tipo) { $('mensagem').textContent = texto; $('mensagem').className = `message ${tipo || ''}`; }
+    function nomeOpcao(aluno) { return `${aluno.alunoNome} - ${aluno.matricula}`; }
+    function preencherBusca() { $('lista-alunos').innerHTML = alunos.map(aluno => `<option value="${nomeOpcao(aluno)}"></option>`).join(''); }
+    function selecionarAluno() {
+      const valor = $('busca-aluno').value.toLowerCase();
+      selecionado = alunos.find(aluno => nomeOpcao(aluno).toLowerCase() === valor) || alunos.find(aluno => aluno.matricula.toLowerCase() === valor);
+      const painel = $('aluno-selecionado');
+      painel.style.display = selecionado ? 'block' : 'none';
+      painel.textContent = selecionado ? `${selecionado.alunoNome} | Matrícula ${selecionado.matricula}` : '';
+    }
+    function renderHistorico(registros) {
+      if (!registros.length) { $('historico').textContent = 'Nenhuma movimentação registrada.'; return; }
+      $('historico').innerHTML = `<table><thead><tr><th>Aluno</th><th>Data</th><th>Hora</th><th>Tipo</th></tr></thead><tbody>${registros.map(item => `<tr><td>${item.nomeAluno}<br><small>${item.matricula}</small></td><td>${new Date(item.data).toLocaleDateString('pt-BR')}</td><td>${item.horario}</td><td><span class="badge ${item.tipo}">${item.tipo === 'entrada' ? 'Entrada' : 'Saída'}</span></td></tr>`).join('')}</tbody></table>`;
+    }
+    async function carregar() {
+      const alunosResponse = await api.get('api/v1/alunos/');
+      alunos = alunosResponse?.data?.alunos || [];
+      preencherBusca();
+      const registrosResponse = await api.get('api/v1/movimentacoes/');
+      renderHistorico(registrosResponse?.data?.movimentacoes || []);
+    }
+    $('busca-aluno').addEventListener('input', selecionarAluno);
+    document.querySelectorAll('input[name="origem"]').forEach(input => input.addEventListener('change', event => {
+      const manual = event.target.value === 'manual';
+      $('cadastrado').style.display = manual ? 'none' : 'block';
+      $('manual').style.display = manual ? 'block' : 'none';
+      selecionado = null;
+    }));
+    $('salvar').addEventListener('click', async () => {
+      const manual = document.querySelector('input[name="origem"]:checked').value === 'manual';
+      const nomeAluno = manual ? $('nome-manual').value.trim() : selecionado?.alunoNome;
+      const matricula = manual ? $('matricula-manual').value.trim() : selecionado?.matricula;
+      if (!nomeAluno || !matricula || !$('data').value || !$('horario').value) { mostrarMensagem('Preencha aluno, matrícula, data e horário.', 'error'); return; }
+      $('salvar').disabled = true;
+      const resposta = await api.post('api/v1/movimentacoes/', { movimentacao: { nomeAluno, matricula, data: $('data').value, horario: $('horario').value, tipo: document.querySelector('input[name="tipo"]:checked').value } });
+      $('salvar').disabled = false;
+      if (!resposta?.success) { mostrarMensagem(resposta?.message || 'Não foi possível registrar.', 'error'); return; }
+      mostrarMensagem('Movimentação registrada com sucesso.', 'ok');
+      $('busca-aluno').value = ''; $('nome-manual').value = ''; $('matricula-manual').value = ''; selecionado = null; $('aluno-selecionado').style.display = 'none';
+      carregar();
+    });
+    carregar();
+  </script>
+</body>
+</html>

@@ -120,13 +120,21 @@ export class AlunoDAO {
     }
 
     private toAluno(doc: any): Aluno {
+        const corrigirAcentos = (valor: string): string => {
+            if (!/[ÃÂ�]/.test(valor || '')) return valor || '';
+            try {
+                return decodeURIComponent(escape(valor));
+            } catch {
+                return valor || '';
+            }
+        };
         const aluno = new Aluno();
         aluno.idAluno = doc._id.toHexString();
-        aluno.matricula = doc.matricula;
-        aluno.alunoNome = doc.alunoNome;
-        aluno.turma = doc.turma;
-        aluno.curso = doc.curso || '';
-        aluno.serie = doc.serie || '';
+        aluno.matricula = corrigirAcentos(doc.matricula);
+        aluno.alunoNome = corrigirAcentos(doc.alunoNome);
+        aluno.turma = corrigirAcentos(doc.turma);
+        aluno.curso = corrigirAcentos(doc.curso);
+        aluno.serie = corrigirAcentos(doc.serie);
         aluno.situacao = doc.situacao || 'Ativo';
         aluno.ano = doc.ano || '';
         aluno.dataNascimento = doc.dataNascimento || '';

@@ -53,7 +53,7 @@
   <div class="card mb-3">
     <div class="card-header">Importar Alunos via CSV</div>
     <div class="card-body">
-      <p class="text-muted">Cabeçalho esperado: matricula,alunoNome,turma,curso</p>
+      <p class="text-muted">Cabeçalho esperado: ANO_REF;TURMA_PREF;CURSO;NOME_CURSO;SERIE;SIT_ALUNO;ALUNO;NOME_COMPL;ALUNO_DT_NASC;ALUNO_RG;ALUNO_FONE;ALUNO_EMAIL;ALUNO_FONE_CEL;PAI_NOME;PAI_FONE_CEL;PAI_FONE;PAI_FONE_RECADO;PAI_EMAIL;MAE_NOME;MAE_FONE_CEL;MAE_FONE;MAE_FONE_RECADO;MAE_EMAIL;FINAN_NOME;FINAN_FONE;LEGAL_NOME;LEGAL_FONE</p>
       <input type="file" id="fileCsv" class="form-control mb-2" accept=".csv" aria-label="Arquivo CSV de alunos para importação" />
       <button type="button" id="btnImportar" class="btn btn-primary mb-2">Importar</button>
       <div class="progress mb-2" style="display:none;" id="divProgressoWrap">
@@ -246,13 +246,69 @@
     // Cada linha vira um POST individual para a API (o CSV em si nunca é enviado ao backend).
     function parseCsv(texto) {
       const linhas = texto.split(/\r?\n/).filter(l => l.trim().length > 0);
-      const cabecalho = linhas[0].split(",").map(c => c.trim());
+      const separador = linhas[0].includes("\t") ? "\t" : (linhas[0].includes(";") ? ";" : ",");
+      const cabecalho = linhas[0].replace(/^\uFEFF/, "").split(separador).map(c => corrigirAcentos(c.trim()).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase());
       return linhas.slice(1).map(linha => {
-        const valores = linha.split(",").map(v => v.trim());
+        const valores = linha.split(separador).map(v => corrigirAcentos(v.trim()));
         const objeto = {};
         cabecalho.forEach((chave, indice) => { objeto[chave] = valores[indice] || ""; });
         return objeto;
       });
+    }
+
+    function corrigirAcentos(texto) {
+      if (!/[ÃÂ�]/.test(texto)) return texto;
+      try {
+        return decodeURIComponent(escape(texto));
+      } catch {
+        return texto;
+      }
+    }
+
+    async function lerArquivoComCodificacao(arquivo) {
+      const bytes = await arquivo.arrayBuffer();
+      const utf8 = new TextDecoder("utf-8").decode(bytes);
+      return utf8.includes("�") ? new TextDecoder("windows-1252").decode(bytes) : utf8;
+    }
+
+    function converterLinhaImportada(linha) {
+      return {
+        matricula: linha.ALUNO || linha.matricula || "",
+        alunoNome: linha.NOME_COMPL || linha.alunoNome || "",
+        turma: linha.TURMA_PREF || linha.turma || "",
+        curso: linha.NOME_CURSO || linha.CURSO || linha.curso || "",
+        serie: linha.SERIE || linha.serie || "",
+        situacao: linha.SIT_ALUNO || linha.situacao || "",
+        ano: linha.ANO_REF || linha.ano || "",
+        dataNascimento: linha.ALUNO_DT_NASC || linha.dataNascimento || "",
+        alunoRG: linha.ALUNO_RG || linha.alunoRG || "",
+        alunoFone: linha.ALUNO_FONE || linha.alunoFone || "",
+        alunoEmail: linha.ALUNO_EMAIL || linha.alunoEmail || "",
+        alunoFoneCel: linha.ALUNO_FONE_CEL || linha.alunoFoneCel || "",
+        paiNome: linha.PAI_NOME || linha.paiNome || "",
+        paiFoneCel: linha.PAI_FONE_CEL || linha.paiFoneCel || "",
+        paiFoneFixo: linha.PAI_FONE || linha.paiFoneFixo || "",
+        paiFoneRecado: linha.PAI_FONE_RECADO || linha.paiFoneRecado || "",
+        paiEmail: linha.PAI_EMAIL || linha.paiEmail || "",
+        maeNome: linha.MAE_NOME || linha.maeNome || "",
+        maeFoneCel: linha.MAE_FONE_CEL || linha.maeFoneCel || "",
+        maeFoneFixo: linha.MAE_FONE || linha.maeFoneFixo || "",
+        maeFoneRecado: linha.MAE_FONE_RECADO || linha.maeFoneRecado || "",
+        maeEmail: linha.MAE_EMAIL || linha.maeEmail || "",
+        finanNome: linha.FINAN_NOME || linha.finanNome || "",
+        finanFone: linha.FINAN_FONE || linha.finanFone || "",
+        legalNome: linha.LEGAL_NOME || linha.legalNome || "",
+        legalFone: linha.LEGAL_FONE || linha.legalFone || ""
+      };
+    }
+
+    function validarLinha(linha) {
+      const dados = converterLinhaImportada(linha);
+      const matricula = dados.matricula.trim();
+      if (!matricula || matricula.length > 8) return "Matrícula obrigatória com até 8 caracteres.";
+      if (!dados.alunoNome.trim()) return "Nome do aluno é obrigatório.";
+      if (!dados.turma.trim()) return "Turma é obrigatória.";
+      return "";
     }
 
     const fileCsv = document.getElementById("fileCsv");
@@ -267,7 +323,7 @@
         return;
       }
 
-      const texto = await fileCsv.files[0].text();
+      const texto = await lerArquivoComCodificacao(fileCsv.files[0]);
       const linhas = parseCsv(texto);
 
       if (linhas.length === 0) {
@@ -282,15 +338,15 @@
       for (let i = 0; i < linhas.length; i++) {
         const linha = linhas[i];
         try {
-          const resposta = await api.post("api/v1/alunos", {
-            aluno: {
-              matricula: linha.matricula,
-              alunoNome: linha.alunoNome,
-              turma: linha.turma,
-              curso: linha.curso || ""
-            }
+          const erroValidacao = validarLinha(linha);
+          if (erroValidacao) {
+            falhas.push({ linha: i + 2, motivo: erroValidacao });
+            continue;
+          }
+          const resposta = await api.post("api/v1/alunos/", {
+            aluno: converterLinhaImportada(linha)
           });
-          if (!resposta.success) {
+          if (!resposta || !resposta.success) {
             falhas.push({ linha: i + 2, motivo: resposta.message || "Falha desconhecida" });
           }
         } catch (erro) {

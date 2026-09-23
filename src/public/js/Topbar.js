@@ -6,6 +6,7 @@
 const PAGINAS = [
   { chave: "dashboard", label: "Painel", href: "dashboard.html" },
   { chave: "chamada", label: "Chamada", href: "telaChamada.html" },
+  { chave: "movimentacoes", label: "Entradas e Saídas", href: "Movimentacoes.html" },
   { chave: "frequencia", label: "Frequência", href: "telaAdministrador.html" },
   { chave: "alunos", label: "Alunos", href: "Alunos.html" },
   { chave: "gradehorarios", label: "Grade de Horários", href: "GradeHorarios.html" },

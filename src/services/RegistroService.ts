@@ -22,7 +22,7 @@ export class RegistroService {
     public create = async (registro: Registro, funcionarioLogado: Funcionario): Promise<Registro> => {
         console.log("🟣 RegistroService.create()");
 
-        const cargosPermitidos = ["Inspetor"];
+        const cargosPermitidos = ["Inspetor", "Administrador", "Coordenador"];
         if (!cargosPermitidos.includes(funcionarioLogado.cargo.nomeCargo)) {
             throw new ErrorResponse(
                 403,
