@@ -14,7 +14,7 @@ export class GradeHorarioService {
     public create = async (grade: GradeHorario, funcionarioLogado: Funcionario): Promise<GradeHorario> => {
         console.log("🟣 GradeHorarioService.create()");
 
-        const cargosPermitidos = ["Secretaria", "Administrador", "Coordenador"];
+        const cargosPermitidos = ["Processo Pedagógico"];
         if (!cargosPermitidos.includes(funcionarioLogado.cargo.nomeCargo)) {
             throw new ErrorResponse(
                 403,
@@ -46,7 +46,7 @@ export class GradeHorarioService {
     public findAllDeleted = async (funcionarioLogado: Funcionario): Promise<GradeHorario[]> => {
         console.log("🟣 GradeHorarioService.findAllDeleted()");
 
-        const cargosPermitidos = ["Administrador", "Diretor"];
+        const cargosPermitidos = ["Processo Pedagógico"];
         if (!cargosPermitidos.includes(funcionarioLogado.cargo.nomeCargo)) {
             throw new ErrorResponse(
                 403,
@@ -61,7 +61,7 @@ export class GradeHorarioService {
     public update = async (grade: GradeHorario, funcionarioLogado: Funcionario): Promise<boolean> => {
         console.log("🟣 GradeHorarioService.update()");
 
-        const cargosPermitidos = ["Secretaria", "Administrador", "Coordenador"];
+        const cargosPermitidos = ["Processo Pedagógico"];
         if (!cargosPermitidos.includes(funcionarioLogado.cargo.nomeCargo)) {
             throw new ErrorResponse(
                 403,
@@ -76,7 +76,7 @@ export class GradeHorarioService {
     public delete = async (grade: GradeHorario, funcionarioLogado: Funcionario): Promise<boolean> => {
         console.log("🟣 GradeHorarioService.delete()");
 
-        const cargosPermitidos = ["Secretaria", "Administrador", "Coordenador"];
+        const cargosPermitidos = ["Processo Pedagógico"];
         if (!cargosPermitidos.includes(funcionarioLogado.cargo.nomeCargo)) {
             throw new ErrorResponse(
                 403,

@@ -20,7 +20,7 @@
 
   <h1 class="mb-4">Gerenciamento de Abonos</h1>
 
-  <div class="card mb-3">
+  <div class="card mb-3" id="cardFiltro">
     <div class="card-header">Filtro de Abono</div>
     <div class="card-body">
       <div class="row">
@@ -39,7 +39,7 @@
   </div>
 
   <!-- Solicitar abono: upload de atestado + definição de período -->
-  <div class="card mb-3">
+  <div class="card mb-3" id="cardSolicitacao">
     <div class="card-header">Solicitação de Abono</div>
     <div class="card-body">
       <div class="mb-3">
@@ -63,7 +63,7 @@
     </div>
   </div>
 
-  <div class="card mt-4">
+  <div class="card mt-4" id="cardListagem">
     <div class="card-header">Lista de Abonos</div>
     <div class="card-body">
       <div id="divTabela"></div>
@@ -96,12 +96,14 @@
     if (userData) {
       userData = JSON.parse(userData);
     } else {
-      window.location.href = "login.html";
+      window.location.href = "Login.html";
     }
 
     const token = userData.data.token;
     const api = new ApiService(token);
     montarTopbar('abonos');
+    // Mantém a sequência de trabalho: solicitar, filtrar e então consultar a lista.
+    document.getElementById('cardFiltro').before(document.getElementById('cardSolicitacao'));
 
     let API_DATA;
 
@@ -188,7 +190,7 @@
       }
 
       const resposta = await api.post("api/v1/abonos", montarObjeto());
-      if (resposta.success) {
+      if (resposta?.success) {
         const idAbono = resposta.data.abonos[0].idAbono;
         if (fileAtestado.files.length > 0) {
           await enviarAtestado(idAbono, fileAtestado.files[0]);
@@ -241,9 +243,11 @@
       btnConfirmDelete.onclick = async () => {
         const resposta = await api.delete("api/v1/abonos", id);
         if (resposta.success) {
-          mostrarMensagem(resposta.message || "Abono excluído com sucesso", "success");
           limparFormulario();
-          listAll();
+          const listaAtualizada = await listAll();
+          if (listaAtualizada) {
+            mostrarMensagem(resposta.message || "Abono excluído com sucesso", "success");
+          }
         } else {
           mostrarMensagem(resposta.message || "Erro ao excluir abono", "danger");
         }
@@ -280,8 +284,10 @@
         API_DATA = resposta.data;
         renderTable(API_DATA);
         divResposta.className = "";
+        return true;
       } else {
-        mostrarMensagem(resposta.message || "Erro ao carregar abonos", "danger");
+        mostrarMensagem(resposta?.message || "Erro ao carregar abonos", "danger");
+        return false;
       }
     }
 

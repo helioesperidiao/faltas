@@ -25,6 +25,10 @@ export class AbonoDAO {
 
         const doc: OptionalId<Document> = {
             matricula: abono.matricula,
+            alunoNome: abono.alunoNome,
+            turma: abono.turma,
+            curso: abono.curso,
+            serie: abono.serie,
             dataInicio: abono.dataInicio,
             dataFim: abono.dataFim,
             motivo: abono.motivo,
@@ -48,7 +52,10 @@ export class AbonoDAO {
         const collection = await this.getCollection();
         abono.marcarDeletadoPor(funcionarioLogado.idFuncionario);
 
-        const filter: Filter<Document> = { _id: new ObjectId(abono.idAbono) };
+        const filter: Filter<Document> = {
+            _id: new ObjectId(abono.idAbono),
+            "auditoria.deletadoEm": null
+        };
         const update: UpdateFilter<Document> = {
             $set: {
                 "auditoria.deletadoPor": abono.auditoria.deletadoPor,
@@ -69,6 +76,10 @@ export class AbonoDAO {
         const update: UpdateFilter<Document> = {
             $set: {
                 matricula: abono.matricula,
+                alunoNome: abono.alunoNome,
+                turma: abono.turma,
+                curso: abono.curso,
+                serie: abono.serie,
                 dataInicio: abono.dataInicio,
                 dataFim: abono.dataFim,
                 motivo: abono.motivo,
@@ -88,6 +99,10 @@ export class AbonoDAO {
         const abono = new Abono();
         abono.idAbono = doc._id.toHexString();
         abono.matricula = doc.matricula;
+        abono.alunoNome = doc.alunoNome || '';
+        abono.turma = doc.turma || '';
+        abono.curso = doc.curso || '';
+        abono.serie = doc.serie || '';
         abono.dataInicio = new Date(doc.dataInicio);
         abono.dataFim = new Date(doc.dataFim);
         abono.motivo = doc.motivo;

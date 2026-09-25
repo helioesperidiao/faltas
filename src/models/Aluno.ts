@@ -1,5 +1,6 @@
 import { ObjectId } from "mongodb";
 import { Auditoria } from "./Auditoria";
+import { HistoricoTurma } from "./HistoricoTurma";
 
 export class Aluno {
     private _idAluno: string = '';
@@ -10,6 +11,8 @@ export class Aluno {
     private _serie: string = '';
     private _situacao: string = 'Ativo';
     private _ano: string = String(new Date().getFullYear());
+    private _turmaInicioEm: Date = new Date();
+    private _historicoTurmas: HistoricoTurma[] = [];
     private _dataNascimento: string = '';
     private _alunoRG: string = '';
     private _alunoFone: string = '';
@@ -107,6 +110,23 @@ export class Aluno {
     }
     set ano(value: string) {
         this._ano = (value || '').toString().trim();
+    }
+
+    get turmaInicioEm(): Date {
+        return this._turmaInicioEm;
+    }
+    set turmaInicioEm(value: Date) {
+        if (!(value instanceof Date) || isNaN(value.getTime())) {
+            throw new Error("turmaInicioEm deve ser uma data válida.");
+        }
+        this._turmaInicioEm = value;
+    }
+
+    get historicoTurmas(): HistoricoTurma[] {
+        return this._historicoTurmas;
+    }
+    set historicoTurmas(value: HistoricoTurma[]) {
+        this._historicoTurmas = Array.isArray(value) ? value : [];
     }
 
     get dataNascimento(): string {
@@ -216,6 +236,8 @@ export class Aluno {
             serie: this._serie,
             situacao: this._situacao,
             ano: this._ano,
+            turmaInicioEm: this._turmaInicioEm,
+            historicoTurmas: this._historicoTurmas,
             dataNascimento: this._dataNascimento,
             alunoRG: this._alunoRG,
             alunoFone: this._alunoFone,

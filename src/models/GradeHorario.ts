@@ -4,11 +4,13 @@ import { Auditoria } from "./Auditoria";
 export class GradeHorario {
     private _idGradeHorario: string = '';
     private _turma: string = '';
-    private _horaInicio: number = 0;
-    private _horaFim: number = 0;
+    private _horaInicio: string = '';
+    private _horaFim: string = '';
     private _dia: string = '';
     private _cod: string = '';
     private _disciplina: string = '';
+    private _duracaoAulaMinutos: number = 0;
+    private _cargaHorariaSemanalMinutos: number = 0;
     private _auditoria: Auditoria = new Auditoria();
 
     constructor() {
@@ -41,24 +43,124 @@ export class GradeHorario {
         this._turma = value.trim();
     }
 
-    get horaInicio(): number {
+    get horaInicio(): string {
         return this._horaInicio;
     }
+<<<<<<< HEAD
     set horaInicio(value: number) {
-        if (typeof value !== "number" || isNaN(value) || value < 0 || value > 23) {
-            throw new Error(`horaInicio inválido: "${value}". Deve ser entre 0 e 23.`);
+        if (!GradeHorario.isHorarioValido(value)) {
+            throw new Error(`horaInicio inválido: "${value}". Use hora inteira ou formato HHMM.`);
         }
         this._horaInicio = value;
+=======
+    set horaInicio(value: string | number) {
+        this._horaInicio = this.normalizarHorario(value, "horaInicio");
+>>>>>>> 8d6eafe6845a986508c399927ba2309a45150037
     }
 
-    get horaFim(): number {
+    get horaFim(): string {
         return this._horaFim;
     }
+<<<<<<< HEAD
     set horaFim(value: number) {
-        if (typeof value !== "number" || isNaN(value) || value < 0 || value > 23) {
-            throw new Error(`horaFim inválido: "${value}". Deve ser entre 0 e 23.`);
+        if (!GradeHorario.isHorarioValido(value)) {
+            throw new Error(`horaFim inválido: "${value}". Use hora inteira ou formato HHMM.`);
+=======
+    set horaFim(value: string | number) {
+        this._horaFim = this.normalizarHorario(value, "horaFim");
+    }
+
+    /** Minutos de uma aula, calculados a partir do horário de início e fim. */
+    get duracaoAulaMinutos(): number {
+        return this._duracaoAulaMinutos;
+    }
+    set duracaoAulaMinutos(value: number) {
+        if (!Number.isInteger(value) || value <= 0 || value > 24 * 60) {
+            throw new Error("duracaoAulaMinutos deve ser um número inteiro positivo.");
+>>>>>>> 8d6eafe6845a986508c399927ba2309a45150037
         }
-        this._horaFim = value;
+        this._duracaoAulaMinutos = value;
+    }
+
+    /** Soma semanal de todas as aulas desta disciplina na turma. */
+    get cargaHorariaSemanalMinutos(): number {
+        return this._cargaHorariaSemanalMinutos;
+    }
+    set cargaHorariaSemanalMinutos(value: number) {
+        if (!Number.isInteger(value) || value <= 0 || value > 7 * 24 * 60) {
+            throw new Error("cargaHorariaSemanalMinutos deve ser um número inteiro positivo.");
+        }
+        this._cargaHorariaSemanalMinutos = value;
+    }
+
+    /** Calcula a duração entre dois horários aceitos pela grade. */
+    public static calcularDuracaoMinutos(horaInicio: string | number, horaFim: string | number): number {
+        const inicio = GradeHorario.horarioParaMinutos(horaInicio);
+        const fim = GradeHorario.horarioParaMinutos(horaFim);
+        const duracao = fim - inicio;
+        if (duracao <= 0) {
+            throw new Error("horaFim deve ser posterior a horaInicio.");
+        }
+        return duracao;
+    }
+
+    public static horarioParaMinutos(value: string | number): number {
+        if (typeof value === "number") {
+            if (isNaN(value) || value < 0 || value >= 24) {
+                throw new Error(`horário inválido: "${value}".`);
+            }
+            return value > 0 && value < 1 ? Math.round(value * 24 * 60) : Math.round(value * 60);
+        }
+
+        const texto = String(value || '').trim().toLowerCase().replace('h', ':');
+        const correspondencia = texto.match(/^(\d{1,2})(?::(\d{1,2})(?::\d{1,2})?)?$/);
+        if (!correspondencia) {
+            throw new Error(`horário inválido: "${value}".`);
+        }
+        const hora = Number(correspondencia[1]);
+        const minuto = Number(correspondencia[2] || 0);
+        if (hora >= 24 || minuto >= 60) {
+            throw new Error(`horário inválido: "${value}".`);
+        }
+        return hora * 60 + minuto;
+    }
+
+    private normalizarHorario(value: string | number, campo: string): string {
+        if (typeof value === "number") {
+            if (isNaN(value) || value < 0 || value >= 24) {
+                throw new Error(`${campo} inválido: "${value}".`);
+            }
+            const minutos = value > 0 && value < 1 ? Math.round(value * 24 * 60) : Math.round(value * 60);
+            return this.formatarMinutos(minutos, campo);
+        }
+
+        const texto = String(value || '').trim().toLowerCase().replace('h', ':');
+        const correspondencia = texto.match(/^(\d{1,2})(?::(\d{1,2})(?::\d{1,2})?)?$/);
+        if (!correspondencia) {
+            throw new Error(`${campo} inválido: "${value}". Use formatos como 7, 07:00 ou 07h30.`);
+        }
+        const hora = Number(correspondencia[1]);
+        const minuto = Number(correspondencia[2] || 0);
+        if (minuto >= 60) {
+            throw new Error(`${campo} inválido: "${value}".`);
+        }
+        return this.formatarMinutos(hora * 60 + minuto, campo);
+    }
+
+    private formatarMinutos(minutos: number, campo: string): string {
+        if (minutos < 0 || minutos >= 24 * 60) {
+            throw new Error(`${campo} inválido.`);
+        }
+        const hora = Math.floor(minutos / 60);
+        const minuto = minutos % 60;
+        return `${String(hora).padStart(2, '0')}:${String(minuto).padStart(2, '0')}`;
+    }
+
+    public static isHorarioValido(value: number): boolean {
+        if (!Number.isInteger(value) || value < 0) return false;
+        if (value <= 23) return true;
+        const minutos = value % 100;
+        return value <= 2359 && minutos < 60;
     }
 
     get dia(): string {
@@ -129,6 +231,8 @@ export class GradeHorario {
             dia: this._dia,
             cod: this._cod,
             disciplina: this._disciplina,
+            duracaoAulaMinutos: this._duracaoAulaMinutos,
+            cargaHorariaSemanalMinutos: this._cargaHorariaSemanalMinutos,
             auditoria: this._auditoria
         };
     }

@@ -5,6 +5,7 @@ import { AbonoController } from "../controllers/AbonoController";
 import { AbonoService } from "../services/AbonoService";
 import { AbonoDAO } from "../dao/AbonoDAO";
 import { RegistroDAO } from "../dao/RegistroDAO";
+import { AlunoDAO } from "../dao/AlunoDAO";
 import { MongoDatabase } from "../database/MongoDatabase";
 
 export class AbonoRouter {
@@ -20,7 +21,8 @@ export class AbonoRouter {
 
         const abonoDAO = new AbonoDAO(this._dataBase);
         const registroDAO = new RegistroDAO(this._dataBase);
-        const abonoService = new AbonoService(abonoDAO, registroDAO);
+        const alunoDAO = new AlunoDAO(this._dataBase);
+        const abonoService = new AbonoService(abonoDAO, registroDAO, alunoDAO);
         const abonoController = new AbonoController(abonoService);
         const jwtMiddleware = new JwtMiddleware();
 

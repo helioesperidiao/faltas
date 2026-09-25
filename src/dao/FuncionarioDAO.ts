@@ -116,10 +116,16 @@ export class FuncionarioDAO {
         // Marca soft delete na auditoria
         objFuncionarioModel.marcarDeletadoPor(funcionarioLogado.idFuncionario);
 
-        const filter: Filter<Document> = { _id: new ObjectId(objFuncionarioModel.idFuncionario) };
+        // A exclusão é lógica e só pode acontecer uma vez. Isso impede que uma
+        // segunda tentativa pareça bem-sucedida para um funcionário já inativo.
+        const filter: Filter<Document> = {
+            _id: new ObjectId(objFuncionarioModel.idFuncionario),
+            "auditoria.deletadoEm": null
+        };
         const update: UpdateFilter<Document> = {
-            $set: { 
-                auditoria: objFuncionarioModel.auditoria 
+            $set: {
+                "auditoria.deletadoPor": objFuncionarioModel.auditoria.deletadoPor,
+                "auditoria.deletadoEm": objFuncionarioModel.auditoria.deletadoEm
             }
         };
         const result = await collection.updateOne(filter, update);

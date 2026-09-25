@@ -4,6 +4,10 @@ import { Auditoria } from "./Auditoria";
 export class Abono {
     private _idAbono: string = '';
     private _matricula: string = '';
+    private _alunoNome: string = '';
+    private _turma: string = '';
+    private _curso: string = '';
+    private _serie: string = '';
     private _dataInicio: Date = new Date();
     private _dataFim: Date = new Date();
     private _motivo: string = '';
@@ -43,6 +47,18 @@ export class Abono {
         }
         this._matricula = value.trim();
     }
+
+    get alunoNome(): string { return this._alunoNome; }
+    set alunoNome(value: string) { this._alunoNome = (value || '').trim(); }
+
+    get turma(): string { return this._turma; }
+    set turma(value: string) { this._turma = (value || '').trim(); }
+
+    get curso(): string { return this._curso; }
+    set curso(value: string) { this._curso = (value || '').trim(); }
+
+    get serie(): string { return this._serie; }
+    set serie(value: string) { this._serie = (value || '').trim(); }
 
     get dataInicio(): Date {
         return this._dataInicio;
@@ -142,6 +158,10 @@ export class Abono {
         return {
             idAbono: this._idAbono,
             matricula: this._matricula,
+            alunoNome: this._alunoNome,
+            turma: this._turma,
+            curso: this._curso,
+            serie: this._serie,
             dataInicio: this._dataInicio,
             dataFim: this._dataFim,
             motivo: this._motivo,

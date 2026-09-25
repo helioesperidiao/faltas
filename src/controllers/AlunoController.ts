@@ -18,34 +18,43 @@ export class AlunoController extends BaseController {
         console.log("🔵 AlunoController.create()");
 
         const funcionarioLogado: Funcionario = this.getFuncionarioLogado(request);
+        const dados = request.body.aluno;
+        const matricula = typeof dados?.matricula === "string" ? dados.matricula.trim() : "";
+        const alunoNome = typeof dados?.alunoNome === "string" ? dados.alunoNome.trim() : "";
+        const turma = typeof dados?.turma === "string" ? dados.turma.trim() : "";
+
+        if (!matricula || matricula.length > 8 || !alunoNome || !turma) {
+            StandardResponse.error("Dados inválidos. Matrícula (até 8 caracteres), nome e turma são obrigatórios.", null, 400).send(response);
+            return;
+        }
 
         const novoAluno = new Aluno();
-        novoAluno.matricula = request.body.aluno.matricula;
-        novoAluno.alunoNome = request.body.aluno.alunoNome;
-        novoAluno.turma = request.body.aluno.turma;
-        novoAluno.curso = request.body.aluno.curso;
-        novoAluno.serie = request.body.aluno.serie;
-        novoAluno.situacao = request.body.aluno.situacao;
-        novoAluno.ano = request.body.aluno.ano;
-        novoAluno.dataNascimento = request.body.aluno.dataNascimento;
-        novoAluno.alunoRG = request.body.aluno.alunoRG;
-        novoAluno.alunoFone = request.body.aluno.alunoFone;
-        novoAluno.alunoEmail = request.body.aluno.alunoEmail;
-        novoAluno.alunoFoneCel = request.body.aluno.alunoFoneCel;
-        novoAluno.paiNome = request.body.aluno.paiNome;
-        novoAluno.paiFoneCel = request.body.aluno.paiFoneCel;
-        novoAluno.paiFoneFixo = request.body.aluno.paiFoneFixo;
-        novoAluno.paiFoneRecado = request.body.aluno.paiFoneRecado;
-        novoAluno.paiEmail = request.body.aluno.paiEmail;
-        novoAluno.maeNome = request.body.aluno.maeNome;
-        novoAluno.maeFoneCel = request.body.aluno.maeFoneCel;
-        novoAluno.maeFoneFixo = request.body.aluno.maeFoneFixo;
-        novoAluno.maeFoneRecado = request.body.aluno.maeFoneRecado;
-        novoAluno.maeEmail = request.body.aluno.maeEmail;
-        novoAluno.finanNome = request.body.aluno.finanNome;
-        novoAluno.finanFone = request.body.aluno.finanFone;
-        novoAluno.legalNome = request.body.aluno.legalNome;
-        novoAluno.legalFone = request.body.aluno.legalFone;
+        novoAluno.matricula = matricula;
+        novoAluno.alunoNome = alunoNome;
+        novoAluno.turma = turma;
+        novoAluno.curso = dados.curso;
+        novoAluno.serie = dados.serie;
+        novoAluno.situacao = dados.situacao;
+        novoAluno.ano = dados.ano;
+        novoAluno.dataNascimento = dados.dataNascimento;
+        novoAluno.alunoRG = dados.alunoRG;
+        novoAluno.alunoFone = dados.alunoFone;
+        novoAluno.alunoEmail = dados.alunoEmail;
+        novoAluno.alunoFoneCel = dados.alunoFoneCel;
+        novoAluno.paiNome = dados.paiNome;
+        novoAluno.paiFoneCel = dados.paiFoneCel;
+        novoAluno.paiFoneFixo = dados.paiFoneFixo;
+        novoAluno.paiFoneRecado = dados.paiFoneRecado;
+        novoAluno.paiEmail = dados.paiEmail;
+        novoAluno.maeNome = dados.maeNome;
+        novoAluno.maeFoneCel = dados.maeFoneCel;
+        novoAluno.maeFoneFixo = dados.maeFoneFixo;
+        novoAluno.maeFoneRecado = dados.maeFoneRecado;
+        novoAluno.maeEmail = dados.maeEmail;
+        novoAluno.finanNome = dados.finanNome;
+        novoAluno.finanFone = dados.finanFone;
+        novoAluno.legalNome = dados.legalNome;
+        novoAluno.legalFone = dados.legalFone;
 
         const resultado = await this._alunoService.create(novoAluno, funcionarioLogado);
 
@@ -159,6 +168,34 @@ export class AlunoController extends BaseController {
                 alunos: [aluno]
             }).send(response);
         }
+    };
+
+    public promoverTurma = async (request: Request, response: Response): Promise<void> => {
+        console.log("🔵 AlunoController.promoverTurma()");
+        const funcionarioLogado = this.getFuncionarioLogado(request);
+        const turmaOrigem = String(request.body.turmaOrigem || '').trim();
+        const turmaDestino = String(request.body.turmaDestino || '').trim();
+        const anoDestino = String(request.body.anoDestino || new Date().getFullYear()).trim();
+        const serieDestino = String(request.body.serieDestino || '').trim();
+
+        if (!turmaOrigem || !turmaDestino) {
+            StandardResponse.error("Informe a turma atual e a nova turma", null, 400).send(response);
+            return;
+        }
+        if (turmaOrigem === turmaDestino) {
+            StandardResponse.error("A nova turma deve ser diferente da turma atual", null, 400).send(response);
+            return;
+        }
+
+        const total = await this._alunoService.promoverTurma(
+            turmaOrigem,
+            turmaDestino,
+            anoDestino,
+            serieDestino,
+            funcionarioLogado
+        );
+
+        StandardResponse.success("Turma atualizada e histórico anual preservado", { total }).send(response);
     };
 
     public delete = async (request: Request, response: Response): Promise<void> => {

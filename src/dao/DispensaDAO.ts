@@ -55,7 +55,10 @@ export class DispensaDAO {
         console.log("🟢 DispensDAO.delete(" + dispensa.idDispensa + ")");
         const collection = await this.getCollection();
         dispensa.marcarDeletadoPor(funcionarioLogado.idFuncionario);
-        const filter: Filter<Document> = { _id: new ObjectId(dispensa.idDispensa) };
+        const filter: Filter<Document> = {
+            _id: new ObjectId(dispensa.idDispensa),
+            "auditoria.deletadoEm": null
+        };
         const update: UpdateFilter<Document> = {
             $set: {
                 "auditoria.deletadoPor": dispensa.auditoria.deletadoPor,
