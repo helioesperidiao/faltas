@@ -20,11 +20,7 @@ export class AbonoService {
     public create = async (abono: Abono, funcionarioLogado: Funcionario): Promise<Abono> => {
         console.log("🟣 AbonoService.create()");
 
-<<<<<<< HEAD
-        const cargosPermitidos = ["Inspetor", "Coordenador", "Secretaria", "Administrador"];
-=======
         const cargosPermitidos = ["Inspetor", "Processo Pedagógico"];
->>>>>>> 8d6eafe6845a986508c399927ba2309a45150037
         if (!cargosPermitidos.includes(funcionarioLogado.cargo.nomeCargo)) {
             throw new ErrorResponse(
                 403,
@@ -78,11 +74,7 @@ export class AbonoService {
     public update = async (abono: Abono, funcionarioLogado: Funcionario): Promise<boolean> => {
         console.log("🟣 AbonoService.update()");
 
-<<<<<<< HEAD
-        const cargosPermitidos = ["Inspetor", "Coordenador", "Secretaria", "Administrador"];
-=======
         const cargosPermitidos = ["Inspetor", "Processo Pedagógico"];
->>>>>>> 8d6eafe6845a986508c399927ba2309a45150037
         if (!cargosPermitidos.includes(funcionarioLogado.cargo.nomeCargo)) {
             throw new ErrorResponse(
                 403,
@@ -107,11 +99,7 @@ export class AbonoService {
     public aprovar = async (idAbono: string, funcionarioLogado: Funcionario): Promise<Abono> => {
         console.log("🟣 AbonoService.aprovar()");
 
-<<<<<<< HEAD
-        const cargosPermitidos = ["Coordenador", "Administrador"];
-=======
         const cargosPermitidos = ["Processo Pedagógico"];
->>>>>>> 8d6eafe6845a986508c399927ba2309a45150037
         if (!cargosPermitidos.includes(funcionarioLogado.cargo.nomeCargo)) {
             throw new ErrorResponse(
                 403,
@@ -143,19 +131,11 @@ export class AbonoService {
         return abono;
     };
 
-<<<<<<< HEAD
-    //Rejeitar abono pendente.
-    public rejeitar = async (idAbono: string, funcionarioLogado: Funcionario): Promise<Abono> => {
-        console.log("🟣 AbonoService.rejeitar()");
-
-        const cargosPermitidos = ["Coordenador", "Administrador"];
-=======
     //rejeitar: Processo Pedagógico
     public rejeitar = async (idAbono: string, funcionarioLogado: Funcionario): Promise<Abono> => {
         console.log("🟣 AbonoService.rejeitar()");
 
         const cargosPermitidos = ["Processo Pedagógico"];
->>>>>>> 8d6eafe6845a986508c399927ba2309a45150037
         if (!cargosPermitidos.includes(funcionarioLogado.cargo.nomeCargo)) {
             throw new ErrorResponse(
                 403,

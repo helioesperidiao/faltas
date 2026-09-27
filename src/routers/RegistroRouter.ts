@@ -4,6 +4,7 @@ import { RegistroController} from "../controllers/RegistroController";
 import { RegistroService } from "../services/RegistroService";
 import { RegistroDAO } from "../dao/RegistroDAO";
 import { AlunoDAO } from "../dao/AlunoDAO";
+import { DispensaDAO } from "../dao/DispensaDAO";
 import { MongoDatabase } from "../database/MongoDatabase";
 
 export class RegistroRouter {
@@ -18,7 +19,8 @@ export class RegistroRouter {
         this._dataBase= dataBase;
         const registroDAO = new RegistroDAO(this._dataBase);
         const alunoDAO = new AlunoDAO(this._dataBase);
-        const registroService = new RegistroService(registroDAO, alunoDAO);
+        const dispensaDAO = new DispensaDAO(this._dataBase);
+        const registroService = new RegistroService(registroDAO, alunoDAO, dispensaDAO);
         const registroController = new RegistroController(registroService);
         const jwtMiddleware = new JwtMiddleware();
 

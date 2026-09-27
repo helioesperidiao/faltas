@@ -118,19 +118,18 @@
 
   /* ---------- CHAMADA (conteúdo do popup) ---------- */
 
-  .student-nav table {
-    width: 100%;
-  }
-  .student-nav td {
-    vertical-align: middle;
-  }
-  .td-arrow {
-    width: 50px;
+  .student-nav {
+    display: grid;
+    grid-template-areas: "prev card next";
+    grid-template-columns: 46px minmax(0, 1fr) 46px;
+    align-items: center;
+    gap: 10px;
   }
 
   .nav-arrow {
     width: 46px;
     height: 46px;
+    padding: 0;
     border-radius: 50%;
     border: 1px solid #c7cbd1;
     background: #ffffff;
@@ -146,8 +145,27 @@
 
   .student-card {
     border: 1px solid #c7cbd1;
-    border-radius: 8px;
-    padding: 20px;
+    border-radius: 6px;
+    padding: 16px;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    grid-area: card;
+  }
+  .student-identity {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+    flex: 1;
+  }
+  .student-details {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .student-action {
+    flex: 0 0 136px;
   }
   .student-card.status-present {
     background: #e7f4ec;
@@ -156,10 +174,6 @@
   .student-card.status-absent {
     background: #fbe9e8;
     border-color: #f0c4c1;
-  }
-
-  .student-card table {
-    width: 100%;
   }
 
   .avatar {
@@ -178,6 +192,7 @@
     font-size: 17px;
     font-weight: bold;
     color: #0f2a4d;
+    overflow-wrap: anywhere;
   }
   .student-meta {
     font-size: 12px;
@@ -240,11 +255,22 @@
 
   /* ---------- LISTA RESUMO ---------- */
   .roster-item {
-    display: block;
-    padding: 9px 6px;
+    width: 100%;
+    display: grid;
+    grid-template-columns: 26px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 6px;
     border-bottom: 1px solid #f1f2f4;
     cursor: pointer;
     font-size: 13px;
+    text-align: left;
+    color: inherit;
+    background: #ffffff;
+    border-top: 0;
+    border-right: 0;
+    border-left: 0;
+    font-family: inherit;
   }
   .roster-item:hover {
     background: #eef2f8;
@@ -253,11 +279,8 @@
     background: #eef2f8;
     font-weight: bold;
   }
-  .roster-item table {
-    width: 100%;
-  }
   .roster-item .idx {
-    display: inline-block;
+    display: block;
     width: 22px;
     height: 22px;
     border-radius: 50%;
@@ -367,7 +390,9 @@
     width: 100%;
     max-width: 640px;
     max-height: 92vh;
+    max-height: 92dvh;
     overflow-y: auto;
+    overscroll-behavior: contain;
     border-radius: 10px;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
   }
@@ -382,6 +407,7 @@
     border-radius: 10px 10px 0 0;
     position: sticky;
     top: 0;
+    z-index: 1;
   }
   .modal-header-bar .modal-turma-titulo {
     font-size: 15px;
@@ -406,6 +432,7 @@
   }
   .modal-body-scroll {
     padding: 16px;
+    min-width: 0;
   }
   body.modal-aberto {
     overflow: hidden;
@@ -452,34 +479,33 @@
     }
 
     /* navegação do aluno empilhada verticalmente */
-    .student-nav table, .student-nav tbody, .student-nav tr {
-      display: block;
-      width: 100%;
-    }
-    .td-arrow {
-      display: inline-block;
-      width: 46px;
-    }
-    .student-nav > table > tbody > tr > .td-arrow:first-child {
-      float: left;
-    }
-    .student-nav > table > tbody > tr > .td-arrow:last-child {
-      float: right;
+    .student-nav {
+      grid-template-areas: "card card" "prev next";
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 12px;
     }
     .student-card {
-      clear: both;
-      margin-top: 10px;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 12px;
+      padding: 14px;
     }
-    .student-card table, .student-card tbody, .student-card tr, .student-card td {
-      display: block;
+    .student-identity {
+      align-items: flex-start;
+    }
+    .student-action {
+      flex-basis: auto;
+    }
+    .nav-arrow {
       width: 100%;
-      text-align: center;
+      height: 48px;
+      border-radius: 6px;
     }
-    .student-card td[style*="width:70px"] {
-      margin: 0 auto 10px auto;
+    #btn-prev {
+      grid-area: prev;
     }
-    .student-card td[style*="width:160px"] {
-      margin-top: 14px;
+    #btn-next {
+      grid-area: next;
     }
 
     .actions-footer {
@@ -488,50 +514,45 @@
     .actions-footer .btn-secondary, .actions-footer .btn-primary {
       display: block;
       width: 100%;
+      min-height: 48px;
       margin: 8px 0 0 0;
     }
 
     .turma-summary td {
       padding: 8px 4px;
     }
+    .turma-summary .num {
+      font-size: 18px;
+    }
+    .modal-chamada {
+      height: 100vh;
+      height: 100dvh;
+      max-height: 100dvh;
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    .modal-body-scroll {
+      padding: 12px;
+    }
+    .modal-header-bar {
+      padding: 12px 14px;
+    }
+    .student-name {
+      font-size: 16px;
+    }
+    .avatar {
+      flex: 0 0 48px;
+      width: 48px;
+      height: 48px;
+      line-height: 48px;
+    }
   }
 </style>
 </head>
 <body>
 
-<<<<<<< HEAD
-<div class="topbar">
-  <div class="brand">
-    <div class="brand-mark" aria-hidden="true">U</div>
-    <div>
-      <div class="brand-text">UNIVAP</div>
-      <div class="brand-sub">Sistema de Controle de Faltas</div>
-    </div>
-  </div>
-  <div class="session-info">
-    USUÁRIO: <strong id="usuario-nome">Usuário</strong><span id="usuario-cargo"></span><br>
-    <span id="relogio"></span>
-    <button type="button" class="btn-sair" id="btn-sair">Sair</button>
-  </div>
-</div>
-
-<nav class="navbar" aria-label="Menu principal">
-  <table>
-    <tr>
-      <td><a href="telaAdministrador.html">Painel</a></td>
-      <td><a href="GradeHorarios.html">Turmas</a></td>
-      <td><a href="Alunos.html">Alunos</a></td>
-      <td><a href="telaChamada.html" aria-current="page">Chamada</a></td>
-      <td><a href="Funcionarios.html">Funcionários</a></td>
-      <td><a href="Relatorios.html">Relatórios</a></td>
-      <td><a href="Cargos.html">Configurações</a></td>
-    </tr>
-  </table>
-</nav>
-=======
 <!-- O link "pular para o conteúdo" é injetado pelo js/Topbar.js junto do cabeçalho. -->
 <div id="app-topbar"></div>
->>>>>>> 8d6eafe6845a986508c399927ba2309a45150037
 
 <div class="crumbbar">
   ENSINO BÁSICO &rsaquo; <span class="current">CHAMADA DE TURMA</span>
@@ -548,14 +569,14 @@
     <div class="card-header"><h2>Turma</h2></div>
     <div class="card-body">
       <div class="field">
-        <label>Turma que está acessando</label>
+        <label for="turma-select">Turma que está acessando</label>
         <select id="turma-select" onchange="selecionarTurma()">
           <option value="">Selecione uma turma...</option>
         </select>
       </div>
       <div class="field">
-        <label>Data da chamada</label>
-        <input type="date" id="data-chamada">
+        <label for="data-chamada">Data da chamada</label>
+        <input type="date" id="data-chamada" aria-label="Data da chamada">
       </div>
 
       <div class="turma-summary" id="turma-summary">
@@ -591,7 +612,7 @@
 </main>
 
 <!-- POPUP DA CHAMADA (preenche a tela toda no celular enquanto ativo) -->
-<div class="modal-overlay" id="modal-overlay">
+  <div class="modal-overlay" id="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-turma-titulo" aria-hidden="true">
   <div class="modal-chamada">
     <div class="modal-header-bar">
       <div>
@@ -607,37 +628,22 @@
           <div class="card-header"><h2>Registro de Frequência</h2></div>
           <div class="card-body">
             <div class="student-nav">
-              <table>
-                <tr>
-                  <td class="td-arrow">
-                    <button type="button" class="nav-arrow" id="btn-prev" onclick="alunoAnterior()">&lsaquo;</button>
-                  </td>
-                  <td>
-                    <div class="student-card" id="student-card">
-                      <table>
-                        <tr>
-                          <td style="width:70px;">
-                            <div class="avatar" id="student-avatar">--</div>
-                          </td>
-                          <td>
-                            <div class="student-name" id="student-name">—</div>
-                            <div class="student-meta" id="student-meta">—</div>
-                            <div class="student-count" id="student-count">Aluno 0 de 0</div>
-                            <br>
-                            <span class="status-badge" id="student-badge">Pendente</span>
-                          </td>
-                          <td style="width:160px;">
-                            <button type="button" class="btn btn-absent" id="btn-absent" onclick="marcarFalta()">Faltou</button>
-                          </td>
-                        </tr>
-                      </table>
-                    </div>
-                  </td>
-                  <td class="td-arrow">
-                    <button type="button" class="nav-arrow" id="btn-next" onclick="proximoAluno()">&rsaquo;</button>
-                  </td>
-                </tr>
-              </table>
+              <div class="student-card" id="student-card">
+                <div class="student-identity">
+                  <div class="avatar" id="student-avatar">--</div>
+                  <div class="student-details">
+                    <div class="student-name" id="student-name">—</div>
+                    <div class="student-meta" id="student-meta">—</div>
+                    <div class="student-count" id="student-count">Aluno 0 de 0</div>
+                    <span class="status-badge" id="student-badge">Pendente</span>
+                  </div>
+                </div>
+                <div class="student-action">
+                  <button type="button" class="btn btn-absent" id="btn-absent" onclick="marcarFalta()">Faltou</button>
+                </div>
+              </div>
+              <button type="button" class="nav-arrow" id="btn-prev" onclick="alunoAnterior()" aria-label="Aluno anterior">&lsaquo;</button>
+              <button type="button" class="nav-arrow" id="btn-next" onclick="proximoAluno()" aria-label="Próximo aluno">&rsaquo;</button>
             </div>
           </div>
         </div>
@@ -670,18 +676,7 @@
     throw new Error('Sessão não encontrada.');
   }
 
-<<<<<<< HEAD
-  const funcionarioLogado = userData.data?.funcionario?.[0] || {};
-  document.getElementById('usuario-nome').textContent = (funcionarioLogado.nomeFuncionario || 'Usuário').toUpperCase();
-  document.getElementById('usuario-cargo').textContent = funcionarioLogado.cargo?.nomeCargo ? ' · ' + funcionarioLogado.cargo.nomeCargo : '';
-
-  document.getElementById('btn-sair').onclick = () => {
-    localStorage.removeItem('userData');
-    window.location.href = 'Login.html';
-  };
-=======
   const api = new ApiService(sessao.token);
->>>>>>> 8d6eafe6845a986508c399927ba2309a45150037
 
   montarTopbar('chamada');
 
@@ -788,6 +783,7 @@
 
     document.getElementById('modal-turma-titulo').textContent = turmaAtual;
     document.getElementById('modal-overlay').classList.add('ativo');
+    document.getElementById('modal-overlay').setAttribute('aria-hidden', 'false');
     document.body.classList.add('modal-aberto');
 
     alunoAtual = 0;
@@ -796,6 +792,7 @@
 
   function fecharChamada() {
     document.getElementById('modal-overlay').classList.remove('ativo');
+    document.getElementById('modal-overlay').setAttribute('aria-hidden', 'true');
     document.body.classList.remove('modal-aberto');
   }
 
@@ -828,13 +825,13 @@
 
     if (status === 'present') {
       card.className = 'student-card status-present';
-      badge.innerHTML = 'Presente';
+      badge.textContent = 'Presente';
     } else if (status === 'absent') {
       card.className = 'student-card status-absent';
-      badge.innerHTML = 'Faltou';
+      badge.textContent = 'Faltou';
       btnFaltou.className = 'btn btn-absent active';
     } else {
-      badge.innerHTML = 'Presente';
+      badge.textContent = 'Presente';
     }
 
     document.getElementById('btn-prev').disabled = (alunoAtual === 0);
@@ -861,17 +858,22 @@
     roster.innerHTML = '';
 
     for (var i = 0; i < alunosDaTurma.length; i++) {
-      var linha = document.createElement('div');
+      var linha = document.createElement('button');
+      linha.type = 'button';
       linha.className = 'roster-item';
       linha.id = 'roster-item-' + i;
       linha.onclick = (function (indice) { return function () { irParaAluno(indice); }; })(i);
-
-      linha.innerHTML =
-        '<table><tr>' +
-        '<td style="width:30px;"><span class="idx">' + (i + 1) + '</span></td>' +
-        '<td>' + escaparHtml(alunosDaTurma[i].alunoNome) + '</td>' +
-        '<td style="width:100px;text-align:right;"><span class="rstatus" id="roster-status-' + i + '">Pendente</span></td>' +
-        '</tr></table>';
+      var indice = document.createElement('span');
+      indice.className = 'idx';
+      indice.textContent = String(i + 1);
+      var nome = document.createElement('span');
+      nome.className = 'roster-name';
+      nome.textContent = alunosDaTurma[i].alunoNome;
+      var status = document.createElement('span');
+      status.className = 'rstatus';
+      status.id = 'roster-status-' + i;
+      status.textContent = 'Pendente';
+      linha.append(indice, nome, status);
 
       roster.appendChild(linha);
     }
@@ -891,13 +893,13 @@
 
       if (status === 'present') {
         item.className = item.className + ' st-present';
-        statusTexto.innerHTML = 'Presente';
+        statusTexto.textContent = 'Presente';
       } else if (status === 'absent') {
         item.className = item.className + ' st-absent';
-        statusTexto.innerHTML = 'Faltou';
+        statusTexto.textContent = 'Faltou';
       } else {
         item.className = item.className + ' st-pending';
-        statusTexto.innerHTML = 'Pendente';
+        statusTexto.textContent = 'Pendente';
       }
     }
   }
@@ -908,19 +910,12 @@
     var dia = document.getElementById('data-chamada').value;
     return {
       registro: {
-<<<<<<< HEAD
-        ano: new Date(dia).getFullYear(),
-        codDisciplina: codDisciplina,
-        horaInicio: new Date().getHours(),
-        horaFim: new Date().getHours(),
-=======
         ano: Number(String(dia).split('-')[0]),
         // A chamada é diária e geral. As disciplinas são identificadas depois,
         // pelos horários da turma na data da ausência.
         codDisciplina: 'GERAL',
         horaInicio: 0,
         horaFim: 0,
->>>>>>> 8d6eafe6845a986508c399927ba2309a45150037
         matricula: aluno.matricula,
         falta: statusAlunos[indice] === 'absent',
         dia: dia,
@@ -929,29 +924,12 @@
     };
   }
 
-<<<<<<< HEAD
-    if (registroIds[alunoAtual]) {
-      // já existe um registro para este aluno: corrige via PUT (ex.: usado pelo botão "voltar")
-      const resposta = await api.put("api/v1/registro", registroIds[alunoAtual], objeto);
-      if (!resposta || !resposta.success) {
-        alert(resposta?.message || 'Não foi possível atualizar a chamada.');
-        return;
-      }
-    } else {
-      const resposta = await api.post("api/v1/registro", objeto);
-      if (!resposta || !resposta.success) {
-        alert(resposta?.message || 'Não foi possível registrar a chamada.');
-        return;
-      }
-      registroIds[alunoAtual] = resposta.data.registros[0].idRegistro;
-=======
   async function gravarRegistroDoAluno(indice) {
     const objeto = objetoDoRegistro(indice);
     if (registroIds[indice]) {
       const resposta = await api.put("api/v1/registro", registroIds[indice], objeto);
-      if (!resposta.success) throw new Error(resposta.message || 'Não foi possível atualizar o registro.');
+      if (!resposta?.success) throw new Error(resposta.message || 'Não foi possível atualizar o registro.');
       return;
->>>>>>> 8d6eafe6845a986508c399927ba2309a45150037
     }
     const resposta = await api.post("api/v1/registro", objeto);
     if (!resposta.success) throw new Error(resposta.message || 'Não foi possível salvar o registro.');

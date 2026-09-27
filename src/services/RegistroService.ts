@@ -3,26 +3,27 @@ import { Registro } from "../models/Registro";
 import { ErrorResponse } from "../http/ErrorResponse";
 import { Funcionario } from "@/models/Funcionario";
 import { AlunoDAO } from "../dao/AlunoDAO";
+import { DispensaDAO } from "../dao/DispensaDAO";
 
 const CARGOS_ACESSO_TOTAL = ["Processo Pedagógico"];
 
 export class RegistroService {
     private _registroDAO: RegistroDAO;
     private _alunoDAO: AlunoDAO;
+    private _dispensaDAO: DispensaDAO;
 
     //construtor
-    constructor(registroDAODependency: RegistroDAO, alunoDAODependency: AlunoDAO){
+    constructor(registroDAODependency: RegistroDAO, alunoDAODependency: AlunoDAO, dispensaDAODependency: DispensaDAO){
         console.log("⬆️  RegistroService.constructor()");
         this._registroDAO = registroDAODependency;
         this._alunoDAO = alunoDAODependency;
+        this._dispensaDAO = dispensaDAODependency;
     }
 
     //create
     public create = async (registro: Registro, funcionarioLogado: Funcionario): Promise<Registro> => {
         console.log("🟣 RegistroService.create()");
-<<<<<<< HEAD
-
-        const cargosPermitidos = ["Inspetor", "Administrador", "Coordenador"];
+        const cargosPermitidos = ["Inspetor", "Processo Pedagógico"];
         if (!cargosPermitidos.includes(funcionarioLogado.cargo.nomeCargo)) {
             throw new ErrorResponse(
                 403,
@@ -31,22 +32,21 @@ export class RegistroService {
             );
         }
 
-        //dispensa vigente sobrescreve a falta automaticamente (status DISPENSADO)
-        const dispensaVigente = await this._dispensaDAO.findVigenteParaAluno(registro.matricula, registro.codDisciplina, registro.dia);
+        const alunos = await this._alunoDAO.findByField("matricula", registro.matricula);
+        if (alunos.length === 0) {
+            throw new ErrorResponse(404, "Aluno não encontrado", { matricula: registro.matricula });
+        }
+        const aluno = alunos[0];
+        const dispensaVigente = await this._dispensaDAO.findVigenteParaAluno(aluno.idAluno, registro.codDisciplina, registro.dia);
         if (dispensaVigente) {
             registro.falta = false;
             registro.situacao = "Dispensada";
-=======
-        const aluno = await this._alunoDAO.findByField("matricula", registro.matricula);
-        if (aluno.length === 0) {
-            throw new ErrorResponse(404, "Aluno não encontrado", { matricula: registro.matricula });
->>>>>>> 8d6eafe6845a986508c399927ba2309a45150037
         }
 
-        registro.alunoNome = aluno[0].alunoNome;
-        registro.turma = aluno[0].turma;
-        registro.curso = aluno[0].curso;
-        registro.serie = aluno[0].serie;
+        registro.alunoNome = aluno.alunoNome;
+        registro.turma = aluno.turma;
+        registro.curso = aluno.curso;
+        registro.serie = aluno.serie;
         return await this._registroDAO.create(registro, funcionarioLogado);
     };
 

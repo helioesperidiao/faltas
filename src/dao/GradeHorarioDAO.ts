@@ -126,17 +126,11 @@ export class GradeHorarioDAO {
         grade.turma = doc.turma;
         grade.horaInicio = doc.horaInicio;
         grade.horaFim = doc.horaFim;
-<<<<<<< HEAD
         grade.dia = this.corrigirAcentos(doc.dia);
         grade.cod = this.corrigirAcentos(doc.cod);
         grade.disciplina = this.corrigirAcentos(doc.disciplina);
-=======
-        grade.dia = doc.dia;
-        grade.cod = doc.cod;
-        grade.disciplina = doc.disciplina;
         grade.duracaoAulaMinutos = doc.duracaoAulaMinutos || GradeHorario.calcularDuracaoMinutos(doc.horaInicio, doc.horaFim);
         grade.cargaHorariaSemanalMinutos = doc.cargaHorariaSemanalMinutos || grade.duracaoAulaMinutos;
->>>>>>> 8d6eafe6845a986508c399927ba2309a45150037
         if (doc.auditoria) {
             const auditoria = new Auditoria();
             auditoria.criadoPor = doc.auditoria.criadoPor || '';

@@ -1,4 +1,4 @@
-import { Collection, Document, OptionalId } from "mongodb";
+import { Collection, Document, Filter, OptionalId } from "mongodb";
 import { Movimentacao } from "../models/Movimentacao";
 import { MongoDatabase } from "../database/MongoDatabase";
 import { Funcionario } from "../models/Funcionario";
@@ -28,12 +28,20 @@ export class MovimentacaoDAO {
         return movimentacao;
     }
 
-    async findAll(): Promise<Movimentacao[]> {
-        const docs = await (await this.getCollection())
-            .find({ "auditoria.deletadoEm": null })
-            .sort({ data: -1, horario: -1 })
-            .limit(200)
-            .toArray();
+    async findAll(data?: Date): Promise<Movimentacao[]> {
+        const filter: Filter<Document> = { "auditoria.deletadoEm": null };
+        if (data) {
+            if (isNaN(data.getTime())) throw new Error("data inválida.");
+            const inicio = new Date(data.getFullYear(), data.getMonth(), data.getDate());
+            const fim = new Date(data.getFullYear(), data.getMonth(), data.getDate() + 1);
+            filter.data = { $gte: inicio, $lt: fim };
+        }
+
+        const cursor = (await this.getCollection())
+            .find(filter)
+            .sort({ data: -1, horario: -1 });
+        if (!data) cursor.limit(200);
+        const docs = await cursor.toArray();
         return docs.map(doc => this.toMovimentacao(doc));
     }
 

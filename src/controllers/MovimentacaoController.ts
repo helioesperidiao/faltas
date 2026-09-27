@@ -21,8 +21,23 @@ export class MovimentacaoController extends BaseController {
         StandardResponse.created("Movimentação registrada com sucesso", { movimentacoes: [resultado] }).send(response);
     };
 
-    findAll = async (_request: Request, response: Response): Promise<void> => {
-        const movimentacoes = await this.movimentacaoService.findAll();
+    findAll = async (request: Request, response: Response): Promise<void> => {
+        const valorData = request.query.data;
+        let data: Date | undefined;
+        if (valorData !== undefined) {
+            if (typeof valorData !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(valorData)) {
+                StandardResponse.error("Data inválida. Use o formato AAAA-MM-DD.", null, 400).send(response);
+                return;
+            }
+            const [ano, mes, dia] = valorData.split("-").map(Number);
+            data = new Date(ano, mes - 1, dia);
+            if (data.getFullYear() !== ano || data.getMonth() !== mes - 1 || data.getDate() !== dia) {
+                StandardResponse.error("Data inválida. Use o formato AAAA-MM-DD.", null, 400).send(response);
+                return;
+            }
+        }
+
+        const movimentacoes = await this.movimentacaoService.findAll(data);
         StandardResponse.success("Busca realizada com sucesso", { movimentacoes }).send(response);
     };
 }

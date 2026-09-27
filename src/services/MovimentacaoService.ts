@@ -9,7 +9,7 @@ export class MovimentacaoService {
         return this.movimentacaoDAO.create(movimentacao, funcionario);
     }
 
-    async findAll(): Promise<Movimentacao[]> {
-        return this.movimentacaoDAO.findAll();
+    async findAll(data?: Date): Promise<Movimentacao[]> {
+        return this.movimentacaoDAO.findAll(data);
     }
 }

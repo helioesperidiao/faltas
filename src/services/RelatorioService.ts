@@ -1,16 +1,13 @@
 import { AlunoDAO } from "../dao/AlunoDAO";
 import { RegistroDAO } from "../dao/RegistroDAO";
 import { Registro } from "../models/Registro";
-<<<<<<< HEAD
 import { Movimentacao } from "../models/Movimentacao";
 import { MovimentacaoDAO } from "../dao/MovimentacaoDAO";
-=======
 import { GradeHorarioDAO } from "../dao/GradeHorarioDAO";
 import { Funcionario } from "@/models/Funcionario";
 import { ErrorResponse } from "@/http/ErrorResponse";
 import { ConfiguracaoAlertaFaltaDAO } from "@/dao/ConfiguracaoAlertaFaltaDAO";
 import { AlertaFaltaDAO } from "@/dao/AlertaFaltaDAO";
->>>>>>> 8d6eafe6845a986508c399927ba2309a45150037
 
 export interface FrequenciaAluno {
     matricula: string;
@@ -48,14 +45,26 @@ export interface AlertasFaltaBimestral {
 export class RelatorioService {
     private _alunoDAO: AlunoDAO;
     private _registroDAO: RegistroDAO;
-<<<<<<< HEAD
     private _movimentacaoDAO: MovimentacaoDAO;
+    private _gradeHorarioDAO: GradeHorarioDAO;
+    private _configuracaoAlertaFaltaDAO: ConfiguracaoAlertaFaltaDAO;
+    private _alertaFaltaDAO: AlertaFaltaDAO;
 
-    constructor(alunoDAODependency: AlunoDAO, registroDAODependency: RegistroDAO, movimentacaoDAODependency: MovimentacaoDAO) {
+    constructor(
+        alunoDAODependency: AlunoDAO,
+        registroDAODependency: RegistroDAO,
+        movimentacaoDAODependency: MovimentacaoDAO,
+        gradeHorarioDAODependency: GradeHorarioDAO,
+        configuracaoAlertaFaltaDAODependency: ConfiguracaoAlertaFaltaDAO,
+        alertaFaltaDAODependency: AlertaFaltaDAO
+    ) {
         console.log("⬆️  RelatorioService.constructor()");
         this._alunoDAO = alunoDAODependency;
         this._registroDAO = registroDAODependency;
         this._movimentacaoDAO = movimentacaoDAODependency;
+        this._gradeHorarioDAO = gradeHorarioDAODependency;
+        this._configuracaoAlertaFaltaDAO = configuracaoAlertaFaltaDAODependency;
+        this._alertaFaltaDAO = alertaFaltaDAODependency;
     }
 
     private mesmaData(primeira: Date, segunda: Date): boolean {
@@ -72,11 +81,7 @@ export class RelatorioService {
             .sort((a, b) => a.horario.localeCompare(b.horario));
 
         if (doAlunoNoDia.length === 0) return registro.falta;
-
-        // Registros antigos não têm horário; nesses casos, vale o último movimento do dia.
-        if (registro.horaInicio === 0) {
-            return doAlunoNoDia[doAlunoNoDia.length - 1].tipo === "saida";
-        }
+        if (registro.horaInicio === 0) return doAlunoNoDia[doAlunoNoDia.length - 1].tipo === "saida";
 
         const horarioDaAula = `${String(registro.horaInicio).padStart(2, "0")}:00`;
         const movimentoAplicavel = doAlunoNoDia.filter(movimentacao => movimentacao.horario <= horarioDaAula).pop();
@@ -97,25 +102,6 @@ export class RelatorioService {
             .pop();
 
         return movimento ? { tipo: movimento.tipo, horario: movimento.horario } : null;
-=======
-    private _gradeHorarioDAO: GradeHorarioDAO;
-    private _configuracaoAlertaFaltaDAO: ConfiguracaoAlertaFaltaDAO;
-    private _alertaFaltaDAO: AlertaFaltaDAO;
-
-    constructor(
-        alunoDAODependency: AlunoDAO,
-        registroDAODependency: RegistroDAO,
-        gradeHorarioDAODependency: GradeHorarioDAO,
-        configuracaoAlertaFaltaDAODependency: ConfiguracaoAlertaFaltaDAO,
-        alertaFaltaDAODependency: AlertaFaltaDAO
-    ) {
-        console.log("⬆️  RelatorioService.constructor()");
-        this._alunoDAO = alunoDAODependency;
-        this._registroDAO = registroDAODependency;
-        this._gradeHorarioDAO = gradeHorarioDAODependency;
-        this._configuracaoAlertaFaltaDAO = configuracaoAlertaFaltaDAODependency;
-        this._alertaFaltaDAO = alertaFaltaDAODependency;
->>>>>>> 8d6eafe6845a986508c399927ba2309a45150037
     }
 
     /** Normaliza os nomes de dia aceitos pela grade, inclusive `quarta-feira`. */
@@ -168,12 +154,8 @@ export class RelatorioService {
         return alunosDaTurma.map(aluno => {
             const registroDoDia = todosRegistros.find(registro =>
                 registro.matricula === aluno.matricula &&
-<<<<<<< HEAD
-                this.mesmaData(registro.dia, dia)
-=======
                 registro.turma === turma &&
-                registro.dia.toDateString() === dia.toDateString()
->>>>>>> 8d6eafe6845a986508c399927ba2309a45150037
+                this.mesmaData(registro.dia, dia)
             );
 
             let situacao = "Pendente";
@@ -203,12 +185,8 @@ export class RelatorioService {
         const movimentacoes = await this._movimentacaoDAO.findAll();
 
         const registrosNoPeriodo = todosRegistros.filter((registro: Registro) =>
-<<<<<<< HEAD
-            registro.dia >= dataInicio && registro.dia <= dataFim && this.faltaConsiderandoMovimentacao(registro, movimentacoes)
-=======
             registro.turma === turma &&
-            registro.dia >= dataInicio && registro.dia <= dataFim && registro.falta === true
->>>>>>> 8d6eafe6845a986508c399927ba2309a45150037
+            registro.dia >= dataInicio && registro.dia <= dataFim && this.faltaConsiderandoMovimentacao(registro, movimentacoes)
         );
 
         return alunosDaTurma.map(aluno => {
