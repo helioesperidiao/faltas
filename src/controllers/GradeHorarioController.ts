@@ -19,8 +19,8 @@ export class GradeHorarioController extends BaseController {
 
         const funcionarioLogado: Funcionario = this.getFuncionarioLogado(request);
         const dados = request.body.gradeHorario;
-        const horaInicio = Number(dados?.horaInicio);
-        const horaFim = Number(dados?.horaFim);
+        const horaInicio = dados?.horaInicio;
+        const horaFim = dados?.horaFim;
 
         if (!dados || !GradeHorario.isHorarioValido(horaInicio) || !GradeHorario.isHorarioValido(horaFim)) {
             StandardResponse.error("Horários inválidos. Informe horas inteiras ou no formato HHMM.", null, 400).send(response);
@@ -28,21 +28,12 @@ export class GradeHorarioController extends BaseController {
         }
 
         const novaGrade = new GradeHorario();
-<<<<<<< HEAD
         novaGrade.turma = dados.turma;
         novaGrade.horaInicio = horaInicio;
         novaGrade.horaFim = horaFim;
         novaGrade.dia = dados.dia;
         novaGrade.cod = dados.cod;
         novaGrade.disciplina = dados.disciplina;
-=======
-        novaGrade.turma = request.body.gradeHorario.turma;
-        novaGrade.horaInicio = request.body.gradeHorario.horaInicio;
-        novaGrade.horaFim = request.body.gradeHorario.horaFim;
-        novaGrade.dia = request.body.gradeHorario.dia;
-        novaGrade.cod = request.body.gradeHorario.cod;
-        novaGrade.disciplina = request.body.gradeHorario.disciplina;
->>>>>>> 8d6eafe6845a986508c399927ba2309a45150037
 
         const resultado = await this._gradeHorarioService.create(novaGrade, funcionarioLogado);
 

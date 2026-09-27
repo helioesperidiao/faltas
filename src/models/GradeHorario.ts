@@ -46,26 +46,13 @@ export class GradeHorario {
     get horaInicio(): string {
         return this._horaInicio;
     }
-<<<<<<< HEAD
-    set horaInicio(value: number) {
-        if (!GradeHorario.isHorarioValido(value)) {
-            throw new Error(`horaInicio inválido: "${value}". Use hora inteira ou formato HHMM.`);
-        }
-        this._horaInicio = value;
-=======
     set horaInicio(value: string | number) {
         this._horaInicio = this.normalizarHorario(value, "horaInicio");
->>>>>>> 8d6eafe6845a986508c399927ba2309a45150037
     }
 
     get horaFim(): string {
         return this._horaFim;
     }
-<<<<<<< HEAD
-    set horaFim(value: number) {
-        if (!GradeHorario.isHorarioValido(value)) {
-            throw new Error(`horaFim inválido: "${value}". Use hora inteira ou formato HHMM.`);
-=======
     set horaFim(value: string | number) {
         this._horaFim = this.normalizarHorario(value, "horaFim");
     }
@@ -77,7 +64,6 @@ export class GradeHorario {
     set duracaoAulaMinutos(value: number) {
         if (!Number.isInteger(value) || value <= 0 || value > 24 * 60) {
             throw new Error("duracaoAulaMinutos deve ser um número inteiro positivo.");
->>>>>>> 8d6eafe6845a986508c399927ba2309a45150037
         }
         this._duracaoAulaMinutos = value;
     }
@@ -106,7 +92,18 @@ export class GradeHorario {
 
     public static horarioParaMinutos(value: string | number): number {
         if (typeof value === "number") {
-            if (isNaN(value) || value < 0 || value >= 24) {
+            if (!Number.isFinite(value) || value < 0) {
+                throw new Error(`horário inválido: "${value}".`);
+            }
+            if (Number.isInteger(value) && value > 23) {
+                const hora = Math.floor(value / 100);
+                const minuto = value % 100;
+                if (value > 2359 || minuto >= 60) {
+                    throw new Error(`horário inválido: "${value}".`);
+                }
+                return hora * 60 + minuto;
+            }
+            if (value >= 24) {
                 throw new Error(`horário inválido: "${value}".`);
             }
             return value > 0 && value < 1 ? Math.round(value * 24 * 60) : Math.round(value * 60);
@@ -127,7 +124,16 @@ export class GradeHorario {
 
     private normalizarHorario(value: string | number, campo: string): string {
         if (typeof value === "number") {
-            if (isNaN(value) || value < 0 || value >= 24) {
+            if (!Number.isFinite(value) || value < 0) {
+                throw new Error(`${campo} inválido: "${value}".`);
+            }
+            if (Number.isInteger(value) && value > 23) {
+                if (value > 2359 || value % 100 >= 60) {
+                    throw new Error(`${campo} inválido: "${value}".`);
+                }
+                return this.formatarMinutos(Math.floor(value / 100) * 60 + value % 100, campo);
+            }
+            if (value >= 24) {
                 throw new Error(`${campo} inválido: "${value}".`);
             }
             const minutos = value > 0 && value < 1 ? Math.round(value * 24 * 60) : Math.round(value * 60);
@@ -156,11 +162,13 @@ export class GradeHorario {
         return `${String(hora).padStart(2, '0')}:${String(minuto).padStart(2, '0')}`;
     }
 
-    public static isHorarioValido(value: number): boolean {
-        if (!Number.isInteger(value) || value < 0) return false;
-        if (value <= 23) return true;
-        const minutos = value % 100;
-        return value <= 2359 && minutos < 60;
+    public static isHorarioValido(value: string | number): boolean {
+        try {
+            this.horarioParaMinutos(value);
+            return true;
+        } catch {
+            return false;
+        }
     }
 
     get dia(): string {

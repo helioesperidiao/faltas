@@ -19,14 +19,16 @@
     label { display: block; color: #4a4f57; font-size: 12.5px; font-weight: bold; margin-bottom: 6px; }
     input, select { box-sizing: border-box; width: 100%; padding: 10px 11px; border: 1px solid #c7cbd1; border-radius: 4px; color: #1f2937; background: #fff; font: inherit; }
     .mode { display: flex; gap: 8px; margin-bottom: 20px; }
-    .mode label { flex: 1; margin: 0; }
-    .mode input { position: absolute; opacity: 0; }
+    .mode label { position: relative; flex: 1; margin: 0; }
+    .mode input { position: absolute; width: 1px; height: 1px; padding: 0; opacity: 0; }
     .mode span { display: block; padding: 10px; border: 1px solid #c7cbd1; border-radius: 4px; text-align: center; cursor: pointer; font-size: 13px; }
     .mode input:checked + span { border-color: #163b6b; background: #eaf1fb; color: #163b6b; }
     .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .tipo { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .tipo label { margin: 0; }
-    .tipo input { position: absolute; opacity: 0; }
+    .tipo label { position: relative; margin: 0; }
+    .tipo input { position: absolute; width: 1px; height: 1px; padding: 0; opacity: 0; }
+    .mode input:focus-visible + span,
+    .tipo input:focus-visible + span { outline: 3px solid #ffb400; outline-offset: 2px; }
     .tipo span { display: block; padding: 11px; border: 1px solid #c7cbd1; border-radius: 4px; text-align: center; cursor: pointer; font-size: 13px; }
     .tipo input:checked + span { color: #fff; border-color: transparent; }
     .tipo .entrada input:checked + span { background: #1c7a3e; }
@@ -80,8 +82,14 @@
         </div>
       </section>
       <section class="card">
-        <div class="card-header"><h2>Registros recentes</h2></div>
-        <div class="card-body" style="padding:12px 16px"><div id="historico" class="empty">Carregando registros...</div></div>
+        <div class="card-header"><h2>Registros do dia</h2></div>
+        <div class="card-body" style="padding:12px 16px">
+          <div class="field">
+            <label for="filtro-data">Dia dos registros</label>
+            <input id="filtro-data" type="date" aria-label="Filtrar movimentações por dia">
+          </div>
+          <div id="historico" class="empty" aria-live="polite">Carregando registros...</div>
+        </div>
       </section>
     </div>
   </main>
@@ -98,7 +106,9 @@
     let selecionado = null;
     const $ = id => document.getElementById(id);
     const hoje = new Date();
-    $('data').value = hoje.toISOString().slice(0, 10);
+    const dataHoje = [hoje.getFullYear(), String(hoje.getMonth() + 1).padStart(2, '0'), String(hoje.getDate()).padStart(2, '0')].join('-');
+    $('data').value = dataHoje;
+    $('filtro-data').value = dataHoje;
 
     function mostrarMensagem(texto, tipo) { $('mensagem').textContent = texto; $('mensagem').className = `message ${tipo || ''}`; }
     function nomeOpcao(aluno) { return `${aluno.alunoNome} - ${aluno.matricula}`; }
@@ -118,9 +128,23 @@
       const alunosResponse = await api.get('api/v1/alunos/');
       alunos = alunosResponse?.data?.alunos || [];
       preencherBusca();
-      const registrosResponse = await api.get('api/v1/movimentacoes/');
-      renderHistorico(registrosResponse?.data?.movimentacoes || []);
+      await carregarHistorico();
     }
+    async function carregarHistorico() {
+      const data = $('filtro-data').value;
+      if (!data) {
+        $('historico').textContent = 'Selecione um dia para consultar as movimentações.';
+        return;
+      }
+      $('historico').textContent = 'Carregando registros...';
+      const registrosResponse = await api.get(`api/v1/movimentacoes/?data=${encodeURIComponent(data)}`);
+      if (!registrosResponse?.success) {
+        $('historico').textContent = registrosResponse?.message || 'Não foi possível carregar as movimentações.';
+        return;
+      }
+      renderHistorico(registrosResponse.data.movimentacoes || []);
+    }
+    $('filtro-data').addEventListener('change', carregarHistorico);
     $('busca-aluno').addEventListener('input', selecionarAluno);
     document.querySelectorAll('input[name="origem"]').forEach(input => input.addEventListener('change', event => {
       const manual = event.target.value === 'manual';
@@ -139,7 +163,7 @@
       if (!resposta?.success) { mostrarMensagem(resposta?.message || 'Não foi possível registrar.', 'error'); return; }
       mostrarMensagem('Movimentação registrada com sucesso.', 'ok');
       $('busca-aluno').value = ''; $('nome-manual').value = ''; $('matricula-manual').value = ''; selecionado = null; $('aluno-selecionado').style.display = 'none';
-      carregar();
+      await carregarHistorico();
     });
     carregar();
   </script>

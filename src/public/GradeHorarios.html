@@ -39,13 +39,8 @@
   <div class="card mb-3">
     <div class="card-header">Importar Grade via planilha</div>
     <div class="card-body">
-<<<<<<< HEAD
-      <p class="text-muted">Cabeçalho esperado: TURMA,DISCIPLINA,NOME_DISCIPLINA,SEMANA_EXTENSO,HORAINICIALFINAL</p>
-      <input type="file" id="fileCsv" class="form-control mb-2" accept=".csv" aria-label="Arquivo CSV de grade de horários para importação" />
-=======
       <p class="text-muted">Use os cabeçalhos TURMA, DISCIPLINA, NOME_DESCIPLINA, SEMANA_EXTENSO e HORAINICIALFINAL. O sistema separa horários como 10:50-11:40 e normaliza dias como quarta-feira.</p>
       <input type="file" id="fileCsv" class="form-control mb-2" accept=".xlsx,.xls,.xlsm,.csv,.tsv,.txt" aria-label="Planilha de grade de horários para importação" />
->>>>>>> 8d6eafe6845a986508c399927ba2309a45150037
       <button type="button" id="btnImportar" class="btn btn-primary mb-2">Importar</button>
       <div class="progress mb-2" style="display:none;" id="divProgressoWrap">
         <div id="barraProgresso" class="progress-bar" role="progressbar" style="width: 0%">0%</div>
@@ -223,79 +218,6 @@
       divTabela.appendChild(table);
     }
 
-<<<<<<< HEAD
-    // ======================== IMPORTAÇÃO CSV ========================
-    function parseCsv(texto) {
-      const linhas = texto.split(/\r?\n/).filter(l => l.trim().length > 0);
-      const separador = linhas[0].includes("\t") ? "\t" : (linhas[0].includes(";") ? ";" : ",");
-      const cabecalho = linhas[0].replace(/^\uFEFF/, "").split(separador).map(c => c.trim().toUpperCase());
-      return linhas.slice(1).map(linha => {
-        const valores = linha.split(separador).map(v => corrigirAcentos(v.trim()));
-        const objeto = {};
-        cabecalho.forEach((chave, indice) => { objeto[chave] = valores[indice] || ""; });
-        return objeto;
-      });
-    }
-
-    function corrigirAcentos(texto) {
-      if (!/[ÃÂ�]/.test(texto)) return texto;
-      try {
-        return decodeURIComponent(escape(texto))
-          .replace(/Administra�+o/g, "Administração")
-          .replace(/Ter�+a-feira/g, "Terça-feira")
-          .replace(/Organiza��o/g, "Organização")
-          .replace(/M�todos/g, "Métodos");
-      } catch {
-        return texto
-          .replace(/Administra�+o/g, "Administração")
-          .replace(/Ter�+a-feira/g, "Terça-feira")
-          .replace(/Organiza��o/g, "Organização")
-          .replace(/M�todos/g, "Métodos");
-      }
-    }
-
-    async function lerArquivoComCodificacao(arquivo) {
-      const bytes = await arquivo.arrayBuffer();
-      const utf8 = new TextDecoder("utf-8").decode(bytes);
-      return utf8.includes("�") ? new TextDecoder("windows-1252").decode(bytes) : utf8;
-    }
-
-    function converterLinhaImportada(linha) {
-      const intervalo = (linha.HORAINICIALFINAL || "").split(/\s*-\s*/);
-      const inicio = intervalo[0]?.trim() || "";
-      const fim = intervalo[1]?.trim() || "";
-      const horaInicio = Number(inicio.replace(":", ""));
-      const horaFim = Number(fim.replace(":", ""));
-
-      return {
-        turma: linha.TURMA,
-        horaInicio,
-        horaFim,
-        dia: linha.SEMANA_EXTENSO,
-        cod: linha.DISCIPLINA,
-        disciplina: linha.NOME_DISCIPLINA,
-        inicio,
-        fim
-      };
-    }
-
-    function validarLinha(linha) {
-      const dados = converterLinhaImportada(linha);
-      const horarioValido = /^([01]\d|2[0-3]):[0-5]\d$/.test(dados.inicio) && /^([01]\d|2[0-3]):[0-5]\d$/.test(dados.fim);
-      const camposObrigatorios = [dados.turma, dados.dia, dados.cod, dados.disciplina];
-      if (camposObrigatorios.some(campo => !campo) || !horarioValido) {
-        return "Preencha TURMA, DISCIPLINA, NOME_DISCIPLINA, SEMANA_EXTENSO e um intervalo HORAINICIALFINAL válido.";
-      }
-      return "";
-    }
-
-    function deveIgnorarLinha(linha) {
-      const texto = Object.values(linha).join(" ").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-      return texto.includes("estagio supervisionado");
-    }
-
-=======
->>>>>>> 8d6eafe6845a986508c399927ba2309a45150037
     const fileCsv = document.getElementById("fileCsv");
     const btnImportar = document.getElementById("btnImportar");
     const divProgressoWrap = document.getElementById("divProgressoWrap");
@@ -319,10 +241,6 @@
         return;
       }
 
-<<<<<<< HEAD
-      const texto = await lerArquivoComCodificacao(fileCsv.files[0]);
-      const linhas = parseCsv(texto);
-=======
       const texto = await lerArquivoPlanilha(fileCsv.files[0] || null);
       if (texto === null) {
         mostrarMensagem("A leitura da planilha foi concluída sem dados para importar.", "warning");
@@ -331,7 +249,6 @@
       const importacao = prepararImportacao(texto, ESQUEMAS_IMPORTACAO.gradeHorarios,
         ["turma", "horaInicio", "horaFim", "dia", "cod", "disciplina"], normalizarLinhaGradeHorario);
       const linhas = importacao.linhas;
->>>>>>> 8d6eafe6845a986508c399927ba2309a45150037
 
       if (importacao.ausentes.length > 0) {
         mostrarMensagem(`Cabeçalhos não identificados: ${importacao.ausentes.join(", ")}`, "warning");
@@ -345,9 +262,7 @@
       divProgressoWrap.style.display = "block";
       divFalhas.innerHTML = "";
       const falhas = [];
-<<<<<<< HEAD
       let ignoradas = 0;
-=======
       const respostaGradesAtuais = await api.get("api/v1/gradehorarios");
       const gradesParaImportar = respostaGradesAtuais.success
         ? respostaGradesAtuais.data.gradeHorarios || []
@@ -355,32 +270,18 @@
       const gradesPorChave = new Map(gradesParaImportar.map(grade => [chaveDaGrade(grade), grade]));
       let criadas = 0;
       let atualizadas = 0;
->>>>>>> 8d6eafe6845a986508c399927ba2309a45150037
 
       for (let i = 0; i < linhas.length; i++) {
         const linha = linhas[i];
         try {
-<<<<<<< HEAD
-          if (deveIgnorarLinha(linha)) {
+          const textoLinha = Object.values(linha).join(" ").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+          if (textoLinha.includes("estagio supervisionado")) {
             ignoradas++;
             const percentualIgnorada = Math.round(((i + 1) / linhas.length) * 100);
             barraProgresso.style.width = `${percentualIgnorada}%`;
             barraProgresso.textContent = `${percentualIgnorada}%`;
             continue;
           }
-          const erroValidacao = validarLinha(linha);
-          if (erroValidacao) {
-            falhas.push({ linha: i + 2, motivo: erroValidacao });
-            continue;
-          }
-          const resposta = await api.post("api/v1/gradehorarios/", {
-            gradeHorario: {
-              ...converterLinhaImportada(linha)
-            }
-          });
-          if (!resposta || !resposta.success) {
-            falhas.push({ linha: i + 2, motivo: resposta.message || "Falha desconhecida" });
-=======
           const gradeHorario = {
             turma: linha.turma,
             horaInicio: linha.horaInicio,
@@ -394,14 +295,13 @@
           const resposta = existente
             ? await api.put("api/v1/gradehorarios", existente.idGradeHorario, { gradeHorario })
             : await api.post("api/v1/gradehorarios", { gradeHorario });
-          if (!resposta.success) {
-            falhas.push({ linha: linha.__linha, motivo: resposta.message || "Falha desconhecida" });
+          if (!resposta?.success) {
+            falhas.push({ linha: linha.__linha, motivo: resposta?.message || "Falha desconhecida" });
           } else if (existente) {
             atualizadas += 1;
           } else {
             criadas += 1;
             gradesPorChave.set(chave, resposta.data.gradeHorarios[0]);
->>>>>>> 8d6eafe6845a986508c399927ba2309a45150037
           }
         } catch (erro) {
           falhas.push({ linha: linha.__linha, motivo: erro.message });
@@ -417,13 +317,9 @@
         const lista = falhas.map(f => `<li>Linha ${f.linha}: ${f.motivo}</li>`).join("");
         divFalhas.innerHTML = `<div class="alert alert-danger"><strong>Falhas na importação:</strong>${avisoIgnoradas}<ul>${lista}</ul></div>`;
       } else {
-<<<<<<< HEAD
-        divFalhas.innerHTML = `<div class="alert alert-success">Importação concluída sem falhas.${avisoIgnoradas}</div>`;
-=======
         const cabecalhos = Object.entries(importacao.mapeamento).map(([campo, indice]) =>
           `${campo} ← ${importacao.cabecalhos[indice]}`).join(" · ");
-        divFalhas.innerHTML = `<div class="alert alert-success">Importação concluída sem falhas: ${criadas} criada(s) e ${atualizadas} atualizada(s).<br><small>Cabeçalhos identificados: ${cabecalhos}</small></div>`;
->>>>>>> 8d6eafe6845a986508c399927ba2309a45150037
+        divFalhas.innerHTML = `<div class="alert alert-success">Importação concluída sem falhas: ${criadas} criada(s) e ${atualizadas} atualizada(s).${avisoIgnoradas}<br><small>Cabeçalhos identificados: ${cabecalhos}</small></div>`;
       }
 
       fileCsv.value = "";

@@ -97,6 +97,16 @@ textarea:focus-visible,
   flex-wrap: wrap;
   gap: 10px;
 }
+.topbar-identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.btn-menu-mobile,
+.navbar-header,
+.navbar-overlay {
+  display: none;
+}
 .brand {
   display: flex;
   align-items: center;
@@ -152,6 +162,8 @@ textarea:focus-visible,
   background: var(--univap-azul-escuro);
   padding: 0 16px;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
 }
 .navbar ul {
   list-style: none;
@@ -161,6 +173,7 @@ textarea:focus-visible,
 }
 .navbar a {
   display: block;
+  min-height: 48px;
   padding: 13px 16px;
   color: #d7e2f2;
   text-decoration: none;
@@ -298,6 +311,15 @@ table.table thead,
   font-size: 13.5px;
 }
 
+#divTabela,
+#divTabelaFrequencia,
+#divTabelaFaltas {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
 /* ---------- CAMPOS DE FORMULÁRIO ---------- */
 .field label,
 label.form-label {
@@ -321,11 +343,135 @@ textarea.form-control:focus {
     align-items: flex-start;
     padding: 12px 16px;
   }
+  .topbar-identity {
+    width: 100%;
+  }
+  .btn-menu-mobile {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-width: 76px;
+    min-height: 44px;
+    padding: 8px 10px;
+    border: 1px solid rgba(255, 255, 255, .5);
+    border-radius: 4px;
+    background: transparent;
+    color: #ffffff;
+    font: inherit;
+    font-size: 13px;
+    font-weight: bold;
+    cursor: pointer;
+    flex: 0 0 auto;
+  }
+  .menu-mobile-icone {
+    display: grid;
+    gap: 4px;
+    width: 18px;
+  }
+  .menu-mobile-icone span {
+    height: 2px;
+    border-radius: 1px;
+    background: currentColor;
+  }
+  .brand {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .brand-text {
+    font-size: 18px;
+  }
   .session-info {
     text-align: left;
+    overflow-wrap: anywhere;
+  }
+  .navbar {
+    position: fixed;
+    z-index: 1401;
+    inset: 0 auto 0 0;
+    width: min(84vw, 320px);
+    height: 100vh;
+    height: 100dvh;
+    padding: calc(14px + env(safe-area-inset-top)) 14px calc(14px + env(safe-area-inset-bottom));
+    overflow-x: hidden;
+    overflow-y: auto;
+    background: var(--univap-azul-escuro);
+    transform: translateX(-105%);
+    transition: transform .2s ease;
+    overscroll-behavior: contain;
+  }
+  .navbar.ativo {
+    transform: translateX(0);
+  }
+  .navbar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 48px;
+    margin-bottom: 8px;
+    padding: 0 4px 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, .24);
+    color: #ffffff;
+  }
+  .navbar-close {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, .45);
+    border-radius: 4px;
+    background: transparent;
+    color: #ffffff;
+    font-size: 25px;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .navbar ul {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .navbar a {
+    min-height: 48px;
+    padding: 12px;
+    border: 0;
+    border-left: 3px solid transparent;
+    white-space: normal;
+  }
+  .navbar a[aria-current="page"] {
+    border: 0;
+    border-left: 3px solid var(--univap-vermelho);
+  }
+  .navbar-overlay {
+    display: block;
+    position: fixed;
+    z-index: 1400;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    border: 0;
+    background: rgba(15, 42, 77, .48);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity .2s ease, visibility .2s ease;
+  }
+  .navbar-overlay.ativo {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+  body.menu-lateral-aberto {
+    overflow: hidden;
+  }
+  .navbar a {
+    padding-right: 12px;
+    padding-left: 12px;
   }
   .crumbbar {
     padding: 8px 16px;
+    overflow-wrap: anywhere;
   }
   main.conteudo-pagina {
     padding: 0 14px;
@@ -333,5 +479,32 @@ textarea.form-control:focus {
   }
   .card-body {
     padding: 16px;
+  }
+  .card-header {
+    padding: 12px 16px;
+    overflow-wrap: anywhere;
+  }
+  .btn,
+  .btn-primary,
+  .btn-secondary,
+  .btn-success,
+  .btn-warning,
+  .btn-danger,
+  .btn-info,
+  .form-control,
+  .form-select {
+    min-height: 44px;
+  }
+  #divTabela > table,
+  #divTabelaFrequencia > table,
+  #divTabelaFaltas > table {
+    min-width: 36rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .navbar,
+  .navbar-overlay {
+    transition: none;
   }
 }

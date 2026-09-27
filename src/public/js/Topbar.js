@@ -20,18 +20,6 @@ const PAGINA_LOGIN = "Login.html";
  * `descricao` é reaproveitada nos atalhos do painel inicial.
  */
 const PAGINAS = [
-<<<<<<< HEAD
-  { chave: "dashboard", label: "Painel", href: "dashboard.html" },
-  { chave: "chamada", label: "Chamada", href: "telaChamada.html" },
-  { chave: "movimentacoes", label: "Entradas e Saídas", href: "Movimentacoes.html" },
-  { chave: "frequencia", label: "Frequência", href: "telaAdministrador.html" },
-  { chave: "alunos", label: "Alunos", href: "Alunos.html" },
-  { chave: "gradehorarios", label: "Grade de Horários", href: "GradeHorarios.html" },
-  { chave: "abonos", label: "Abonos", href: "Abonos.html" },
-  { chave: "relatorios", label: "Relatórios", href: "Relatorios.html" },
-  { chave: "cargos", label: "Cargos", href: "Cargos.html" },
-  { chave: "funcionarios", label: "Funcionários", href: "Funcionarios.html" }
-=======
   {
     chave: "dashboard",
     label: "Painel",
@@ -52,6 +40,13 @@ const PAGINAS = [
     href: "telaAdministrador.html",
     restrito: false,
     descricao: "Consulte a frequência da turma em uma data e gere o PDF para imprimir."
+  },
+  {
+    chave: "movimentacoes",
+    label: "Entradas e Saídas",
+    href: "Movimentacoes.html",
+    restrito: false,
+    descricao: "Consulte e registre entradas e saídas de alunos."
   },
   {
     chave: "abonos",
@@ -102,7 +97,6 @@ const PAGINAS = [
     restrito: true,
     descricao: "Cadastro de funcionários e vínculo de cada um com o seu cargo."
   }
->>>>>>> 8d6eafe6845a986508c399927ba2309a45150037
 ];
 
 /** Cargos que enxergam todos os módulos, inclusive os restritos. */
@@ -388,11 +382,17 @@ export function montarTopbar(paginaAtiva) {
   alvo.innerHTML = `
     <a href="#conteudo-principal" class="skip-link">Pular para o conteúdo</a>
     <header class="topbar">
-      <div class="brand">
-        <div class="brand-mark" aria-hidden="true">U</div>
-        <div>
-          <div class="brand-text">UNIVAP</div>
-          <div class="brand-sub">Sistema de Controle de Faltas</div>
+      <div class="topbar-identity">
+        <button type="button" class="btn-menu-mobile" id="tb-menu-abrir" aria-label="Abrir menu de ações" aria-controls="menu-principal" aria-expanded="false">
+          <span class="menu-mobile-icone" aria-hidden="true"><span></span><span></span><span></span></span>
+          <span>Menu</span>
+        </button>
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">U</div>
+          <div>
+            <div class="brand-text">UNIVAP</div>
+            <div class="brand-sub">Sistema de Controle de Faltas</div>
+          </div>
         </div>
       </div>
       <div class="session-info">
@@ -401,13 +401,77 @@ export function montarTopbar(paginaAtiva) {
         <button type="button" class="btn-sair" id="btn-sair-sistema">Sair</button>
       </div>
     </header>
-    <nav class="navbar" aria-label="Menu principal">
+    <nav class="navbar" id="menu-principal" aria-label="Menu principal">
+      <div class="navbar-header">
+        <strong>Ações</strong>
+        <button type="button" class="navbar-close" id="tb-menu-fechar" aria-label="Fechar menu">&times;</button>
+      </div>
       <ul>${itensMenu}</ul>
     </nav>
+    <button type="button" class="navbar-overlay" id="tb-menu-overlay" aria-label="Fechar menu"></button>
   `;
 
   const abrirConfirmacao = prepararConfirmacaoDeSaida();
   alvo.querySelector("#btn-sair-sistema").addEventListener("click", abrirConfirmacao);
+
+  const botaoMenu = alvo.querySelector("#tb-menu-abrir");
+  const botaoFecharMenu = alvo.querySelector("#tb-menu-fechar");
+  const menu = alvo.querySelector("#menu-principal");
+  const overlayMenu = alvo.querySelector("#tb-menu-overlay");
+  const telaMobile = window.matchMedia("(max-width: 700px)");
+  let menuAberto = false;
+
+  const atualizarEstadoMenu = () => {
+    menu.classList.toggle("ativo", menuAberto);
+    overlayMenu.classList.toggle("ativo", menuAberto);
+    document.body.classList.toggle("menu-lateral-aberto", menuAberto);
+    botaoMenu.setAttribute("aria-expanded", String(menuAberto));
+    botaoMenu.setAttribute("aria-label", menuAberto ? "Menu aberto" : "Abrir menu de ações");
+    menu.setAttribute("aria-hidden", String(telaMobile.matches && !menuAberto));
+    menu.inert = telaMobile.matches && !menuAberto;
+  };
+
+  const fecharMenu = (devolverFoco = true) => {
+    menuAberto = false;
+    atualizarEstadoMenu();
+    document.removeEventListener("keydown", aoTeclarMenu);
+    if (devolverFoco && telaMobile.matches) botaoMenu.focus();
+  };
+
+  const aoTeclarMenu = evento => {
+    if (evento.key === "Escape") {
+      fecharMenu();
+      return;
+    }
+    if (evento.key !== "Tab" || !menuAberto) return;
+
+    const elementosFocaveis = [...menu.querySelectorAll("a[href], button:not([disabled])")];
+    const primeiro = elementosFocaveis[0];
+    const ultimo = elementosFocaveis[elementosFocaveis.length - 1];
+    if (evento.shiftKey && document.activeElement === primeiro) {
+      evento.preventDefault();
+      ultimo.focus();
+    } else if (!evento.shiftKey && document.activeElement === ultimo) {
+      evento.preventDefault();
+      primeiro.focus();
+    }
+  };
+
+  botaoMenu.addEventListener("click", () => {
+    if (!telaMobile.matches) return;
+    menuAberto = true;
+    atualizarEstadoMenu();
+    document.addEventListener("keydown", aoTeclarMenu);
+    botaoFecharMenu.focus();
+  });
+  botaoFecharMenu.addEventListener("click", () => fecharMenu());
+  overlayMenu.addEventListener("click", () => fecharMenu());
+  menu.querySelectorAll("a").forEach(link => link.addEventListener("click", () => fecharMenu(false)));
+  telaMobile.addEventListener("change", () => {
+    if (!telaMobile.matches) fecharMenu(false);
+    else atualizarEstadoMenu();
+  });
+  atualizarEstadoMenu();
 
   if (montarTopbar._relogio) clearInterval(montarTopbar._relogio);
   montarTopbar._relogio = setInterval(() => {

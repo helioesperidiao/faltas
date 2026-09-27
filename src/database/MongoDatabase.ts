@@ -193,6 +193,7 @@ export class MongoDatabase {
             db.collection("aluno").createIndex({ turma: 1, turmaInicioEm: 1 }),
             db.collection("registro").createIndex({ turma: 1, dia: 1, matricula: 1 }),
             db.collection("abonos").createIndex({ turma: 1, dataInicio: 1 }),
+            db.collection("movimentacao").createIndex({ data: 1, horario: -1 }),
             db.collection("gradeHorario").createIndex({ turma: 1, dia: 1, cod: 1 }),
             db.collection("alertasFaltas").createIndex({ ano: 1, bimestre: 1, matricula: 1, turma: 1, codDisciplina: 1 })
         ]);
@@ -208,29 +209,44 @@ export class MongoDatabase {
         const cargos = db.collection<Document>("cargo");
         const funcionarios = db.collection<Document>("funcionario");
         const filtroAtivo = { "auditoria.deletadoEm": null };
-        const cargoPlural = await cargos.findOne({
-            nomeCargo: "Processos Pedagógicos",
-            ...filtroAtivo
-        });
-        const cargoCanonico = await cargos.findOne({
+        let cargoCanonico = await cargos.findOne({
             nomeCargo: CARGO_PROCESSO_PEDAGOGICO,
             ...filtroAtivo
         });
+        const cargosLegados = await cargos.find({
+            nomeCargo: { $in: ["Processos Pedagógicos", "Administrador"] }
+        }).toArray();
 
-        if (cargoPlural && cargoCanonico) {
+        if (!cargoCanonico && cargosLegados.length > 0) {
+            const cargoParaRenomear = cargosLegados.shift()!;
+            await cargos.updateOne(
+                { _id: cargoParaRenomear._id },
+                {
+                    $set: {
+                        nomeCargo: CARGO_PROCESSO_PEDAGOGICO,
+                        "auditoria.alteradoPor": "sistema",
+                        "auditoria.alteradoEm": new Date(),
+                        "auditoria.deletadoPor": "",
+                        "auditoria.deletadoEm": null
+                    }
+                }
+            );
+            cargoCanonico = { ...cargoParaRenomear, nomeCargo: CARGO_PROCESSO_PEDAGOGICO };
+        }
+
+        if (cargoCanonico) {
+            for (const cargoLegado of cargosLegados) {
+                if (String(cargoLegado._id) === String(cargoCanonico._id)) continue;
+
             await funcionarios.updateMany(
-                { cargoId: cargoPlural._id, ...filtroAtivo },
+                    { cargoId: cargoLegado._id, ...filtroAtivo },
                 { $set: { cargoId: cargoCanonico._id } }
             );
             await cargos.updateOne(
-                { _id: cargoPlural._id },
+                    { _id: cargoLegado._id },
                 { $set: { "auditoria.deletadoPor": "sistema", "auditoria.deletadoEm": new Date() } }
             );
-        } else if (cargoPlural) {
-            await cargos.updateOne(
-                { _id: cargoPlural._id },
-                { $set: { nomeCargo: CARGO_PROCESSO_PEDAGOGICO, "auditoria.alteradoPor": "sistema", "auditoria.alteradoEm": new Date() } }
-            );
+            }
         }
 
         await cargos.updateMany(
