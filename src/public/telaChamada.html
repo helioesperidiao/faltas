@@ -3,57 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Chamada de Turma | Portal Administrativo</title>
+<title>Chamada de Turma | UNIVAP - Controle de Faltas</title>
+<link href="css/univap-theme.css" rel="stylesheet">
 <style>
   body {
     margin: 0;
     background: #eef2f8;
     color: #1f2937;
     font-family: Arial, Helvetica, sans-serif;
-  }
-
-  /* ---------- CABEÇALHO ---------- */
-  .topbar {
-    background: #163b6b;
-    color: #ffffff;
-    padding: 14px 28px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .brand {
-    display: flex;
-    align-items: center;
-  }
-  .brand-mark {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: #ffffff;
-    color: #163b6b;
-    font-weight: bold;
-    font-size: 18px;
-    text-align: center;
-    line-height: 40px;
-    margin-right: 14px;
-  }
-  .brand-text {
-    font-size: 20px;
-    font-weight: bold;
-  }
-  .brand-sub {
-    font-size: 11px;
-    color: #c9d7ec;
-    margin-top: 2px;
-  }
-  .session-info {
-    text-align: right;
-    font-size: 12px;
-    line-height: 1.5;
-    color: #d7e2f2;
-  }
-  .session-info strong {
-    color: #ffffff;
   }
 
   .crumbbar {
@@ -113,14 +70,20 @@
     color: #4a4f57;
     margin-bottom: 6px;
   }
-  .field select {
+  .field {
+    margin-bottom: 14px;
+  }
+  .field select,
+  .field input {
     width: 100%;
+    box-sizing: border-box;
     border: 1px solid #c7cbd1;
     border-radius: 4px;
     padding: 10px 12px;
     font-size: 14px;
     color: #1f2937;
     background: #ffffff;
+    font-family: Arial, Helvetica, sans-serif;
   }
 
   .turma-summary {
@@ -153,24 +116,20 @@
   .turma-summary .num-absent { color: #a6231e; }
   .turma-summary .num-present { color: #1c7a3e; }
 
-  /* ---------- CHAMADA ---------- */
-  #chamada-wrap {
-    display: none;
-  }
+  /* ---------- CHAMADA (conteúdo do popup) ---------- */
 
-  .student-nav table {
-    width: 100%;
-  }
-  .student-nav td {
-    vertical-align: middle;
-  }
-  .td-arrow {
-    width: 50px;
+  .student-nav {
+    display: grid;
+    grid-template-areas: "prev card next";
+    grid-template-columns: 46px minmax(0, 1fr) 46px;
+    align-items: center;
+    gap: 10px;
   }
 
   .nav-arrow {
     width: 46px;
     height: 46px;
+    padding: 0;
     border-radius: 50%;
     border: 1px solid #c7cbd1;
     background: #ffffff;
@@ -186,8 +145,27 @@
 
   .student-card {
     border: 1px solid #c7cbd1;
-    border-radius: 8px;
-    padding: 20px;
+    border-radius: 6px;
+    padding: 16px;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    grid-area: card;
+  }
+  .student-identity {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+    flex: 1;
+  }
+  .student-details {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .student-action {
+    flex: 0 0 136px;
   }
   .student-card.status-present {
     background: #e7f4ec;
@@ -196,10 +174,6 @@
   .student-card.status-absent {
     background: #fbe9e8;
     border-color: #f0c4c1;
-  }
-
-  .student-card table {
-    width: 100%;
   }
 
   .avatar {
@@ -218,6 +192,7 @@
     font-size: 17px;
     font-weight: bold;
     color: #0f2a4d;
+    overflow-wrap: anywhere;
   }
   .student-meta {
     font-size: 12px;
@@ -280,11 +255,22 @@
 
   /* ---------- LISTA RESUMO ---------- */
   .roster-item {
-    display: block;
-    padding: 9px 6px;
+    width: 100%;
+    display: grid;
+    grid-template-columns: 26px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 6px;
     border-bottom: 1px solid #f1f2f4;
     cursor: pointer;
     font-size: 13px;
+    text-align: left;
+    color: inherit;
+    background: #ffffff;
+    border-top: 0;
+    border-right: 0;
+    border-left: 0;
+    font-family: inherit;
   }
   .roster-item:hover {
     background: #eef2f8;
@@ -293,11 +279,8 @@
     background: #eef2f8;
     font-weight: bold;
   }
-  .roster-item table {
-    width: 100%;
-  }
   .roster-item .idx {
-    display: inline-block;
+    display: block;
     width: 22px;
     height: 22px;
     border-radius: 50%;
@@ -367,29 +350,215 @@
     border-radius: 6px;
     font-size: 13px;
   }
+
+  /* ---------- BOTÃO COMEÇAR CHAMADA ---------- */
+  .btn-comecar {
+    display: none;
+    width: 100%;
+    border: none;
+    border-radius: 4px;
+    padding: 14px 16px;
+    font-size: 15px;
+    font-weight: bold;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+    cursor: pointer;
+    background: #1c7a3e;
+    color: #ffffff;
+    margin-top: 16px;
+  }
+  .btn-comecar:hover {
+    background: #17632f;
+  }
+
+  /* ---------- POPUP DA CHAMADA ---------- */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 42, 77, 0.55);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .modal-overlay.ativo {
+    display: flex;
+  }
+  .modal-chamada {
+    background: #eef2f8;
+    width: 100%;
+    max-width: 640px;
+    max-height: 92vh;
+    max-height: 92dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border-radius: 10px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  }
+  .modal-header-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 16px 20px;
+    background: #163b6b;
+    color: #ffffff;
+    border-radius: 10px 10px 0 0;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+  .modal-header-bar .modal-turma-titulo {
+    font-size: 15px;
+    font-weight: bold;
+  }
+  .modal-header-bar .modal-turma-sub {
+    font-size: 11px;
+    color: #c9d7ec;
+    margin-top: 2px;
+  }
+  .modal-close-btn {
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    color: #ffffff;
+    font-size: 20px;
+    line-height: 1;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .modal-body-scroll {
+    padding: 16px;
+    min-width: 0;
+  }
+  body.modal-aberto {
+    overflow: hidden;
+  }
+
+  /* ---------- RESPONSIVIDADE GERAL ---------- */
+  main {
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .card, .student-card {
+    box-sizing: border-box;
+  }
+
+  @media (max-width: 700px) {
+    .navbar {
+      overflow-x: auto;
+    }
+    .crumbbar {
+      padding: 8px 16px;
+      font-size: 12px;
+    }
+    main {
+      padding: 0 14px;
+      margin: 18px auto 40px auto;
+    }
+    .card-body {
+      padding: 16px;
+    }
+
+    /* pop-up ocupa a tela inteira no celular enquanto estiver ativo */
+    .modal-overlay {
+      padding: 0;
+    }
+    .modal-chamada {
+      max-width: 100%;
+      width: 100%;
+      height: 100%;
+      max-height: 100%;
+      border-radius: 0;
+    }
+    .modal-header-bar {
+      border-radius: 0;
+    }
+
+    /* navegação do aluno empilhada verticalmente */
+    .student-nav {
+      grid-template-areas: "card card" "prev next";
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 12px;
+    }
+    .student-card {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 12px;
+      padding: 14px;
+    }
+    .student-identity {
+      align-items: flex-start;
+    }
+    .student-action {
+      flex-basis: auto;
+    }
+    .nav-arrow {
+      width: 100%;
+      height: 48px;
+      border-radius: 6px;
+    }
+    #btn-prev {
+      grid-area: prev;
+    }
+    #btn-next {
+      grid-area: next;
+    }
+
+    .actions-footer {
+      text-align: center;
+    }
+    .actions-footer .btn-secondary, .actions-footer .btn-primary {
+      display: block;
+      width: 100%;
+      min-height: 48px;
+      margin: 8px 0 0 0;
+    }
+
+    .turma-summary td {
+      padding: 8px 4px;
+    }
+    .turma-summary .num {
+      font-size: 18px;
+    }
+    .modal-chamada {
+      height: 100vh;
+      height: 100dvh;
+      max-height: 100dvh;
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    .modal-body-scroll {
+      padding: 12px;
+    }
+    .modal-header-bar {
+      padding: 12px 14px;
+    }
+    .student-name {
+      font-size: 16px;
+    }
+    .avatar {
+      flex: 0 0 48px;
+      width: 48px;
+      height: 48px;
+      line-height: 48px;
+    }
+  }
 </style>
 </head>
 <body>
 
-<div class="topbar">
-  <div class="brand">
-    <div class="brand-mark">U</div>
-    <div>
-      <div class="brand-text">UniVap</div>
-      <div class="brand-sub">Portal Administrativo</div>
-    </div>
-  </div>
-  <div class="session-info">
-    USUÁRIO: <strong>JOSÉ CARLOS SOUZA</strong> · Inspetor<br>
-    <span id="relogio"></span>
-  </div>
-</div>
+<!-- O link "pular para o conteúdo" é injetado pelo js/Topbar.js junto do cabeçalho. -->
+<div id="app-topbar"></div>
 
 <div class="crumbbar">
   ENSINO BÁSICO &rsaquo; <span class="current">CHAMADA DE TURMA</span>
 </div>
 
-<main>
+<main id="conteudo-principal">
   <div class="page-title">
     <h1>Chamada de Turma</h1>
     <p>Selecione a turma para iniciar o registro de frequência dos alunos.</p>
@@ -400,13 +569,14 @@
     <div class="card-header"><h2>Turma</h2></div>
     <div class="card-body">
       <div class="field">
-        <label>Turma que está acessando</label>
+        <label for="turma-select">Turma que está acessando</label>
         <select id="turma-select" onchange="selecionarTurma()">
           <option value="">Selecione uma turma...</option>
-          <option value="0">1ª Série A - Informática - Paraibuna Manhã</option>
-          <option value="1">2ª Série A - Informática - Paraibuna Manhã</option>
-          <option value="2">3ª Série A - Informática - Paraibuna Tarde</option>
         </select>
+      </div>
+      <div class="field">
+        <label for="data-chamada">Data da chamada</label>
+        <input type="date" id="data-chamada" aria-label="Data da chamada">
       </div>
 
       <div class="turma-summary" id="turma-summary">
@@ -427,6 +597,8 @@
           </tr>
         </table>
       </div>
+
+      <button type="button" class="btn-comecar" id="btn-comecar-chamada" onclick="abrirChamada()">Começar Chamada</button>
     </div>
   </div>
 
@@ -437,167 +609,233 @@
       <p>Escolha uma turma acima para começar a chamada.</p>
     </div>
   </div>
+</main>
 
-  <!-- CHAMADA -->
-  <div id="chamada-wrap">
-    <div class="card">
-      <div class="card-header"><h2>Registro de Frequência</h2></div>
-      <div class="card-body">
-        <div class="student-nav">
-          <table>
-            <tr>
-              <td class="td-arrow">
-                <button type="button" class="nav-arrow" id="btn-prev" onclick="alunoAnterior()">&lsaquo;</button>
-              </td>
-              <td>
-                <div class="student-card" id="student-card">
-                  <table>
-                    <tr>
-                      <td style="width:70px;">
-                        <div class="avatar" id="student-avatar">--</div>
-                      </td>
-                      <td>
-                        <div class="student-name" id="student-name">—</div>
-                        <div class="student-meta" id="student-meta">—</div>
-                        <div class="student-count" id="student-count">Aluno 0 de 0</div>
-                        <br>
-                        <span class="status-badge" id="student-badge">Pendente</span>
-                      </td>
-                      <td style="width:160px;">
-                        <button type="button" class="btn btn-present" id="btn-present" onclick="marcarPresenca('present')">Presente</button>
-                        <button type="button" class="btn btn-absent" id="btn-absent" onclick="marcarPresenca('absent')">Faltou</button>
-                      </td>
-                    </tr>
-                  </table>
+<!-- POPUP DA CHAMADA (preenche a tela toda no celular enquanto ativo) -->
+  <div class="modal-overlay" id="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-turma-titulo" aria-hidden="true">
+  <div class="modal-chamada">
+    <div class="modal-header-bar">
+      <div>
+        <div class="modal-turma-titulo" id="modal-turma-titulo">Turma</div>
+        <div class="modal-turma-sub">Chamada em andamento</div>
+      </div>
+      <button type="button" class="modal-close-btn" onclick="fecharChamada()" aria-label="Fechar chamada">&times;</button>
+    </div>
+
+    <div class="modal-body-scroll">
+      <div id="chamada-wrap">
+        <div class="card">
+          <div class="card-header"><h2>Registro de Frequência</h2></div>
+          <div class="card-body">
+            <div class="student-nav">
+              <div class="student-card" id="student-card">
+                <div class="student-identity">
+                  <div class="avatar" id="student-avatar">--</div>
+                  <div class="student-details">
+                    <div class="student-name" id="student-name">—</div>
+                    <div class="student-meta" id="student-meta">—</div>
+                    <div class="student-count" id="student-count">Aluno 0 de 0</div>
+                    <span class="status-badge" id="student-badge">Pendente</span>
+                  </div>
                 </div>
-              </td>
-              <td class="td-arrow">
-                <button type="button" class="nav-arrow" id="btn-next" onclick="proximoAluno()">&rsaquo;</button>
-              </td>
-            </tr>
-          </table>
+                <div class="student-action">
+                  <button type="button" class="btn btn-absent" id="btn-absent" onclick="marcarFalta()">Faltou</button>
+                </div>
+              </div>
+              <button type="button" class="nav-arrow" id="btn-prev" onclick="alunoAnterior()" aria-label="Aluno anterior">&lsaquo;</button>
+              <button type="button" class="nav-arrow" id="btn-next" onclick="proximoAluno()" aria-label="Próximo aluno">&rsaquo;</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- LISTA COMPLETA -->
+        <div class="card">
+          <div class="card-header"><h2>Lista da Turma</h2></div>
+          <div class="card-body">
+            <div id="roster"></div>
+          </div>
+          <div class="actions-footer">
+            <button type="button" class="btn-secondary" onclick="limparChamada()">Limpar chamada</button>
+            <button type="button" class="btn-primary" onclick="salvarChamada()">Concluir chamada</button>
+          </div>
         </div>
       </div>
     </div>
-
-    <!-- LISTA COMPLETA -->
-    <div class="card">
-      <div class="card-header"><h2>Lista da Turma</h2></div>
-      <div class="card-body">
-        <div id="roster"></div>
-      </div>
-      <div class="actions-footer">
-        <button type="button" class="btn-secondary" onclick="limparChamada()">Limpar chamada</button>
-        <button type="button" class="btn-primary" onclick="salvarChamada()">Salvar chamada</button>
-      </div>
-    </div>
   </div>
-</main>
+</div>
 
 <div class="toast" id="toast">Chamada salva com sucesso.</div>
 
-<script>
-  // ---------- RELÓGIO ----------
-  function atualizarRelogio() {
+<script type="module">
+  import ApiService from './ApiService.js';
+  import { exigirSessao, montarTopbar, escaparHtml } from './js/Topbar.js';
+
+  const sessao = exigirSessao();
+  if (!sessao) {
+    // exigirSessao já redirecionou para o login; nada mais roda nesta página.
+    throw new Error('Sessão não encontrada.');
+  }
+
+  const api = new ApiService(sessao.token);
+
+  montarTopbar('chamada');
+
+  // ---------- DATA PADRÃO (hoje) ----------
+  // Montada a partir dos componentes locais da data; toISOString() devolveria o dia
+  // em UTC e, à noite, deixaria o campo com a data do dia seguinte.
+  function preencherDataDeHoje() {
     var d = new Date();
     var dia = String(d.getDate()).padStart(2, '0');
     var mes = String(d.getMonth() + 1).padStart(2, '0');
     var ano = d.getFullYear();
-    var hora = String(d.getHours()).padStart(2, '0');
-    var min = String(d.getMinutes()).padStart(2, '0');
-    document.getElementById('relogio').innerHTML = dia + '/' + mes + '/' + ano + ' - ' + hora + ':' + min;
+
+    var campoData = document.getElementById('data-chamada');
+    if (campoData.value === '') {
+      campoData.value = ano + '-' + mes + '-' + dia;
+    }
   }
-  atualizarRelogio();
-  setInterval(atualizarRelogio, 30000);
+  preencherDataDeHoje();
 
-  // ---------- DADOS DAS TURMAS (lista simples) ----------
-  var nomesTurmas = [
-    "1ª Série A - Informática - Paraibuna Manhã",
-    "2ª Série A - Informática - Paraibuna Manhã",
-    "3ª Série A - Informática - Paraibuna Tarde"
-  ];
-
-  var alunosPorTurma = [
-    ["Luana Pinheiro Cruz", "Bruno Almeida Santos", "Carla Fernandes Lima", "Diego Souza Rocha", "Elisa Martins Alves", "Felipe Costa Reis"],
-    ["Gabriel Oliveira Nunes", "Helena Barros Dias", "Igor Teixeira Farias", "Julia Ramos Pinto", "Kevin Andrade Melo"],
-    ["Larissa Gomes Neves", "Marcos Vinícius Paz", "Natália Duarte Silva", "Otávio Cardoso Lopes", "Patrícia Nogueira Cunha", "Rafael Tavares Moura", "Sabrina Freitas Xavier"]
-  ];
-
-  var turmaAtual = -1;
+  var turmaAtual = "";
+  var alunosDaTurma = []; // { matricula, alunoNome }
   var alunoAtual = 0;
   var statusAlunos = [];
+  var registroIds = []; // guarda o id do registro já criado para permitir corrigir via PUT
+  var chamadaEmSalvamento = false;
+
+  document.getElementById('data-chamada').addEventListener('change', async () => {
+    if (!turmaAtual) return;
+    await carregarChamadaSalva();
+    montarLista();
+    mostrarAluno();
+  });
+
+  // ---------- CARREGAR TURMAS DISPONÍVEIS (a partir dos alunos cadastrados) ----------
+  async function carregarTurmas() {
+    const resposta = await api.get("api/v1/alunos");
+    if (!resposta.success) return;
+
+    const turmas = [...new Set(resposta.data.alunos.map(a => a.turma))];
+    const select = document.getElementById('turma-select');
+    turmas.forEach(turma => {
+      const opcao = document.createElement('option');
+      opcao.value = turma;
+      opcao.textContent = turma;
+      select.appendChild(opcao);
+    });
+  }
+  carregarTurmas();
 
   // ---------- SELECIONAR TURMA ----------
-  function selecionarTurma() {
+  async function selecionarTurma() {
     var select = document.getElementById('turma-select');
     var valor = select.value;
 
     if (valor === "") {
       document.getElementById('empty-card').style.display = 'block';
-      document.getElementById('chamada-wrap').style.display = 'none';
       document.getElementById('turma-summary').style.display = 'none';
+      document.getElementById('btn-comecar-chamada').style.display = 'none';
       return;
     }
 
-    turmaAtual = parseInt(valor);
+    turmaAtual = valor;
+    const resposta = await api.get(`api/v1/alunos/turma/${encodeURIComponent(turmaAtual)}`);
+    alunosDaTurma = resposta.success ? resposta.data.alunos : [];
     alunoAtual = 0;
 
-    statusAlunos = [];
-    for (var i = 0; i < alunosPorTurma[turmaAtual].length; i++) {
-      statusAlunos.push('pending');
-    }
+    // A chamada trabalha como um booleano: sem marcação de falta, o aluno está presente.
+    // Se já houver uma chamada nesta data, o estado é substituído pelos dados salvos.
+    statusAlunos = alunosDaTurma.map(() => 'present');
+    registroIds = alunosDaTurma.map(() => null);
+    await carregarChamadaSalva();
 
     document.getElementById('empty-card').style.display = 'none';
-    document.getElementById('chamada-wrap').style.display = 'block';
     document.getElementById('turma-summary').style.display = 'block';
+    document.getElementById('btn-comecar-chamada').style.display = alunosDaTurma.length ? 'block' : 'none';
 
     montarLista();
     mostrarAluno();
   }
 
+  async function carregarChamadaSalva() {
+    const dia = document.getElementById('data-chamada').value;
+    if (!turmaAtual || !dia || alunosDaTurma.length === 0) return;
+
+    const resposta = await api.get(`api/v1/registro/chamada?turma=${encodeURIComponent(turmaAtual)}&dia=${encodeURIComponent(dia)}`);
+    if (!resposta.success) {
+      window.alert(resposta.message || 'Não foi possível carregar a chamada já salva.');
+      return;
+    }
+
+    const registrosPorMatricula = new Map((resposta.data.registros || [])
+      .map(registro => [registro.matricula, registro]));
+    statusAlunos = alunosDaTurma.map(aluno =>
+      registrosPorMatricula.get(aluno.matricula)?.falta ? 'absent' : 'present'
+    );
+    registroIds = alunosDaTurma.map(aluno =>
+      registrosPorMatricula.get(aluno.matricula)?.idRegistro || null
+    );
+  }
+
+  // ---------- ABRIR/FECHAR O POPUP DA CHAMADA ----------
+  function abrirChamada() {
+    if (alunosDaTurma.length === 0) return;
+
+    document.getElementById('modal-turma-titulo').textContent = turmaAtual;
+    document.getElementById('modal-overlay').classList.add('ativo');
+    document.getElementById('modal-overlay').setAttribute('aria-hidden', 'false');
+    document.body.classList.add('modal-aberto');
+
+    alunoAtual = 0;
+    mostrarAluno();
+  }
+
+  function fecharChamada() {
+    document.getElementById('modal-overlay').classList.remove('ativo');
+    document.getElementById('modal-overlay').setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('modal-aberto');
+  }
+
   // ---------- INICIAIS DO NOME (avatar) ----------
   function pegarIniciais(nome) {
-    var partes = nome.split(' ');
-    var iniciais = partes[0].charAt(0);
+    var partes = String(nome || '').trim().split(/\s+/);
+    var iniciais = (partes[0] || '').charAt(0);
     if (partes.length > 1) {
       iniciais = iniciais + partes[1].charAt(0);
     }
-    return iniciais.toUpperCase();
+    return iniciais.toUpperCase() || '?';
   }
 
   // ---------- MOSTRAR ALUNO ATUAL ----------
   function mostrarAluno() {
-    var listaAlunos = alunosPorTurma[turmaAtual];
-    var nome = listaAlunos[alunoAtual];
+    if (alunosDaTurma.length === 0) return;
+    var aluno = alunosDaTurma[alunoAtual];
     var status = statusAlunos[alunoAtual];
 
-    document.getElementById('student-avatar').innerHTML = pegarIniciais(nome);
-    document.getElementById('student-name').innerHTML = nome;
-    document.getElementById('student-meta').innerHTML = nomesTurmas[turmaAtual];
-    document.getElementById('student-count').innerHTML = 'Aluno ' + (alunoAtual + 1) + ' de ' + listaAlunos.length;
+    document.getElementById('student-avatar').textContent = pegarIniciais(aluno.alunoNome);
+    document.getElementById('student-name').textContent = aluno.alunoNome;
+    document.getElementById('student-meta').textContent = turmaAtual + ' · Matrícula ' + aluno.matricula;
+    document.getElementById('student-count').textContent = 'Aluno ' + (alunoAtual + 1) + ' de ' + alunosDaTurma.length;
 
     var card = document.getElementById('student-card');
     card.className = 'student-card';
     var badge = document.getElementById('student-badge');
-    var btnPresente = document.getElementById('btn-present');
     var btnFaltou = document.getElementById('btn-absent');
-    btnPresente.className = 'btn btn-present';
     btnFaltou.className = 'btn btn-absent';
 
     if (status === 'present') {
       card.className = 'student-card status-present';
-      badge.innerHTML = 'Presente';
-      btnPresente.className = 'btn btn-present active';
+      badge.textContent = 'Presente';
     } else if (status === 'absent') {
       card.className = 'student-card status-absent';
-      badge.innerHTML = 'Faltou';
+      badge.textContent = 'Faltou';
       btnFaltou.className = 'btn btn-absent active';
     } else {
-      badge.innerHTML = 'Pendente';
+      badge.textContent = 'Presente';
     }
 
     document.getElementById('btn-prev').disabled = (alunoAtual === 0);
-    document.getElementById('btn-next').disabled = (alunoAtual === listaAlunos.length - 1);
+    document.getElementById('btn-next').disabled = (alunoAtual === alunosDaTurma.length - 1);
 
     atualizarResumo();
     atualizarListaVisual();
@@ -606,13 +844,8 @@
   // ---------- CONTADORES ----------
   function atualizarResumo() {
     var total = statusAlunos.length;
-    var presentes = 0;
-    var faltas = 0;
-
-    for (var i = 0; i < statusAlunos.length; i++) {
-      if (statusAlunos[i] === 'present') { presentes = presentes + 1; }
-      if (statusAlunos[i] === 'absent') { faltas = faltas + 1; }
-    }
+    var presentes = statusAlunos.filter(s => s === 'present').length;
+    var faltas = statusAlunos.filter(s => s === 'absent').length;
 
     document.getElementById('sum-total').innerHTML = total;
     document.getElementById('sum-present').innerHTML = presentes;
@@ -621,22 +854,26 @@
 
   // ---------- MONTAR LISTA DA TURMA ----------
   function montarLista() {
-    var listaAlunos = alunosPorTurma[turmaAtual];
     var roster = document.getElementById('roster');
     roster.innerHTML = '';
 
-    for (var i = 0; i < listaAlunos.length; i++) {
-      var linha = document.createElement('div');
+    for (var i = 0; i < alunosDaTurma.length; i++) {
+      var linha = document.createElement('button');
+      linha.type = 'button';
       linha.className = 'roster-item';
       linha.id = 'roster-item-' + i;
-      linha.setAttribute('onclick', 'irParaAluno(' + i + ')');
-
-      linha.innerHTML =
-        '<table><tr>' +
-        '<td style="width:30px;"><span class="idx">' + (i + 1) + '</span></td>' +
-        '<td>' + listaAlunos[i] + '</td>' +
-        '<td style="width:100px;text-align:right;"><span class="rstatus" id="roster-status-' + i + '">Pendente</span></td>' +
-        '</tr></table>';
+      linha.onclick = (function (indice) { return function () { irParaAluno(indice); }; })(i);
+      var indice = document.createElement('span');
+      indice.className = 'idx';
+      indice.textContent = String(i + 1);
+      var nome = document.createElement('span');
+      nome.className = 'roster-name';
+      nome.textContent = alunosDaTurma[i].alunoNome;
+      var status = document.createElement('span');
+      status.className = 'rstatus';
+      status.id = 'roster-status-' + i;
+      status.textContent = 'Pendente';
+      linha.append(indice, nome, status);
 
       roster.appendChild(linha);
     }
@@ -656,20 +893,62 @@
 
       if (status === 'present') {
         item.className = item.className + ' st-present';
-        statusTexto.innerHTML = 'Presente';
+        statusTexto.textContent = 'Presente';
       } else if (status === 'absent') {
         item.className = item.className + ' st-absent';
-        statusTexto.innerHTML = 'Faltou';
+        statusTexto.textContent = 'Faltou';
       } else {
         item.className = item.className + ' st-pending';
-        statusTexto.innerHTML = 'Pendente';
+        statusTexto.textContent = 'Pendente';
       }
     }
   }
 
   // ---------- AÇÕES ----------
-  function marcarPresenca(tipo) {
-    statusAlunos[alunoAtual] = tipo;
+  function objetoDoRegistro(indice) {
+    var aluno = alunosDaTurma[indice];
+    var dia = document.getElementById('data-chamada').value;
+    return {
+      registro: {
+        ano: Number(String(dia).split('-')[0]),
+        // A chamada é diária e geral. As disciplinas são identificadas depois,
+        // pelos horários da turma na data da ausência.
+        codDisciplina: 'GERAL',
+        horaInicio: 0,
+        horaFim: 0,
+        matricula: aluno.matricula,
+        falta: statusAlunos[indice] === 'absent',
+        dia: dia,
+        atrasado: 'Não'
+      }
+    };
+  }
+
+  async function gravarRegistroDoAluno(indice) {
+    const objeto = objetoDoRegistro(indice);
+    if (registroIds[indice]) {
+      const resposta = await api.put("api/v1/registro", registroIds[indice], objeto);
+      if (!resposta?.success) throw new Error(resposta.message || 'Não foi possível atualizar o registro.');
+      return;
+    }
+    const resposta = await api.post("api/v1/registro", objeto);
+    if (!resposta.success) throw new Error(resposta.message || 'Não foi possível salvar o registro.');
+    registroIds[indice] = resposta.data.registros[0].idRegistro;
+  }
+
+  async function marcarFalta() {
+    statusAlunos[alunoAtual] = statusAlunos[alunoAtual] === 'absent' ? 'present' : 'absent';
+    try {
+      await gravarRegistroDoAluno(alunoAtual);
+    } catch (erro) {
+      statusAlunos[alunoAtual] = statusAlunos[alunoAtual] === 'absent' ? 'present' : 'absent';
+      window.alert(erro.message || 'Não foi possível registrar a falta.');
+      mostrarAluno();
+      return;
+    }
+    if (alunoAtual < alunosDaTurma.length - 1) {
+      alunoAtual = alunoAtual + 1;
+    }
     mostrarAluno();
   }
 
@@ -681,7 +960,7 @@
   }
 
   function proximoAluno() {
-    if (alunoAtual < alunosPorTurma[turmaAtual].length - 1) {
+    if (alunoAtual < alunosDaTurma.length - 1) {
       alunoAtual = alunoAtual + 1;
       mostrarAluno();
     }
@@ -693,20 +972,46 @@
   }
 
   function limparChamada() {
-    statusAlunos = [];
-    for (var i = 0; i < alunosPorTurma[turmaAtual].length; i++) {
-      statusAlunos.push('pending');
+    if (!window.confirm('Limpar as marcações desta chamada e recomeçar do primeiro aluno?')) {
+      return;
     }
+    statusAlunos = alunosDaTurma.map(() => 'present');
+    alunoAtual = 0;
+    // registroIds é preservado de propósito: o registro já gravado no backend continua
+    // existindo, e marcar de novo o corrige via PUT em vez de criar uma duplicata.
     mostrarAluno();
   }
 
-  function salvarChamada() {
+  async function salvarChamada() {
+    if (chamadaEmSalvamento) return;
+    chamadaEmSalvamento = true;
+    try {
+      for (let indice = 0; indice < alunosDaTurma.length; indice += 1) {
+        await gravarRegistroDoAluno(indice);
+      }
+    } catch (erro) {
+      window.alert(erro.message || 'A chamada não foi salva. Confira a conexão e tente novamente.');
+      chamadaEmSalvamento = false;
+      return;
+    }
+    chamadaEmSalvamento = false;
     var toast = document.getElementById('toast');
     toast.style.display = 'block';
     setTimeout(function () {
       toast.style.display = 'none';
     }, 3000);
+    fecharChamada();
   }
+
+  window.selecionarTurma = selecionarTurma;
+  window.abrirChamada = abrirChamada;
+  window.fecharChamada = fecharChamada;
+  window.marcarFalta = marcarFalta;
+  window.alunoAnterior = alunoAnterior;
+  window.proximoAluno = proximoAluno;
+  window.irParaAluno = irParaAluno;
+  window.limparChamada = limparChamada;
+  window.salvarChamada = salvarChamada;
 </script>
 
 </body>

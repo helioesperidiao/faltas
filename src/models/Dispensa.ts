@@ -9,6 +9,7 @@ export class Dispensa {
     private _horaInicio: number = 0;
     private _horaFim: number = 0;
     private _dia: Date = new Date;
+    private _dataFim: Date = new Date;
     private _cod: string = '';
     private _disciplina: string = '';
     private _motivo: string = '';
@@ -130,6 +131,20 @@ export class Dispensa {
         this._dia = value;
     }
 
+    //dataFim (fim da vigência da dispensa; se não informado, equivale a um dia único)
+    get dataFim(): Date {
+        return this._dataFim;
+    }
+    set dataFim(value: Date) {
+        if (!(value instanceof Date)) {
+            throw new Error("dataFim deve ser um objeto Date.");
+        }
+        if (isNaN(value.getTime())) {
+            throw new Error(`dataFim inválido: "${value}".`);
+        }
+        this._dataFim = value;
+    }
+
     //cod
     get cod(): string{
         return this._cod;
@@ -195,6 +210,7 @@ export class Dispensa {
             horaInicio: this._horaInicio,
             horaFim: this._horaFim,
             dia: this._dia,
+            dataFim: this._dataFim,
             cod: this._cod,
             disciplina: this._disciplina,
             motivo: this._motivo,

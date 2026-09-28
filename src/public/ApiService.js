@@ -9,6 +9,7 @@
  */
 export default class ApiService {
     #token;  // Atributo privado para armazenar o token de autenticação
+    #baseUrl;
 
     /**
      * Construtor da classe ApiService.
@@ -16,7 +17,40 @@ export default class ApiService {
      */
     constructor(token = null) {
         this.#token = token;
+        this.#baseUrl = this._resolveBaseUrl();
         console.log('[ApiService] Instância criada com token:', token ? '✅ Presente' : '❌ Não fornecido');
+        console.log('[ApiService] Base URL resolvida:', this.#baseUrl || '(mesma origem)');
+    }
+
+    _resolveBaseUrl() {
+        if (typeof window === "undefined") {
+            return "";
+        }
+
+        const globalBase = typeof window.API_BASE_URL === "string" ? window.API_BASE_URL.trim() : "";
+        if (globalBase) {
+            return globalBase.replace(/\/$/, "");
+        }
+
+        const localBase = localStorage.getItem("apiBaseUrl");
+        if (typeof localBase === "string" && localBase.trim()) {
+            return localBase.trim().replace(/\/$/, "");
+        }
+
+        return "";
+    }
+
+    _buildUrl(uri) {
+        if (/^https?:\/\//i.test(uri)) {
+            return uri;
+        }
+
+        if (!this.#baseUrl) {
+            return uri;
+        }
+
+        const normalizedUri = uri.startsWith("/") ? uri : `/${uri}`;
+        return `${this.#baseUrl}${normalizedUri}`;
     }
 
     /**
@@ -88,14 +122,15 @@ export default class ApiService {
      * @returns {Promise<Object|Array>} Retorna o JSON obtido da resposta ou array vazio em caso de erro.
      */
     async simpleGet(uri) {
-        console.log(`[ApiService] 🔍 simpleGet() iniciado para: ${uri}`);
+        const fullUri = this._buildUrl(uri);
+        console.log(`[ApiService] 🔍 simpleGet() iniciado para: ${fullUri}`);
         try {
-            const response = await fetch(uri);
+            const response = await fetch(fullUri);
             const jsonObj = await response.json();
-            this._logRequest('GET', uri, {}, response, jsonObj);
+            this._logRequest('GET', fullUri, {}, response, jsonObj);
             return jsonObj;
         } catch (error) {
-            this._logRequest('GET', uri, {}, null, null, error);
+            this._logRequest('GET', fullUri, {}, null, null, error);
             return [];
         }
     }
@@ -107,16 +142,17 @@ export default class ApiService {
      * @returns {Promise<Object|Array>} Retorna JSON da resposta ou array vazio em caso de erro.
      */
     async get(uri) {
-        console.log(`[ApiService] 🔍 get() iniciado para: ${uri}`);
+        const fullUri = this._buildUrl(uri);
+        console.log(`[ApiService] 🔍 get() iniciado para: ${fullUri}`);
         try {
             const headers = this._getHeaders();
             const options = { method: "GET", headers };
-            const response = await fetch(uri, options);
+            const response = await fetch(fullUri, options);
             const jsonObj = await response.json();
-            this._logRequest('GET', uri, options, response, jsonObj);
+            this._logRequest('GET', fullUri, options, response, jsonObj);
             return jsonObj;
         } catch (error) {
-            this._logRequest('GET', uri, {}, null, null, error);
+            this._logRequest('GET', fullUri, {}, null, null, error);
             return [];
         }
     }
@@ -129,7 +165,7 @@ export default class ApiService {
      * @returns {Promise<Object|null>} Retorna JSON do recurso ou null em caso de erro.
      */
     async getById(uri, id) {
-        const fullUri = `${uri}/${id}`;
+        const fullUri = this._buildUrl(`${uri}/${id}`);
         console.log(`[ApiService] 🔍 getById() iniciado para: ${fullUri}`);
         try {
             const headers = this._getHeaders();
@@ -155,7 +191,8 @@ export default class ApiService {
      * @returns {Promise<Object|Array>} Retorna JSON da resposta ou array vazio em caso de erro.
      */
     async post(uri, jsonObject) {
-        console.log(`[ApiService] 📤 post() iniciado para: ${uri}`);
+        const fullUri = this._buildUrl(uri);
+        console.log(`[ApiService] 📤 post() iniciado para: ${fullUri}`);
         try {
             const headers = this._getHeaders();
             const options = {
@@ -163,12 +200,12 @@ export default class ApiService {
                 headers,
                 body: JSON.stringify(jsonObject)
             };
-            const response = await fetch(uri, options);
+            const response = await fetch(fullUri, options);
             const jsonObj = await response.json();
-            this._logRequest('POST', uri, options, response, jsonObj);
+            this._logRequest('POST', fullUri, options, response, jsonObj);
             return jsonObj;
         } catch (error) {
-            this._logRequest('POST', uri, { body: JSON.stringify(jsonObject) }, null, null, error);
+            this._logRequest('POST', fullUri, { body: JSON.stringify(jsonObject) }, null, null, error);
             return [];
         }
     }
@@ -181,7 +218,7 @@ export default class ApiService {
      * @returns {Promise<Object|null>} Retorna JSON da resposta ou null em caso de erro.
      */
     async put(uri, id, jsonObject) {
-        const fullUri = `${uri}/${id}`;
+        const fullUri = this._buildUrl(`${uri}/${id}`);
         console.log(`[ApiService] 📤 put() iniciado para: ${fullUri}`);
         try {
             const headers = this._getHeaders();
@@ -211,7 +248,7 @@ export default class ApiService {
      * para padronizar a resposta no front-end.
      */
     async delete(uri, id) {
-        const fullUri = `${uri}/${id}`;
+        const fullUri = this._buildUrl(`${uri}/${id}`);
         console.log(`[ApiService] 🗑️ delete() iniciado para: ${fullUri}`);
         try {
             const headers = this._getHeaders();

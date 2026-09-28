@@ -70,6 +70,40 @@ export class RegistroController extends BaseController {
         }).send(response);
     };
 
+    //findAusentesEntrada: alunos ausentes na chamada de ENTRADA para uma turma/dia
+    public findAusentesEntrada = async (request: Request, response: Response): Promise<void> => {
+        console.log("🔵 RegistroController.findAusentesEntrada()");
+
+        const turma = request.query.turma?.toString() || '';
+        const diaQuery = request.query.dia?.toString() || '';
+
+        if (!turma || !diaQuery) {
+            StandardResponse.error("Parâmetros 'turma' e 'dia' são obrigatórios", null, 400).send(response);
+            return;
+        }
+
+        const dia = new Date(diaQuery);
+
+        const ausentes = await this._registroService.findAusentesEntrada(turma, dia);
+
+        StandardResponse.success("Busca realizada com sucesso", {
+            registros: ausentes
+        }).send(response);
+    };
+
+    /** Consulta uma chamada geral salva, para que a tela mostre as marcações existentes. */
+    public findChamadaPorTurmaEDia = async (request: Request, response: Response): Promise<void> => {
+        const turma = request.query.turma?.toString() || '';
+        const diaTexto = request.query.dia?.toString() || '';
+        const dia = new Date(diaTexto);
+        if (!turma || !diaTexto || Number.isNaN(dia.getTime())) {
+            StandardResponse.error("Parâmetros 'turma' e 'dia' são obrigatórios", null, 400).send(response);
+            return;
+        }
+        const registros = await this._registroService.findChamadaPorTurmaEDia(turma, dia);
+        StandardResponse.success("Chamada consultada com sucesso", { registros }).send(response);
+    };
+
     //findById
     public findById = async (_request: Request, response: Response): Promise<void> => {
         console.log("🔵 RegistroController.findById()");

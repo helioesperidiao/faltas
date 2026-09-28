@@ -54,7 +54,7 @@ export class FuncionarioController extends BaseController {
      * Cria um novo funcionário.
      * 
      * 🔹 Requer autenticação JWT.
-     * 🔹 Apenas administradores podem criar novos funcionários (validação no Service).
+     * 🔹 A criação valida os dois cargos aceitos no Service.
      * 
      * @route POST /api/v1/funcionarios
      * @param request - Requisição contendo `{ funcionario: { nomeFuncionario, email, senha, recebeValeTransporte, cargo: { idCargo } } }`.

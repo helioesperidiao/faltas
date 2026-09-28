@@ -30,3 +30,21 @@ const fileFilter = (_request: Request, file: Express.Multer.File, callback: mult
 };
 
 export const uploadDispensaMiddleware = multer({ storage, fileFilter });
+
+const uploadDirAbono = path.resolve(__dirname, "../../uploads/abono");
+if (!fs.existsSync(uploadDirAbono)) {
+    fs.mkdirSync(uploadDirAbono, { recursive: true });
+}
+
+const storageAbono = multer.diskStorage({
+    destination: (_request: Request, _file, callback) => {
+        callback(null, uploadDirAbono);
+    },
+    filename: (request: Request, file, callback) => {
+        const idAbono = request.params.idAbono;
+        const extensao = path.extname(file.originalname);
+        callback(null, `${idAbono}${extensao}`);
+    }
+});
+
+export const uploadAbonoMiddleware = multer({ storage: storageAbono, fileFilter });

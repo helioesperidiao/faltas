@@ -33,6 +33,7 @@ export class DispensaDAO {
         horaInicio: dispensa.horaInicio,
         horaFim: dispensa.horaFim,
         dia: dispensa.dia,
+        dataFim: dispensa.dataFim,
         cod: dispensa.cod,
         disciplina: dispensa.disciplina,
         motivo: dispensa.motivo,
@@ -54,7 +55,10 @@ export class DispensaDAO {
         console.log("🟢 DispensDAO.delete(" + dispensa.idDispensa + ")");
         const collection = await this.getCollection();
         dispensa.marcarDeletadoPor(funcionarioLogado.idFuncionario);
-        const filter: Filter<Document> = { _id: new ObjectId(dispensa.idDispensa) };
+        const filter: Filter<Document> = {
+            _id: new ObjectId(dispensa.idDispensa),
+            "auditoria.deletadoEm": null
+        };
         const update: UpdateFilter<Document> = {
             $set: {
                 "auditoria.deletadoPor": dispensa.auditoria.deletadoPor,
@@ -77,6 +81,7 @@ export class DispensaDAO {
                 horaInicio: dispensa.horaInicio,
                 horaFim: dispensa.horaFim,
                 dia: dispensa.dia,
+                dataFim: dispensa.dataFim,
                 cod: dispensa.cod,
                 disciplina: dispensa.disciplina,
                 motivo: dispensa.motivo,
@@ -97,6 +102,7 @@ export class DispensaDAO {
         dispensa.horaInicio = doc.horaInicio;
         dispensa.horaFim = doc.horaFim;
         dispensa.dia = new Date(doc.dia);
+        dispensa.dataFim = doc.dataFim ? new Date(doc.dataFim) : new Date(doc.dia);
         dispensa.cod = doc.cod;
         dispensa.disciplina = doc.disciplina;
         dispensa.motivo = doc.motivo;
@@ -172,5 +178,20 @@ export class DispensaDAO {
         const cursor = collection.find(filter);
         const docs = await cursor.toArray();
         return docs.map(doc => this.toDispensa(doc));
+    }
+
+    //verifica se existe dispensa vigente para o aluno/disciplina numa data (usado pela chamada)
+    public async findVigenteParaAluno(idAluno: string, cod: string, data: Date): Promise<Dispensa | null> {
+        console.log(`🟢 DispensaDAO.findVigenteParaAluno(${idAluno}, ${cod})`);
+        const collection = await this.getCollection();
+        const filter: Filter<Document> = {
+            idAluno,
+            cod,
+            dia: { $lte: data },
+            dataFim: { $gte: data },
+            "auditoria.deletadoEm": null
+        };
+        const doc = await collection.findOne(filter);
+        return doc ? this.toDispensa(doc) : null;
     }
 }

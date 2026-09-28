@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>CRUD Grade de Horários com ApiService</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="css/bootstrap.min.css" rel="stylesheet" />
+  <link href="css/univap-theme.css" rel="stylesheet" />
+  <script src="js/bootstrap.bundle.min.js"></script>
+  <style>
+    body { margin: 0; }
+    table { margin-top: 1em; }
+  </style>
+</head>
+
+<body>
+  <div id="app-topbar"></div>
+  <main class="container conteudo-pagina" id="conteudo-principal">
+
+  <h1 class="mb-4">Gerenciamento de Grade de Horários</h1>
+
+  <div class="card mb-3">
+    <div class="card-header">Cadastro de Grade de Horário</div>
+    <div class="card-body">
+      <input type="text" id="txtId" class="form-control mb-2" disabled placeholder="ID (para update)" aria-label="ID da grade selecionada" />
+      <input type="text" id="txtTurma" class="form-control mb-2" placeholder="Turma" aria-label="Turma" />
+      <input type="time" id="txtHoraInicio" class="form-control mb-2" placeholder="Hora início" aria-label="Hora de início" />
+      <input type="time" id="txtHoraFim" class="form-control mb-2" placeholder="Hora fim" aria-label="Hora de fim" />
+      <input type="text" id="txtDia" class="form-control mb-2" placeholder="Dia da semana (ex: Segunda)" aria-label="Dia da semana" />
+      <input type="text" id="txtCod" class="form-control mb-2" placeholder="Código da disciplina" aria-label="Código da disciplina" />
+      <input type="text" id="txtDisciplina" class="form-control mb-2" placeholder="Disciplina" aria-label="Nome da disciplina" />
+      <div class="mb-3 d-flex gap-2" id="divBotoes"></div>
+      <div id="divResposta" role="status" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <!-- Importação em massa: a planilha é lida no navegador e cada linha validada vira um POST. -->
+  <div class="card mb-3">
+    <div class="card-header">Importar Grade via planilha</div>
+    <div class="card-body">
+      <p class="text-muted">Use os cabeçalhos TURMA, DISCIPLINA, NOME_DESCIPLINA, SEMANA_EXTENSO e HORAINICIALFINAL. O sistema separa horários como 10:50-11:40 e normaliza dias como quarta-feira.</p>
+      <input type="file" id="fileCsv" class="form-control mb-2" accept=".xlsx,.xls,.xlsm,.csv,.tsv,.txt" aria-label="Planilha de grade de horários para importação" />
+      <button type="button" id="btnImportar" class="btn btn-primary mb-2">Importar</button>
+      <div class="progress mb-2" style="display:none;" id="divProgressoWrap">
+        <div id="barraProgresso" class="progress-bar" role="progressbar" style="width: 0%">0%</div>
+      </div>
+      <div id="divFalhas" role="status" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <div class="card mt-4">
+    <div class="card-header">Lista de Grades de Horário</div>
+    <div class="card-body">
+      <div id="divTabela"></div>
+    </div>
+  </div>
+
+  </main>
+
+  <script src="vendor/xlsx/xlsx.full.min.js"></script>
+  <script src="vendor/codepage/cpexcel.full.js"></script>
+  <script>if (window.XLSX && window.cptable) window.XLSX.set_cptable(window.cptable);</script>
+  <script type="module">
+    import { montarTopbar } from './js/Topbar.js';
+    import ApiService from './ApiService.js';
+    import { ESQUEMAS_IMPORTACAO, lerArquivoPlanilha, normalizarLinhaGradeHorario, prepararImportacao } from './js/ImportadorCsv.js';
+
+    let userData = localStorage.getItem("userData");
+    if (userData) {
+      userData = JSON.parse(userData);
+    } else {
+      window.location.href = "Login.html";
+    }
+
+    const token = userData.data.token;
+    const api = new ApiService(token);
+    montarTopbar('gradehorarios');
+
+    const txtId = document.getElementById("txtId");
+    const txtTurma = document.getElementById("txtTurma");
+    const txtHoraInicio = document.getElementById("txtHoraInicio");
+    const txtHoraFim = document.getElementById("txtHoraFim");
+    const txtDia = document.getElementById("txtDia");
+    const txtCod = document.getElementById("txtCod");
+    const txtDisciplina = document.getElementById("txtDisciplina");
+    const divBotoes = document.getElementById("divBotoes");
+    const divResposta = document.getElementById("divResposta");
+    let gradesAtuais = [];
+
+    function createButton(text, className) {
+      const btn = document.createElement("button");
+      btn.textContent = text;
+      btn.className = `btn ${className} flex-fill`;
+      return btn;
+    }
+
+    function mostrarMensagem(mensagem, tipo = "success") {
+      divResposta.textContent = mensagem;
+      divResposta.className = `alert alert-${tipo}`;
+    }
+
+    function limparFormulario() {
+      txtId.value = "";
+      txtTurma.value = "";
+      txtHoraInicio.value = "";
+      txtHoraFim.value = "";
+      txtDia.value = "";
+      txtCod.value = "";
+      txtDisciplina.value = "";
+    }
+
+    function montarObjeto() {
+      return {
+        gradeHorario: {
+          turma: txtTurma.value.trim(),
+          horaInicio: txtHoraInicio.value,
+          horaFim: txtHoraFim.value,
+          dia: txtDia.value.trim(),
+          cod: txtCod.value.trim(),
+          disciplina: txtDisciplina.value.trim()
+        }
+      };
+    }
+
+    const btnListar = createButton("Listar", "btn-primary");
+    btnListar.onclick = () => listAll();
+    divBotoes.appendChild(btnListar);
+
+    const btnCriar = createButton("Criar", "btn-success");
+    btnCriar.onclick = async () => {
+      const resposta = await api.post("api/v1/gradehorarios/", montarObjeto());
+      if (resposta.success) {
+        mostrarMensagem(resposta.message || "Grade criada com sucesso", "success");
+        limparFormulario();
+        listAll();
+      } else {
+        mostrarMensagem(resposta.message || "Erro ao criar grade", "danger");
+      }
+    };
+    divBotoes.appendChild(btnCriar);
+
+    const btnAtualizar = createButton("Atualizar", "btn-warning");
+    btnAtualizar.onclick = async () => {
+      const id = txtId.value.trim();
+      if (!id) {
+        mostrarMensagem("Selecione uma grade para atualizar", "warning");
+        return;
+      }
+      const resposta = await api.put("api/v1/gradehorarios/", id, montarObjeto());
+      if (resposta.success) {
+        mostrarMensagem(resposta.message || "Grade atualizada com sucesso", "success");
+        limparFormulario();
+        listAll();
+      } else {
+        mostrarMensagem(resposta.message || "Erro ao atualizar grade", "danger");
+      }
+    };
+    divBotoes.appendChild(btnAtualizar);
+
+    async function listAll() {
+      const resposta = await api.get("api/v1/gradehorarios/");
+      if (resposta.success) {
+        gradesAtuais = resposta.data.gradeHorarios || [];
+        renderTable(resposta.data);
+      } else {
+        mostrarMensagem(resposta.message || "Erro ao carregar grades", "danger");
+      }
+    }
+
+    function renderTable(dados) {
+      const divTabela = document.getElementById("divTabela");
+      divTabela.innerHTML = "";
+
+      const table = document.createElement("table");
+      table.className = "table table-bordered table-striped";
+
+      const thead = document.createElement("thead");
+      thead.className = "table-light";
+      const trHead = document.createElement("tr");
+      ["Turma", "Início", "Fim", "Dia", "Código", "Disciplina", "Ações"].forEach(text => {
+        const th = document.createElement("th");
+        th.textContent = text;
+        trHead.appendChild(th);
+      });
+      thead.appendChild(trHead);
+      table.appendChild(thead);
+
+      const tbody = document.createElement("tbody");
+      const grades = dados?.gradeHorarios || [];
+
+      grades.forEach(grade => {
+        const tr = document.createElement("tr");
+        [grade.turma, grade.horaInicio, grade.horaFim, grade.dia, grade.cod, grade.disciplina].forEach(valor => {
+          const td = document.createElement("td");
+          td.textContent = valor;
+          tr.appendChild(td);
+        });
+
+        const tdAcoes = document.createElement("td");
+        const btnSel = createButton("Selecionar", "btn-info");
+        btnSel.onclick = () => {
+          txtId.value = grade.idGradeHorario;
+          txtTurma.value = grade.turma;
+          txtHoraInicio.value = grade.horaInicio;
+          txtHoraFim.value = grade.horaFim;
+          txtDia.value = grade.dia;
+          txtCod.value = grade.cod;
+          txtDisciplina.value = grade.disciplina;
+        };
+        tdAcoes.appendChild(btnSel);
+        tr.appendChild(tdAcoes);
+
+        tbody.appendChild(tr);
+      });
+
+      table.appendChild(tbody);
+      divTabela.appendChild(table);
+    }
+
+    const fileCsv = document.getElementById("fileCsv");
+    const btnImportar = document.getElementById("btnImportar");
+    const divProgressoWrap = document.getElementById("divProgressoWrap");
+    const barraProgresso = document.getElementById("barraProgresso");
+    const divFalhas = document.getElementById("divFalhas");
+
+    function chaveDaGrade(grade) {
+      const dia = String(grade.dia || '').replace(/^ter.a$/i, 'terça');
+      return [grade.turma, grade.horaInicio, grade.horaFim, dia, grade.cod]
+        .map(valor => String(valor || '')
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase()
+          .trim())
+        .join('|');
+    }
+
+    btnImportar.onclick = async () => {
+      if (!fileCsv.files.length) {
+        mostrarMensagem("Selecione uma planilha", "warning");
+        return;
+      }
+
+      const texto = await lerArquivoPlanilha(fileCsv.files[0] || null);
+      if (texto === null) {
+        mostrarMensagem("A leitura da planilha foi concluída sem dados para importar.", "warning");
+        return;
+      }
+      const importacao = prepararImportacao(texto, ESQUEMAS_IMPORTACAO.gradeHorarios,
+        ["turma", "horaInicio", "horaFim", "dia", "cod", "disciplina"], normalizarLinhaGradeHorario);
+      const linhas = importacao.linhas;
+
+      if (importacao.ausentes.length > 0) {
+        mostrarMensagem(`Cabeçalhos não identificados: ${importacao.ausentes.join(", ")}`, "warning");
+        return;
+      }
+      if (linhas.length === 0) {
+        mostrarMensagem("Planilha vazia ou inválida", "warning");
+        return;
+      }
+
+      divProgressoWrap.style.display = "block";
+      divFalhas.innerHTML = "";
+      const falhas = [];
+      let ignoradas = 0;
+      const respostaGradesAtuais = await api.get("api/v1/gradehorarios");
+      const gradesParaImportar = respostaGradesAtuais.success
+        ? respostaGradesAtuais.data.gradeHorarios || []
+        : gradesAtuais;
+      const gradesPorChave = new Map(gradesParaImportar.map(grade => [chaveDaGrade(grade), grade]));
+      let criadas = 0;
+      let atualizadas = 0;
+
+      for (let i = 0; i < linhas.length; i++) {
+        const linha = linhas[i];
+        try {
+          const textoLinha = Object.values(linha).join(" ").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+          if (textoLinha.includes("estagio supervisionado")) {
+            ignoradas++;
+            const percentualIgnorada = Math.round(((i + 1) / linhas.length) * 100);
+            barraProgresso.style.width = `${percentualIgnorada}%`;
+            barraProgresso.textContent = `${percentualIgnorada}%`;
+            continue;
+          }
+          const gradeHorario = {
+            turma: linha.turma,
+            horaInicio: linha.horaInicio,
+            horaFim: linha.horaFim,
+            dia: linha.dia,
+            cod: linha.cod,
+            disciplina: linha.disciplina
+          };
+          const chave = chaveDaGrade(gradeHorario);
+          const existente = gradesPorChave.get(chave);
+          const resposta = existente
+            ? await api.put("api/v1/gradehorarios", existente.idGradeHorario, { gradeHorario })
+            : await api.post("api/v1/gradehorarios", { gradeHorario });
+          if (!resposta?.success) {
+            falhas.push({ linha: linha.__linha, motivo: resposta?.message || "Falha desconhecida" });
+          } else if (existente) {
+            atualizadas += 1;
+          } else {
+            criadas += 1;
+            gradesPorChave.set(chave, resposta.data.gradeHorarios[0]);
+          }
+        } catch (erro) {
+          falhas.push({ linha: linha.__linha, motivo: erro.message });
+        }
+
+        const percentual = Math.round(((i + 1) / linhas.length) * 100);
+        barraProgresso.style.width = `${percentual}%`;
+        barraProgresso.textContent = `${percentual}%`;
+      }
+
+      const avisoIgnoradas = ignoradas > 0 ? `<p>Foram ignoradas ${ignoradas} linha(s) de Estágio Supervisionado.</p>` : "";
+      if (falhas.length > 0) {
+        const lista = falhas.map(f => `<li>Linha ${f.linha}: ${f.motivo}</li>`).join("");
+        divFalhas.innerHTML = `<div class="alert alert-danger"><strong>Falhas na importação:</strong>${avisoIgnoradas}<ul>${lista}</ul></div>`;
+      } else {
+        const cabecalhos = Object.entries(importacao.mapeamento).map(([campo, indice]) =>
+          `${campo} ← ${importacao.cabecalhos[indice]}`).join(" · ");
+        divFalhas.innerHTML = `<div class="alert alert-success">Importação concluída sem falhas: ${criadas} criada(s) e ${atualizadas} atualizada(s).${avisoIgnoradas}<br><small>Cabeçalhos identificados: ${cabecalhos}</small></div>`;
+      }
+
+      fileCsv.value = "";
+      await listAll();
+    };
+
+    listAll();
+  </script>
+</body>
+
+</html>

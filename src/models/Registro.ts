@@ -10,10 +10,15 @@ export class Registro {
     private _horaInicio: number = 0;
     private _horaFim: number = 0;
     private _matricula: string = '';
+    private _alunoNome: string = '';
+    private _turma: string = '';
+    private _curso: string = '';
+    private _serie: string = '';
     private _falta: boolean = false;
     private _dia: Date = new Date();
     private _atrasado: string = 'Não';
     private _nomeAcompanhante: string = '';
+    private _situacao: string = 'Normal';
     private _auditoria: Auditoria = new Auditoria();
 
     //construtor
@@ -95,6 +100,18 @@ export class Registro {
         this._matricula = value.trim();
     }
 
+    get alunoNome(): string { return this._alunoNome; }
+    set alunoNome(value: string) { this._alunoNome = (value || '').trim(); }
+
+    get turma(): string { return this._turma; }
+    set turma(value: string) { this._turma = (value || '').trim(); }
+
+    get curso(): string { return this._curso; }
+    set curso(value: string) { this._curso = (value || '').trim(); }
+
+    get serie(): string { return this._serie; }
+    set serie(value: string) { this._serie = (value || '').trim(); }
+
     //falta 
     get falta(): boolean {
         return this._falta;
@@ -142,6 +159,18 @@ export class Registro {
         this._nomeAcompanhante = value.trim();
     }
 
+    //situacao (Normal, Abonada, Dispensada)
+    get situacao(): string {
+        return this._situacao;
+    }
+    set situacao(value: string) {
+        const permitidos = ["Normal", "Abonada", "Dispensada"];
+        if (!permitidos.includes(value)) {
+            throw new Error(`situacao inválida: "${value}". Deve ser uma de: ${permitidos.join(", ")}.`);
+        }
+        this._situacao = value;
+    }
+
     //auditoria
     get auditoria(): Auditoria {
         return this._auditoria;
@@ -176,10 +205,15 @@ export class Registro {
             horaInicio: this._horaInicio,
             horaFim: this._horaFim,
             matricula: this._matricula,
+            alunoNome: this._alunoNome,
+            turma: this._turma,
+            curso: this._curso,
+            serie: this._serie,
             falta: this._falta,
             dia: this._dia,
             atrasado: this._atrasado,
             nomeAcompanhante: this._nomeAcompanhante,
+            situacao: this._situacao,
             auditoria: this._auditoria
         };
     }

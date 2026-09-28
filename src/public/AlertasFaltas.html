@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Alertas de Faltas | UNIVAP</title>
+  <link href="css/bootstrap.min.css" rel="stylesheet" />
+  <link href="css/univap-theme.css" rel="stylesheet" />
+</head>
+<body>
+  <div id="app-topbar"></div>
+  <main class="container conteudo-pagina" id="conteudo-principal">
+    <div class="page-title">
+      <h1>Alertas de Faltas</h1>
+      <p>Defina os limites por carga semanal e acompanhe os alunos que os atingiram.</p>
+    </div>
+
+    <section class="card mb-3">
+      <div class="card-header">Regra de alerta</div>
+      <div class="card-body">
+        <input type="hidden" id="txtIdConfiguracao" />
+        <div class="row g-2 align-items-end">
+          <div class="col-md-4"><label for="txtCarga" class="form-label">Minutos semanais</label><input type="number" min="1" id="txtCarga" class="form-control" /></div>
+          <div class="col-md-4"><label for="txtLimite" class="form-label">Faltas para alertar</label><input type="number" min="1" id="txtLimite" class="form-control" /></div>
+          <div class="col-md-4 d-flex gap-2"><button type="button" id="btnSalvar" class="btn btn-primary">Salvar regra</button><button type="button" id="btnLimpar" class="btn btn-outline-secondary">Limpar</button></div>
+        </div>
+        <div id="mensagem" class="mt-3" role="status" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section class="card mb-3">
+      <div class="card-header">Limites cadastrados</div>
+      <div class="card-body"><div id="tabelaConfiguracoes"></div></div>
+    </section>
+
+    <section class="card">
+      <div class="card-header">Alunos em alerta no bimestre atual</div>
+      <div class="card-body"><div id="tabelaAlertas"></div></div>
+    </section>
+  </main>
+
+  <script type="module">
+    import ApiService from './ApiService.js';
+    import { exigirSessao, montarTopbar, temAcessoTotal, escaparHtml } from './js/Topbar.js';
+
+    const sessao = exigirSessao();
+    if (!sessao || !temAcessoTotal(sessao.cargo)) {
+      window.location.href = 'dashboard.html';
+    } else {
+      const api = new ApiService(sessao.token);
+      montarTopbar('alertasfaltas');
+      const id = document.getElementById('txtIdConfiguracao');
+      const carga = document.getElementById('txtCarga');
+      const limite = document.getElementById('txtLimite');
+      const mensagem = document.getElementById('mensagem');
+
+      function mostrarMensagem(texto, tipo) {
+        mensagem.textContent = texto;
+        mensagem.className = 'alert alert-' + tipo;
+      }
+      function limparFormulario() { id.value = ''; carga.value = ''; limite.value = ''; }
+
+      async function carregarConfiguracoes() {
+        const resposta = await api.get('api/v1/alertas-faltas/configuracoes');
+        const configuracoes = resposta.success ? resposta.data.configuracoes : [];
+        document.getElementById('tabelaConfiguracoes').innerHTML = configuracoes.length === 0
+          ? '<p class="mb-0 text-muted">Nenhuma regra cadastrada.</p>'
+          : '<table class="table table-bordered table-striped mb-0"><thead><tr><th>Minutos semanais</th><th>Limite de faltas</th><th>Ações</th></tr></thead><tbody>'
+            + configuracoes.map(configuracao => '<tr><td>' + configuracao.cargaHorariaSemanalMinutos + '</td><td>' + configuracao.limiteFaltas + '</td><td><button class="btn btn-sm btn-warning me-1" data-editar="' + configuracao.idConfiguracao + '">Editar</button><button class="btn btn-sm btn-danger" data-excluir="' + configuracao.idConfiguracao + '">Excluir</button></td></tr>').join('')
+            + '</tbody></table>';
+        document.querySelectorAll('[data-editar]').forEach(botao => botao.onclick = () => {
+          const configuracao = configuracoes.find(item => item.idConfiguracao === botao.dataset.editar);
+          id.value = configuracao.idConfiguracao;
+          carga.value = configuracao.cargaHorariaSemanalMinutos;
+          limite.value = configuracao.limiteFaltas;
+        });
+        document.querySelectorAll('[data-excluir]').forEach(botao => botao.onclick = async () => {
+          if (!window.confirm('Excluir esta regra de alerta?')) return;
+          const respostaExcluir = await api.delete('api/v1/alertas-faltas/configuracoes', botao.dataset.excluir);
+          mostrarMensagem(respostaExcluir.success ? 'Regra excluída.' : (respostaExcluir.message || 'Não foi possível excluir a regra.'), respostaExcluir.success ? 'success' : 'danger');
+          if (respostaExcluir.success) {
+            limparFormulario();
+            await Promise.all([carregarConfiguracoes(), carregarAlertas()]);
+          }
+        });
+      }
+
+      async function carregarAlertas() {
+        const resposta = await api.get('api/v1/relatorios/alertas-faltas-bimestral');
+        const alertas = resposta.success ? resposta.data.alertas : [];
+        document.getElementById('tabelaAlertas').innerHTML = alertas.length === 0
+          ? '<p class="mb-0 text-muted">Nenhum aluno atingiu os limites configurados neste bimestre.</p>'
+          : '<table class="table table-bordered table-striped mb-0"><thead><tr><th>Aluno</th><th>Turma</th><th>Disciplina</th><th>Faltas</th><th>Regra aplicada</th></tr></thead><tbody>'
+            + alertas.map(alerta => '<tr><td>' + escaparHtml(alerta.alunoNome) + '</td><td>' + escaparHtml(alerta.turma) + '</td><td>' + escaparHtml(alerta.disciplina) + '</td><td>' + alerta.totalFaltas + '</td><td>' + alerta.cargaHorariaSemanalMinutos + ' min/semana · limite ' + alerta.limiteFaltas + '</td></tr>').join('')
+            + '</tbody></table>';
+      }
+
+      document.getElementById('btnLimpar').onclick = limparFormulario;
+      document.getElementById('btnSalvar').onclick = async () => {
+        const dados = { configuracao: { cargaHorariaSemanalMinutos: Number(carga.value), limiteFaltas: Number(limite.value) } };
+        const resposta = id.value
+          ? await api.put('api/v1/alertas-faltas/configuracoes', id.value, dados)
+          : await api.post('api/v1/alertas-faltas/configuracoes', dados);
+        mostrarMensagem(resposta.success ? 'Regra salva com sucesso.' : (resposta.message || 'Não foi possível salvar a regra.'), resposta.success ? 'success' : 'danger');
+        if (resposta.success) { limparFormulario(); carregarConfiguracoes(); carregarAlertas(); }
+      };
+
+      carregarConfiguracoes();
+      carregarAlertas();
+    }
+  </script>
+</body>
+</html>

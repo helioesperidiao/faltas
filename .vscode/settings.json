@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^@'\nconst fs = require\\('fs'\\);\nconst ts = require\\('typescript'\\);\nlet failed = false;\nfor \\(const file of \\['src/public/Alunos\\.html', 'src/public/GradeHorarios\\.html', 'src/public/Relatorios\\.html', 'src/public/dashboard\\.html', 'src/public/telaChamada\\.html', 'src/public/Movimentacoes\\.html'\\]\\) \\{\n  const html = fs\\.readFileSync\\(file, 'utf8'\\);\n  const script = html\\.split\\('<script type=\"module\">'\\)\\[1\\]\\?\\.split\\('</script>'\\)\\[0\\];\n  if \\(!script\\) continue;\n  const result = ts\\.transpileModule\\(script, \\{ fileName: file \\+ '\\.js', reportDiagnostics: true, compilerOptions: \\{ allowJs: true, target: ts\\.ScriptTarget\\.ES2022 \\} \\}\\);\n  for \\(const diagnostic of result\\.diagnostics \\|\\| \\[\\]\\) \\{\n    if \\(diagnostic\\.category === ts\\.DiagnosticCategory\\.Error\\) \\{\n      console\\.error\\(file, ts\\.flattenDiagnosticMessageText\\(diagnostic\\.messageText, '\\\\n'\\)\\);\n      failed = true;\n    \\}\n  \\}\n\\}\nif \\(failed\\) process\\.exit\\(1\\);\nconsole\\.log\\('Scripts inline: sintaxe válida'\\);\n'@ \\| node$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}

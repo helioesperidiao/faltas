@@ -33,10 +33,15 @@ export class RegistroDAO {
             horaInicio: registro.horaInicio,
             horaFim: registro.horaFim,
             matricula: registro.matricula,
+            alunoNome: registro.alunoNome,
+            turma: registro.turma,
+            curso: registro.curso,
+            serie: registro.serie,
             falta: registro.falta,
             dia: registro.dia,
             atrasado: registro.atrasado,
             nomeAcompanhante: registro.nomeAcompanhante,
+            situacao: registro.situacao,
             auditoria: registro.auditoria.toJSON()
         };
 
@@ -54,7 +59,10 @@ export class RegistroDAO {
         console.log("🟢 RegistroDAO.delete(" + registro.idRegistro + ")");
         const collection = await this.getCollection();
         registro.marcarDeletadoPor(funcionarioLogado.idFuncionario);
-        const filter: Filter<Document> = { _id: new ObjectId(registro.idRegistro) };
+        const filter: Filter<Document> = {
+            _id: new ObjectId(registro.idRegistro),
+            "auditoria.deletadoEm": null
+        };
         const update: UpdateFilter<Document> = {
             $set: {
                 "auditoria.deletadoPor": registro.auditoria.deletadoPor,
@@ -76,12 +84,34 @@ export class RegistroDAO {
                 falta: registro.falta,
                 atrasado: registro.atrasado,
                 nomeAcompanhante: registro.nomeAcompanhante,
+                situacao: registro.situacao,
                 "auditoria.alteradoPor": registro.auditoria.alteradoPor,
                 "auditoria.alteradoEm": registro.auditoria.alteradoEm
             }
         };
         const result = await collection.updateOne(filter, update);
         return result.modifiedCount > 0;
+    }
+
+    //atualiza em massa a situação (Abonada/Dispensada) de registros de um aluno num período
+    public async updateSituacaoPorMatriculaEPeriodo(matricula: string, dataInicio: Date, dataFim: Date, situacao: string, funcionarioLogado: Funcionario): Promise<number> {
+        console.log(`🟢 RegistroDAO.updateSituacaoPorMatriculaEPeriodo(${matricula}, ${situacao})`);
+        const collection = await this.getCollection();
+        const filter: Filter<Document> = {
+            matricula,
+            dia: { $gte: dataInicio, $lte: dataFim },
+            falta: true,
+            "auditoria.deletadoEm": null
+        };
+        const update: UpdateFilter<Document> = {
+            $set: {
+                situacao,
+                "auditoria.alteradoPor": funcionarioLogado.idFuncionario,
+                "auditoria.alteradoEm": new Date()
+            }
+        };
+        const result = await collection.updateMany(filter, update);
+        return result.modifiedCount;
     }
 
     //toRegistro
@@ -93,10 +123,15 @@ export class RegistroDAO {
         registro.horaInicio = doc.horaInicio;
         registro.horaFim = doc.horaFim;
         registro.matricula = doc.matricula;
+        registro.alunoNome = doc.alunoNome || '';
+        registro.turma = doc.turma || '';
+        registro.curso = doc.curso || '';
+        registro.serie = doc.serie || '';
         registro.falta = doc.falta;
         registro.dia = new Date(doc.dia);
         registro.atrasado = doc.atrasado;
         registro.nomeAcompanhante = doc.nomeAcompanhante || '';
+        registro.situacao = doc.situacao || 'Normal';
         if (doc.auditoria) {
             const auditoria = new Auditoria();
             auditoria.criadoPor = doc.auditoria.criadoPor || '';
@@ -128,6 +163,18 @@ export class RegistroDAO {
         const cursor = collection.find({ "auditoria.deletadoEm": null })
         const docs = await cursor.toArray();
         return docs.map(doc => this.toRegistro(doc));
+    }
+
+    /** Faltas válidas no período, sem registros abonados, dispensados ou excluídos. */
+    public async findFaltasNoPeriodo(dataInicio: Date, dataFim: Date): Promise<Registro[]> {
+        const collection = await this.getCollection();
+        const cursor = collection.find({
+            dia: { $gte: dataInicio, $lte: dataFim },
+            falta: true,
+            situacao: { $nin: ["Abonada", "Dispensada"] },
+            "auditoria.deletadoEm": null
+        });
+        return (await cursor.toArray()).map(doc => this.toRegistro(doc));
     }
 
     //"select" deletados
@@ -167,6 +214,41 @@ export class RegistroDAO {
         }
         const cursor = collection.find(filter);
         const docs = await cursor.toArray();
+        return docs.map(doc => this.toRegistro(doc));
+    }
+    //busca registros com falta=true, filtrando por uma lista de matrículas e um dia específico
+    public async findAusentesEntrada(matriculas: string[], dia: Date): Promise<Registro[]> {
+        console.log(`🟢 RegistroDAO.findAusentesEntrada() - Matriculas: ${matriculas.length}, Dia: ${dia}`);
+        const collection = await this.getCollection();
+
+        const inicioDia = new Date(dia);
+        inicioDia.setHours(0, 0, 0, 0);
+        const fimDia = new Date(dia);
+        fimDia.setHours(23, 59, 59, 999);
+
+        const filter: Filter<Document> = {
+            matricula: { $in: matriculas },
+            dia: { $gte: inicioDia, $lte: fimDia },
+            falta: true,
+            "auditoria.deletadoEm": null
+        };
+
+        const cursor = collection.find(filter);
+        const docs = await cursor.toArray();
+        return docs.map(doc => this.toRegistro(doc));
+    }
+
+    /** Retorna a chamada geral já gravada para uma turma em uma data. */
+    public async findChamadaPorTurmaEDia(turma: string, dia: Date): Promise<Registro[]> {
+        const collection = await this.getCollection();
+        const inicioDia = new Date(Date.UTC(dia.getUTCFullYear(), dia.getUTCMonth(), dia.getUTCDate(), 0, 0, 0, 0));
+        const fimDia = new Date(Date.UTC(dia.getUTCFullYear(), dia.getUTCMonth(), dia.getUTCDate(), 23, 59, 59, 999));
+        const docs = await collection.find({
+            turma,
+            codDisciplina: "GERAL",
+            dia: { $gte: inicioDia, $lte: fimDia },
+            "auditoria.deletadoEm": null
+        }).toArray();
         return docs.map(doc => this.toRegistro(doc));
     }
 }
