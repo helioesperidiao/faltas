@@ -1,0 +1,1 @@
+{"version":3,"file":"DispensaRouter.d.ts","sourceRoot":"","sources":["../../src/routers/DispensaRouter.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,MAAM,EAAE,MAAM,SAAS,CAAC;AAMjC,OAAO,EAAE,aAAa,EAAE,MAAM,2BAA2B,CAAC;AAE1D,qBAAa,cAAc;IACvB,gBAAuB,MAAM,sBAAsB;IAEnD,OAAO,CAAC,OAAO,CAAS;IACxB,OAAO,CAAC,SAAS,CAAgB;gBAGrB,QAAQ,EAAE,aAAa;IA4D5B,SAAS,QAAO,MAAM,CAE3B;CACL"}

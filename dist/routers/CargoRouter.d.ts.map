@@ -1,0 +1,1 @@
+{"version":3,"file":"CargoRouter.d.ts","sourceRoot":"","sources":["../../src/routers/CargoRouter.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,MAAM,EAAE,MAAM,SAAS,CAAC;AAKjC,OAAO,EAAE,aAAa,EAAE,MAAM,2BAA2B,CAAC;AAa1D,qBAAa,WAAW;IAEpB,gBAAuB,MAAM,oBAAoB;IAEjD,OAAO,CAAC,OAAO,CAAS;IACxB,OAAO,CAAC,SAAS,CAAgB;gBAQrB,QAAQ,EAAE,aAAa;IA+D5B,SAAS,QAAO,MAAM,CAE3B;CACL"}
