@@ -114,7 +114,10 @@
       <div class="card-header"><h2 id="titulo-fechamento">Fechamento do dia</h2></div>
       <div class="card-body">
         <p class="hint" style="margin:0 0 16px">Gera quatro CSVs: atrasados, saídas antecipadas, faltas do dia e histórico completo de faltas da escola. Os três arquivos do dia incluem os e-mails dos pais.</p>
-        <div class="fechamento-acoes"><button class="btn" id="fechar-dia" type="button">Fechar dia e baixar CSVs</button></div>
+        <div class="fechamento-acoes">
+          <button class="btn" id="fechar-dia" type="button">Fechar dia e baixar CSVs</button>
+          <button class="btn secondary" id="baixar-faltas-dia" type="button">Gerar CSV das faltas do dia</button>
+        </div>
         <div id="mensagem-fechamento" class="message" role="status"></div>
       </div>
     </section>
@@ -291,7 +294,27 @@
       baixarCsv('faltas-geral-escola.csv', 'HISTÓRICO DE FALTAS DA ESCOLA', ['Nome', 'Matrícula', 'Turma', 'Data', 'Ano', 'Situação'], fechamento.faltasHistoricas.map(item => [item.alunoNome, item.matricula, item.turma, item.data, item.ano, item.situacao]), false);
       mostrarMensagemFechamento('Fechamento concluído: os quatro arquivos CSV foram baixados.', 'ok');
     }
+    async function baixarFaltasDoDia() {
+      const data = $('filtro-data').value;
+      if (!data) { mostrarMensagemFechamento('Selecione a data das faltas.', 'error'); return; }
+      $('baixar-faltas-dia').disabled = true;
+      mostrarMensagemFechamento('Gerando o CSV de faltas do dia...', '');
+      const resposta = await api.get(`api/v1/relatorios/fechamento-dia?data=${encodeURIComponent(data)}`);
+      $('baixar-faltas-dia').disabled = false;
+      if (!resposta?.success) { mostrarMensagemFechamento(resposta?.message || 'Não foi possível gerar o CSV de faltas.', 'error'); return; }
+      const fechamento = resposta.data;
+      baixarCsv(
+        `fechamento-${fechamento.data}-faltas-do-dia.csv`,
+        'FALTAS DO DIA',
+        ['Nome', 'Matrícula', 'Turma', 'Data', 'E-mail do pai'],
+        fechamento.faltasDoDia.map(item => [item.alunoNome, item.matricula, item.turma, item.data, item.emailPai]),
+        true,
+        fechamento.faltasDoDia.map(item => item.emailPai)
+      );
+      mostrarMensagemFechamento('CSV de faltas do dia baixado com sucesso.', 'ok');
+    }
     $('fechar-dia').addEventListener('click', fecharDia);
+    $('baixar-faltas-dia').addEventListener('click', baixarFaltasDoDia);
     carregar();
   </script>
 </body>

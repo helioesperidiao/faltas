@@ -4,6 +4,8 @@
 
 Na tela **Entradas e Saídas**, o botão **Fechar dia e baixar CSVs** monta o fechamento da data escolhida sem alterar ou apagar registros existentes. O sistema baixa quatro arquivos: alunos atrasados, alunos que saíram antecipadamente, faltas daquele dia e o histórico de faltas da escola de todos os anos.
 
+Quando for necessário somente o arquivo de faltas do dia, o botão **Gerar CSV das faltas do dia** baixa apenas esse CSV. As faltas continuam sendo lidas exclusivamente da **Chamada**, sem existir cadastro manual de faltas em Entradas e Saídas.
+
 Os três arquivos referentes ao dia trazem uma coluna com o e-mail do pai de cada aluno e, no começo do arquivo, uma lista única de todos os e-mails encontrados, separados por vírgula. Isso permite abrir o CSV e copiar a lista diretamente para uma comunicação com os responsáveis. Quando o e-mail do pai não estiver cadastrado, o campo fica em branco.
 
 Entradas registradas no módulo são tratadas como atrasos e saídas como saídas antecipadas. As faltas dos CSVs vêm exclusivamente da **Chamada**. Faltas abonadas e dispensadas não entram nos arquivos. O arquivo histórico mantém todas as faltas válidas da escola, inclusive de anos anteriores.
