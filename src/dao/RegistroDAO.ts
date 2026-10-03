@@ -251,4 +251,20 @@ export class RegistroDAO {
         }).toArray();
         return docs.map(doc => this.toRegistro(doc));
     }
+
+    /** Localiza a chamada geral já gravada para não duplicar uma falta manual. */
+    public async findChamadaGeralPorMatriculaEDia(matricula: string, dia: Date): Promise<Registro | null> {
+        const collection = await this.getCollection();
+        const inicioDia = new Date(dia);
+        inicioDia.setHours(0, 0, 0, 0);
+        const fimDia = new Date(dia);
+        fimDia.setHours(23, 59, 59, 999);
+        const doc = await collection.findOne({
+            matricula,
+            codDisciplina: "GERAL",
+            dia: { $gte: inicioDia, $lte: fimDia },
+            "auditoria.deletadoEm": null
+        });
+        return doc ? this.toRegistro(doc) : null;
+    }
 }

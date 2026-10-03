@@ -125,7 +125,7 @@ O sistema conserva por 12 meses o vínculo anterior de cada aluno ao trocar sua 
 
 8. IMPORTAÇÃO E EXPORTAÇÃO DE ARQUIVOS
 
-As telas de alunos e grade de horários aceitam Excel, CSV, TSV e PDFs com texto selecionável e identificam as colunas pelos cabeçalhos, sem depender da ordem. A tela Entradas e Saídas também gera resumo em PDF e arquivos CSV do fechamento diário. Consulte `docs/importacao-de-planilhas.md` e `docs/fechamento-diario.md`.
+As telas de alunos e grade de horários aceitam Excel, CSV, TSV e PDFs com texto selecionável e identificam as colunas pelos cabeçalhos, sem depender da ordem. A tela Entradas e Saídas gera os arquivos CSV do fechamento diário. Consulte `docs/importacao-de-planilhas.md` e `docs/fechamento-diario.md`.
 
 9. CARGOS ACEITOS
 

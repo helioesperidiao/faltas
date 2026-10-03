@@ -29,6 +29,11 @@ export class RegistroRouter {
             registroController.create
         );
 
+        this._router.post(RegistroRouter.PREFIX + "/faltas/lote",
+            jwtMiddleware.validateToken,
+            registroController.criarFaltasGeraisEmLote
+        );
+
         this._router.get(RegistroRouter.PREFIX + "/",
             jwtMiddleware.validateToken,
             registroController.findAll

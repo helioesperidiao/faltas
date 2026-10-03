@@ -24,7 +24,7 @@
     .mode span { display: block; padding: 10px; border: 1px solid #c7cbd1; border-radius: 4px; text-align: center; cursor: pointer; font-size: 13px; }
     .mode input:checked + span { border-color: #163b6b; background: #eaf1fb; color: #163b6b; }
     .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .tipo { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .tipo { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
     .tipo label { position: relative; margin: 0; }
     .tipo input { position: absolute; width: 1px; height: 1px; padding: 0; opacity: 0; }
     .mode input:focus-visible + span,
@@ -33,6 +33,7 @@
     .tipo input:checked + span { color: #fff; border-color: transparent; }
     .tipo .entrada input:checked + span { background: #1c7a3e; }
     .tipo .saida input:checked + span { background: #a6231e; }
+    .tipo .falta input:checked + span { background: #8a5a00; }
     .hint { color: #667085; font-size: 12px; margin: -8px 0 16px; }
     .selected { display: none; background: #f6f8fb; border-left: 3px solid #163b6b; padding: 10px 12px; margin-top: -7px; margin-bottom: 16px; font-size: 13px; }
     .manual { display: none; }
@@ -59,7 +60,7 @@
 <body>
   <div id="app-topbar"></div>
   <main id="conteudo-principal">
-    <div class="page-title"><h1>Entradas e saídas</h1><p>Registre quando um aluno chegou atrasado ou saiu do colégio durante o período.</p></div>
+    <div class="page-title"><h1>Entradas e saídas</h1><p>Registre atrasos, saídas antecipadas e faltas dos alunos.</p></div>
     <div class="grid">
       <section class="card">
         <div class="card-header"><h2>Nova movimentação</h2></div>
@@ -80,10 +81,10 @@
             <p class="hint">Use esta opção quando o aluno ainda não estiver cadastrado.</p>
           </div>
           <div class="two">
-            <div class="field"><label for="data">Data</label><input id="data" type="date"></div>
-              <div class="field"><label for="horario">Horário</label><select id="horario"><optgroup label="Manhã"><option value="07:50">07:50</option><option value="08:40">08:40</option><option value="09:50">09:50</option><option value="10:40">10:40</option><option value="11:40">11:40</option></optgroup><optgroup label="Tarde"><option value="13:00">13:00</option><option value="13:50">13:50</option><option value="14:40">14:40</option><option value="15:30">15:30</option><option value="16:20">16:20</option><option value="17:00">17:00</option></optgroup></select></div>
+              <div class="field"><label for="data">Data</label><input id="data" type="date"></div>
+              <div class="field" id="campo-horario"><label for="horario">Horário</label><select id="horario"><optgroup label="Manhã"><option value="07:50">07:50</option><option value="08:40">08:40</option><option value="09:50">09:50</option><option value="10:40">10:40</option><option value="11:40">11:40</option></optgroup><optgroup label="Tarde"><option value="13:00">13:00</option><option value="13:50">13:50</option><option value="14:40">14:40</option><option value="15:30">15:30</option><option value="16:20">16:20</option><option value="17:00">17:00</option></optgroup></select></div>
           </div>
-          <div class="field"><label>Movimento</label><div class="tipo"><label class="entrada"><input type="radio" name="tipo" value="entrada" checked><span>Entrada</span></label><label class="saida"><input type="radio" name="tipo" value="saida"><span>Saída</span></label></div></div>
+          <div class="field"><label>Ocorrência</label><div class="tipo"><label class="entrada"><input type="radio" name="tipo" value="entrada" checked><span>Entrada</span></label><label class="saida"><input type="radio" name="tipo" value="saida"><span>Saída</span></label><label class="falta"><input type="radio" name="tipo" value="falta"><span>Falta</span></label></div></div>
           <button class="btn" id="salvar" type="button">Adicionar à lista</button>
           <div id="mensagem" class="message" role="status"></div>
         </div>
@@ -100,13 +101,14 @@
       </section>
     </div>
     <section class="card" aria-labelledby="titulo-lista-previa">
-      <div class="card-header"><h2 id="titulo-lista-previa">Prévia de atrasos e saídas</h2></div>
+      <div class="card-header"><h2 id="titulo-lista-previa">Prévia de atrasos, saídas e faltas</h2></div>
       <div class="card-body">
-        <p class="hint" style="margin:0 0 14px">Os alunos abaixo ainda não foram gravados. Revise a lista e confirme cada tipo de movimentação quando terminar.</p>
+        <p class="hint" style="margin:0 0 14px">Os alunos abaixo ainda não foram gravados. Revise a lista e confirme cada tipo de ocorrência quando terminar.</p>
         <div id="lista-previa" class="lista-previa"><div class="empty">Nenhum aluno adicionado à lista.</div></div>
         <div class="fechamento-acoes" style="margin-top:16px">
           <button class="btn" id="salvar-atrasados" type="button">Salvar lista de atrasados</button>
           <button class="btn secondary" id="salvar-saidas" type="button">Salvar lista de saídas antecipadas</button>
+          <button class="btn secondary" id="salvar-faltas" type="button">Salvar lista de faltas</button>
         </div>
       </div>
     </section>
@@ -114,10 +116,7 @@
       <div class="card-header"><h2 id="titulo-fechamento">Fechamento do dia</h2></div>
       <div class="card-body">
         <p class="hint" style="margin:0 0 16px">Gera quatro CSVs: atrasados, saídas antecipadas, faltas do dia e histórico completo de faltas da escola. Os três arquivos do dia incluem os e-mails dos pais.</p>
-        <div class="fechamento-acoes">
-          <button class="btn" id="fechar-dia" type="button">Fechar dia e baixar CSVs</button>
-          <button class="btn secondary" id="baixar-resumo-pdf" type="button">Baixar resumo em PDF</button>
-        </div>
+        <div class="fechamento-acoes"><button class="btn" id="fechar-dia" type="button">Fechar dia e baixar CSVs</button></div>
         <div id="mensagem-fechamento" class="message" role="status"></div>
       </div>
     </section>
@@ -176,7 +175,9 @@
         const titulo = document.createElement('strong');
         titulo.textContent = item.nomeAluno;
         const detalhes = document.createElement('small');
-        detalhes.textContent = `${item.tipo === 'entrada' ? 'Atrasado' : 'Saída antecipada'} · ${item.data.split('-').reverse().join('/')} às ${item.horario} · Matrícula ${item.matricula}`;
+        const tipo = item.tipo === 'entrada' ? 'Atrasado' : item.tipo === 'saida' ? 'Saída antecipada' : 'Falta';
+        const horario = item.tipo === 'falta' ? '' : ` às ${item.horario}`;
+        detalhes.textContent = `${tipo} · ${item.data.split('-').reverse().join('/')}${horario} · Matrícula ${item.matricula}`;
         descricao.append(titulo, detalhes);
         const remover = document.createElement('button');
         remover.type = 'button';
@@ -218,12 +219,18 @@
       $('manual').style.display = manual ? 'block' : 'none';
       selecionado = null;
     }));
+    function atualizarCamposPorTipo() {
+      const falta = document.querySelector('input[name="tipo"]:checked').value === 'falta';
+      $('campo-horario').style.display = falta ? 'none' : 'block';
+    }
+    document.querySelectorAll('input[name="tipo"]').forEach(input => input.addEventListener('change', atualizarCamposPorTipo));
     function adicionarNaLista() {
       const manual = document.querySelector('input[name="origem"]:checked').value === 'manual';
       const nomeAluno = manual ? $('nome-manual').value.trim() : selecionado?.alunoNome;
       const matricula = manual ? $('matricula-manual').value.trim() : selecionado?.matricula;
-      if (!nomeAluno || !matricula || !$('data').value || !$('horario').value) { mostrarMensagem('Preencha aluno, matrícula, data e horário.', 'error'); return; }
-      const item = { nomeAluno, matricula, data: $('data').value, horario: $('horario').value, tipo: document.querySelector('input[name="tipo"]:checked').value };
+      const tipo = document.querySelector('input[name="tipo"]:checked').value;
+      if (!nomeAluno || !matricula || !$('data').value || (tipo !== 'falta' && !$('horario').value)) { mostrarMensagem(tipo === 'falta' ? 'Preencha aluno, matrícula e data.' : 'Preencha aluno, matrícula, data e horário.', 'error'); return; }
+      const item = { nomeAluno, matricula, data: $('data').value, horario: tipo === 'falta' ? '' : $('horario').value, tipo };
       const jaAdicionado = listaPendente.some(pendente =>
         pendente.matricula === item.matricula && pendente.data === item.data && pendente.horario === item.horario && pendente.tipo === item.tipo
       );
@@ -239,15 +246,15 @@
         mostrarMensagem(tipo === 'entrada' ? 'Não há atrasados na lista.' : 'Não há saídas antecipadas na lista.', 'error');
         return;
       }
-      $('salvar-atrasados').disabled = true;
-      $('salvar-saidas').disabled = true;
-      const resposta = await api.post('api/v1/movimentacoes/lote', { movimentacoes: itens });
-      $('salvar-atrasados').disabled = false;
-      $('salvar-saidas').disabled = false;
+      ['salvar-atrasados', 'salvar-saidas', 'salvar-faltas'].forEach(id => $(id).disabled = true);
+      const resposta = tipo === 'falta'
+        ? await api.post('api/v1/registro/faltas/lote', { faltas: itens.map(item => ({ matricula: item.matricula, data: item.data })) })
+        : await api.post('api/v1/movimentacoes/lote', { movimentacoes: itens });
+      ['salvar-atrasados', 'salvar-saidas', 'salvar-faltas'].forEach(id => $(id).disabled = false);
       if (!resposta?.success) { mostrarMensagem(resposta?.message || 'Não foi possível salvar a lista.', 'error'); return; }
       listaPendente = listaPendente.filter(item => item.tipo !== tipo);
       renderListaPendente();
-      mostrarMensagem(tipo === 'entrada' ? 'Lista de atrasados salva com sucesso.' : 'Lista de saídas antecipadas salva com sucesso.', 'ok');
+      mostrarMensagem(tipo === 'entrada' ? 'Lista de atrasados salva com sucesso.' : tipo === 'saida' ? 'Lista de saídas antecipadas salva com sucesso.' : 'Lista de faltas salva com sucesso.', 'ok');
       await carregarHistorico();
     }
     $('salvar').addEventListener('click', adicionarNaLista);
@@ -256,6 +263,7 @@
     $('matricula-manual').addEventListener('keydown', evento => { if (evento.key === 'Enter') { evento.preventDefault(); adicionarNaLista(); } });
     $('salvar-atrasados').addEventListener('click', () => salvarLista('entrada'));
     $('salvar-saidas').addEventListener('click', () => salvarLista('saida'));
+    $('salvar-faltas').addEventListener('click', () => salvarLista('falta'));
 
     function campoCsv(valor) {
       const texto = String(valor == null ? '' : valor);
@@ -296,16 +304,7 @@
       baixarCsv('faltas-geral-escola.csv', 'HISTÓRICO DE FALTAS DA ESCOLA', ['Nome', 'Matrícula', 'Turma', 'Data', 'Ano', 'Situação'], fechamento.faltasHistoricas.map(item => [item.alunoNome, item.matricula, item.turma, item.data, item.ano, item.situacao]), false);
       mostrarMensagemFechamento('Fechamento concluído: os quatro arquivos CSV foram baixados.', 'ok');
     }
-    async function baixarResumoPdf() {
-      const data = $('filtro-data').value;
-      if (!data) { mostrarMensagemFechamento('Selecione a data do resumo.', 'error'); return; }
-      $('baixar-resumo-pdf').disabled = true;
-      const resposta = await api.download(`api/v1/relatorios/fechamento-dia/pdf?data=${encodeURIComponent(data)}`, `fechamento-${data}.pdf`);
-      $('baixar-resumo-pdf').disabled = false;
-      mostrarMensagemFechamento(resposta.success ? 'Resumo em PDF baixado com sucesso.' : (resposta.message || 'Não foi possível gerar o PDF.'), resposta.success ? 'ok' : 'error');
-    }
     $('fechar-dia').addEventListener('click', fecharDia);
-    $('baixar-resumo-pdf').addEventListener('click', baixarResumoPdf);
     carregar();
   </script>
 </body>

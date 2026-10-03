@@ -66,10 +66,6 @@ export class RelatorioRouter {
             relatorioController.fechamentoDia
         );
 
-        this._router.get(RelatorioRouter.PREFIX + "/fechamento-dia/pdf",
-            jwtMiddleware.validateToken,
-            relatorioController.fechamentoDiaPdf
-        );
     }
 
     public getRouter = (): Router => {

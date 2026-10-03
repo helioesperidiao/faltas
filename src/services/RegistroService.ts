@@ -50,6 +50,72 @@ export class RegistroService {
         return await this._registroDAO.create(registro, funcionarioLogado);
     };
 
+    /**
+     * Inclui ausências gerais digitadas em Entradas e Saídas. Se a chamada da
+     * turma já existir, reaproveita o registro do aluno em vez de duplicá-lo.
+     */
+    public criarFaltasGeraisEmLote = async (
+        faltas: Array<{ matricula: string; data: string }>,
+        funcionarioLogado: Funcionario
+    ): Promise<Registro[]> => {
+        const cargosPermitidos = ["Inspetor", "Processo Pedagógico"];
+        if (!cargosPermitidos.includes(funcionarioLogado.cargo.nomeCargo)) {
+            throw new ErrorResponse(403, "Não autorizado", {
+                message: `O cargo "${funcionarioLogado.cargo.nomeCargo}" não pode registrar faltas.`
+            });
+        }
+
+        const chaves = new Set<string>();
+        const registros: Registro[] = [];
+        for (const falta of faltas) {
+            const matricula = falta.matricula.trim();
+            const data = this.lerDataDaLista(falta.data);
+            if (!matricula) {
+                throw new ErrorResponse(400, "Matrícula é obrigatória.");
+            }
+            const chave = `${matricula}\u0000${falta.data}`;
+            if (chaves.has(chave)) {
+                throw new ErrorResponse(400, "A lista contém o mesmo aluno mais de uma vez para a mesma data.");
+            }
+            chaves.add(chave);
+
+            const existente = await this._registroDAO.findChamadaGeralPorMatriculaEDia(matricula, data);
+            if (existente) {
+                if (existente.situacao !== "Dispensada") {
+                    existente.falta = true;
+                    existente.atrasado = "Não";
+                    await this._registroDAO.update(existente, funcionarioLogado);
+                }
+                registros.push(existente);
+                continue;
+            }
+
+            const registro = new Registro();
+            registro.ano = data.getFullYear();
+            registro.codDisciplina = "GERAL";
+            registro.horaInicio = 0;
+            registro.horaFim = 0;
+            registro.matricula = matricula;
+            registro.falta = true;
+            registro.dia = data;
+            registro.atrasado = "Não";
+            registros.push(await this.create(registro, funcionarioLogado));
+        }
+        return registros;
+    };
+
+    private lerDataDaLista(valor: string): Date {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(valor)) {
+            throw new ErrorResponse(400, "Data inválida. Use o formato AAAA-MM-DD.");
+        }
+        const [ano, mes, dia] = valor.split("-").map(Number);
+        const data = new Date(ano, mes - 1, dia);
+        if (data.getFullYear() !== ano || data.getMonth() !== mes - 1 || data.getDate() !== dia) {
+            throw new ErrorResponse(400, "Data inválida. Use o formato AAAA-MM-DD.");
+        }
+        return data;
+    }
+
     //findAll
     public findAll = async (): Promise<Registro[]> => {
         console.log("🟣 RegistroService.findAll()");

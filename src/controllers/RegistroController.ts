@@ -46,6 +46,23 @@ export class RegistroController extends BaseController {
         }).send(response);
     };
 
+    /** Registra, de uma vez, faltas gerais incluídas na lista de Entradas e Saídas. */
+    public criarFaltasGeraisEmLote = async (request: Request, response: Response): Promise<void> => {
+        const funcionarioLogado = this.getFuncionarioLogado(request);
+        const faltas = request.body.faltas;
+        if (!Array.isArray(faltas) || faltas.length === 0) {
+            StandardResponse.error("Adicione pelo menos um aluno à lista de faltas.", null, 400).send(response);
+            return;
+        }
+        if (faltas.some(item => typeof item?.matricula !== 'string' || typeof item?.data !== 'string')) {
+            StandardResponse.error("Cada falta deve informar matrícula e data.", null, 400).send(response);
+            return;
+        }
+
+        const registros = await this._registroService.criarFaltasGeraisEmLote(faltas, funcionarioLogado);
+        StandardResponse.created("Lista de faltas registrada com sucesso", { registros }).send(response);
+    };
+
     //findAll
     public findAll = async (_request: Request, response: Response): Promise<void> => {
         console.log("🔵 RegistroController.findAll()");
