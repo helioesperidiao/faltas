@@ -7,18 +7,35 @@ import { BaseController } from "./BaseController";
 export class MovimentacaoController extends BaseController {
     constructor(private readonly movimentacaoService: MovimentacaoService) { super(); }
 
+    private montarMovimentacao = (dados: any): Movimentacao => {
+        const movimentacao = new Movimentacao();
+        movimentacao.nomeAluno = dados.nomeAluno;
+        movimentacao.matricula = dados.matricula;
+        const [ano, mes, dia] = String(dados.data || '').split("-").map(Number);
+        movimentacao.data = new Date(ano, mes - 1, dia);
+        movimentacao.horario = dados.horario;
+        movimentacao.tipo = dados.tipo;
+        return movimentacao;
+    };
+
     create = async (request: Request, response: Response): Promise<void> => {
         const funcionario = this.getFuncionarioLogado(request);
         const body = request.body.movimentacao;
-        const movimentacao = new Movimentacao();
-        movimentacao.nomeAluno = body.nomeAluno;
-        movimentacao.matricula = body.matricula;
-        const [ano, mes, dia] = body.data.split("-").map(Number);
-        movimentacao.data = new Date(ano, mes - 1, dia);
-        movimentacao.horario = body.horario;
-        movimentacao.tipo = body.tipo;
+        const movimentacao = this.montarMovimentacao(body);
         const resultado = await this.movimentacaoService.create(movimentacao, funcionario);
         StandardResponse.created("Movimentação registrada com sucesso", { movimentacoes: [resultado] }).send(response);
+    };
+
+    createLote = async (request: Request, response: Response): Promise<void> => {
+        const funcionario = this.getFuncionarioLogado(request);
+        const dados = request.body.movimentacoes;
+        if (!Array.isArray(dados) || dados.length === 0) {
+            StandardResponse.error("Adicione pelo menos um aluno à lista.", null, 400).send(response);
+            return;
+        }
+        const movimentacoes = dados.map(item => this.montarMovimentacao(item));
+        const resultado = await this.movimentacaoService.createLote(movimentacoes, funcionario);
+        StandardResponse.created("Lista de movimentações registrada com sucesso", { movimentacoes: resultado }).send(response);
     };
 
     findAll = async (request: Request, response: Response): Promise<void> => {

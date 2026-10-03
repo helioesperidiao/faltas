@@ -11,6 +11,7 @@ import { AlunoRouter } from "./routers/AlunoRouter";
 import { GradeHorarioRouter } from "./routers/GradeHorarioRouter";
 import { RelatorioRouter } from "./routers/RelatorioRouter";
 import { MovimentacaoRouter } from "./routers/MovimentacaoRouter";
+import { ImportacaoRouter } from "./routers/ImportacaoRouter";
 import { ConfiguracaoAlertaFaltaRouter } from "./routers/ConfiguracaoAlertaFaltaRouter";
 import { ErrorResponse } from "./http/ErrorResponse";
 import { StandardResponse } from "./http/StandardResponse";
@@ -29,6 +30,7 @@ export class Server {
     private _gradeHorarioRouter: GradeHorarioRouter;
     private _relatorioRouter: RelatorioRouter;
     private _movimentacaoRouter: MovimentacaoRouter;
+    private _importacaoRouter: ImportacaoRouter;
     private _configuracaoAlertaFaltaRouter: ConfiguracaoAlertaFaltaRouter;
     private _dataBase: MongoDatabase;
 
@@ -48,6 +50,7 @@ export class Server {
         this._gradeHorarioRouter = new GradeHorarioRouter(this._dataBase);
         this._relatorioRouter = new RelatorioRouter(this._dataBase);
         this._movimentacaoRouter = new MovimentacaoRouter(this._dataBase);
+        this._importacaoRouter = new ImportacaoRouter();
         this._configuracaoAlertaFaltaRouter = new ConfiguracaoAlertaFaltaRouter(this._dataBase);
     }
 
@@ -74,6 +77,7 @@ export class Server {
         this._app.use(this._gradeHorarioRouter.getRouter());
         this._app.use(this._relatorioRouter.getRouter());
         this._app.use(this._movimentacaoRouter.getRouter());
+        this._app.use(this._importacaoRouter.getRouter());
         this._app.use(this._configuracaoAlertaFaltaRouter.getRouter());
         this.setupErrorMiddleware();
     }

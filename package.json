@@ -12,9 +12,10 @@
     "lint:fix": "eslint src --ext .ts --fix"
   },
   "dependencies": {
+    "@types/pdfkit": "^0.17.6",
     "bcrypt": "^6.0.0",
-    "compression": "^1.8.1",
     "codepage": "^1.15.0",
+    "compression": "^1.8.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
@@ -23,6 +24,8 @@
     "jsonwebtoken": "^9.0.3",
     "mongodb": "^7.3.0",
     "multer": "^2.2.0",
+    "pdf-parse": "^2.4.5",
+    "pdfkit": "^0.20.2",
     "uuid": "^14.0.1",
     "xlsx": "^0.18.5"
   },

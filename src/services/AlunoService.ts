@@ -32,6 +32,62 @@ export class AlunoService {
         return await this._alunoDAO.create(aluno, funcionarioLogado);
     };
 
+    /**
+     * Aplica uma planilha oficial inteira. Cadastros ausentes na nova lista são
+     * arquivados logicamente; assim, deixam de formar turmas ativas sem apagar
+     * histórico, faltas ou qualquer outro registro já existente.
+     */
+    public substituirImportacao = async (alunosImportados: Aluno[], funcionarioLogado: Funcionario): Promise<{
+        criados: number;
+        atualizados: number;
+        arquivados: number;
+    }> => {
+        if (funcionarioLogado.cargo.nomeCargo !== "Processo Pedagógico") {
+            throw new ErrorResponse(403, "Não autorizado", {
+                message: "Apenas Processo Pedagógico pode importar a lista oficial de alunos."
+            });
+        }
+        if (alunosImportados.length === 0) {
+            throw new ErrorResponse(400, "A planilha não contém alunos para importar.");
+        }
+
+        const matriculasImportadas = new Set<string>();
+        alunosImportados.forEach(aluno => {
+            if (matriculasImportadas.has(aluno.matricula)) {
+                throw new ErrorResponse(400, `A matrícula ${aluno.matricula} aparece mais de uma vez na planilha.`);
+            }
+            matriculasImportadas.add(aluno.matricula);
+        });
+
+        const alunosAtivos = await this._alunoDAO.findAll();
+        const alunosPorMatricula = new Map(alunosAtivos.map(aluno => [aluno.matricula, aluno]));
+        let criados = 0;
+        let atualizados = 0;
+
+        for (const alunoImportado of alunosImportados) {
+            const alunoExistente = alunosPorMatricula.get(alunoImportado.matricula);
+            if (!alunoExistente) {
+                await this._alunoDAO.create(alunoImportado, funcionarioLogado);
+                criados += 1;
+                continue;
+            }
+
+            alunoImportado.idAluno = alunoExistente.idAluno;
+            await this.update(alunoImportado, funcionarioLogado);
+            atualizados += 1;
+        }
+
+        let arquivados = 0;
+        for (const alunoAtivo of alunosAtivos) {
+            if (matriculasImportadas.has(alunoAtivo.matricula)) continue;
+            if (await this._alunoDAO.delete(alunoAtivo, funcionarioLogado)) {
+                arquivados += 1;
+            }
+        }
+
+        return { criados, atualizados, arquivados };
+    };
+
     public findAll = async (): Promise<Aluno[]> => {
         console.log("🟣 AlunoService.findAll()");
         return await this._alunoDAO.findAll();

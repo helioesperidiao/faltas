@@ -38,6 +38,13 @@
     .manual { display: none; }
     .btn { width: 100%; border: 0; border-radius: 4px; padding: 11px 16px; background: #163b6b; color: #fff; font-weight: bold; cursor: pointer; }
     .btn:disabled { opacity: .6; cursor: wait; }
+    .btn.secondary { background: #fff; color: #163b6b; border: 1px solid #163b6b; }
+    .fechamento-acoes { display: flex; gap: 10px; flex-wrap: wrap; }
+    .fechamento-acoes .btn { flex: 1 1 260px; }
+    .lista-previa { display: grid; gap: 8px; }
+    .lista-previa-linha { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 1px solid #d9dee7; border-radius: 4px; font-size: 13px; }
+    .lista-previa-linha small { color: #667085; display: block; margin-top: 2px; }
+    .btn-remover { width: auto; padding: 6px 10px; background: #fff; border: 1px solid #a6231e; color: #a6231e; font-size: 12px; }
     .message { min-height: 18px; margin-top: 12px; font-size: 13px; }
     .message.ok { color: #1c7a3e; } .message.error { color: #a6231e; }
     table { width: 100%; border-collapse: collapse; }
@@ -74,10 +81,10 @@
           </div>
           <div class="two">
             <div class="field"><label for="data">Data</label><input id="data" type="date"></div>
-              <div class="field"><label for="horario">Horário</label><select id="horario"><option value="07:50">07:50</option><option value="08:40">08:40 a 09:00</option><option value="09:50">09:50</option><option value="10:40">10:40</option><option value="11:40">11:40</option></select></div>
+              <div class="field"><label for="horario">Horário</label><select id="horario"><optgroup label="Manhã"><option value="07:50">07:50</option><option value="08:40">08:40</option><option value="09:50">09:50</option><option value="10:40">10:40</option><option value="11:40">11:40</option></optgroup><optgroup label="Tarde"><option value="13:00">13:00</option><option value="13:50">13:50</option><option value="14:40">14:40</option><option value="15:30">15:30</option><option value="16:20">16:20</option><option value="17:00">17:00</option></optgroup></select></div>
           </div>
           <div class="field"><label>Movimento</label><div class="tipo"><label class="entrada"><input type="radio" name="tipo" value="entrada" checked><span>Entrada</span></label><label class="saida"><input type="radio" name="tipo" value="saida"><span>Saída</span></label></div></div>
-          <button class="btn" id="salvar" type="button">Registrar movimentação</button>
+          <button class="btn" id="salvar" type="button">Adicionar à lista</button>
           <div id="mensagem" class="message" role="status"></div>
         </div>
       </section>
@@ -92,6 +99,28 @@
         </div>
       </section>
     </div>
+    <section class="card" aria-labelledby="titulo-lista-previa">
+      <div class="card-header"><h2 id="titulo-lista-previa">Prévia de atrasos e saídas</h2></div>
+      <div class="card-body">
+        <p class="hint" style="margin:0 0 14px">Os alunos abaixo ainda não foram gravados. Revise a lista e confirme cada tipo de movimentação quando terminar.</p>
+        <div id="lista-previa" class="lista-previa"><div class="empty">Nenhum aluno adicionado à lista.</div></div>
+        <div class="fechamento-acoes" style="margin-top:16px">
+          <button class="btn" id="salvar-atrasados" type="button">Salvar lista de atrasados</button>
+          <button class="btn secondary" id="salvar-saidas" type="button">Salvar lista de saídas antecipadas</button>
+        </div>
+      </div>
+    </section>
+    <section class="card" aria-labelledby="titulo-fechamento">
+      <div class="card-header"><h2 id="titulo-fechamento">Fechamento do dia</h2></div>
+      <div class="card-body">
+        <p class="hint" style="margin:0 0 16px">Gera quatro CSVs: atrasados, saídas antecipadas, faltas do dia e histórico completo de faltas da escola. Os três arquivos do dia incluem os e-mails dos pais.</p>
+        <div class="fechamento-acoes">
+          <button class="btn" id="fechar-dia" type="button">Fechar dia e baixar CSVs</button>
+          <button class="btn secondary" id="baixar-resumo-pdf" type="button">Baixar resumo em PDF</button>
+        </div>
+        <div id="mensagem-fechamento" class="message" role="status"></div>
+      </div>
+    </section>
   </main>
   <script type="module">
     import ApiService from './ApiService.js';
@@ -104,6 +133,7 @@
     const api = new ApiService(token);
     let alunos = [];
     let selecionado = null;
+    let listaPendente = [];
     const $ = id => document.getElementById(id);
     const hoje = new Date();
     const dataHoje = [hoje.getFullYear(), String(hoje.getMonth() + 1).padStart(2, '0'), String(hoje.getDate()).padStart(2, '0')].join('-');
@@ -111,6 +141,7 @@
     $('filtro-data').value = dataHoje;
 
     function mostrarMensagem(texto, tipo) { $('mensagem').textContent = texto; $('mensagem').className = `message ${tipo || ''}`; }
+    function mostrarMensagemFechamento(texto, tipo) { $('mensagem-fechamento').textContent = texto; $('mensagem-fechamento').className = `message ${tipo || ''}`; }
     function nomeOpcao(aluno) { return `${aluno.alunoNome} - ${aluno.matricula}`; }
     function preencherBusca() { $('lista-alunos').innerHTML = alunos.map(aluno => `<option value="${nomeOpcao(aluno)}"></option>`).join(''); }
     function selecionarAluno() {
@@ -123,6 +154,41 @@
     function renderHistorico(registros) {
       if (!registros.length) { $('historico').textContent = 'Nenhuma movimentação registrada.'; return; }
       $('historico').innerHTML = `<table><thead><tr><th>Aluno</th><th>Data</th><th>Hora</th><th>Tipo</th></tr></thead><tbody>${registros.map(item => `<tr><td>${item.nomeAluno}<br><small>${item.matricula}</small></td><td>${new Date(item.data).toLocaleDateString('pt-BR')}</td><td>${item.horario}</td><td><span class="badge ${item.tipo}">${item.tipo === 'entrada' ? 'Entrada' : 'Saída'}</span></td></tr>`).join('')}</tbody></table>`;
+    }
+    function limparCamposDeAluno() {
+      $('busca-aluno').value = '';
+      $('nome-manual').value = '';
+      $('matricula-manual').value = '';
+      selecionado = null;
+      $('aluno-selecionado').style.display = 'none';
+    }
+    function renderListaPendente() {
+      const painel = $('lista-previa');
+      painel.innerHTML = '';
+      if (!listaPendente.length) {
+        painel.innerHTML = '<div class="empty">Nenhum aluno adicionado à lista.</div>';
+        return;
+      }
+      listaPendente.forEach((item, indice) => {
+        const linha = document.createElement('div');
+        linha.className = 'lista-previa-linha';
+        const descricao = document.createElement('div');
+        const titulo = document.createElement('strong');
+        titulo.textContent = item.nomeAluno;
+        const detalhes = document.createElement('small');
+        detalhes.textContent = `${item.tipo === 'entrada' ? 'Atrasado' : 'Saída antecipada'} · ${item.data.split('-').reverse().join('/')} às ${item.horario} · Matrícula ${item.matricula}`;
+        descricao.append(titulo, detalhes);
+        const remover = document.createElement('button');
+        remover.type = 'button';
+        remover.className = 'btn btn-remover';
+        remover.textContent = 'Remover';
+        remover.addEventListener('click', () => {
+          listaPendente.splice(indice, 1);
+          renderListaPendente();
+        });
+        linha.append(descricao, remover);
+        painel.appendChild(linha);
+      });
     }
     async function carregar() {
       const alunosResponse = await api.get('api/v1/alunos/');
@@ -152,19 +218,94 @@
       $('manual').style.display = manual ? 'block' : 'none';
       selecionado = null;
     }));
-    $('salvar').addEventListener('click', async () => {
+    function adicionarNaLista() {
       const manual = document.querySelector('input[name="origem"]:checked').value === 'manual';
       const nomeAluno = manual ? $('nome-manual').value.trim() : selecionado?.alunoNome;
       const matricula = manual ? $('matricula-manual').value.trim() : selecionado?.matricula;
       if (!nomeAluno || !matricula || !$('data').value || !$('horario').value) { mostrarMensagem('Preencha aluno, matrícula, data e horário.', 'error'); return; }
-      $('salvar').disabled = true;
-      const resposta = await api.post('api/v1/movimentacoes/', { movimentacao: { nomeAluno, matricula, data: $('data').value, horario: $('horario').value, tipo: document.querySelector('input[name="tipo"]:checked').value } });
-      $('salvar').disabled = false;
-      if (!resposta?.success) { mostrarMensagem(resposta?.message || 'Não foi possível registrar.', 'error'); return; }
-      mostrarMensagem('Movimentação registrada com sucesso.', 'ok');
-      $('busca-aluno').value = ''; $('nome-manual').value = ''; $('matricula-manual').value = ''; selecionado = null; $('aluno-selecionado').style.display = 'none';
+      const item = { nomeAluno, matricula, data: $('data').value, horario: $('horario').value, tipo: document.querySelector('input[name="tipo"]:checked').value };
+      const jaAdicionado = listaPendente.some(pendente =>
+        pendente.matricula === item.matricula && pendente.data === item.data && pendente.horario === item.horario && pendente.tipo === item.tipo
+      );
+      if (jaAdicionado) { mostrarMensagem('Esse aluno já está na lista para esse horário.', 'error'); return; }
+      listaPendente.push(item);
+      limparCamposDeAluno();
+      renderListaPendente();
+      mostrarMensagem('Aluno adicionado à prévia. A lista ainda não foi gravada.', 'ok');
+    }
+    async function salvarLista(tipo) {
+      const itens = listaPendente.filter(item => item.tipo === tipo);
+      if (!itens.length) {
+        mostrarMensagem(tipo === 'entrada' ? 'Não há atrasados na lista.' : 'Não há saídas antecipadas na lista.', 'error');
+        return;
+      }
+      $('salvar-atrasados').disabled = true;
+      $('salvar-saidas').disabled = true;
+      const resposta = await api.post('api/v1/movimentacoes/lote', { movimentacoes: itens });
+      $('salvar-atrasados').disabled = false;
+      $('salvar-saidas').disabled = false;
+      if (!resposta?.success) { mostrarMensagem(resposta?.message || 'Não foi possível salvar a lista.', 'error'); return; }
+      listaPendente = listaPendente.filter(item => item.tipo !== tipo);
+      renderListaPendente();
+      mostrarMensagem(tipo === 'entrada' ? 'Lista de atrasados salva com sucesso.' : 'Lista de saídas antecipadas salva com sucesso.', 'ok');
       await carregarHistorico();
-    });
+    }
+    $('salvar').addEventListener('click', adicionarNaLista);
+    $('busca-aluno').addEventListener('keydown', evento => { if (evento.key === 'Enter') { evento.preventDefault(); adicionarNaLista(); } });
+    $('nome-manual').addEventListener('keydown', evento => { if (evento.key === 'Enter') { evento.preventDefault(); adicionarNaLista(); } });
+    $('matricula-manual').addEventListener('keydown', evento => { if (evento.key === 'Enter') { evento.preventDefault(); adicionarNaLista(); } });
+    $('salvar-atrasados').addEventListener('click', () => salvarLista('entrada'));
+    $('salvar-saidas').addEventListener('click', () => salvarLista('saida'));
+
+    function campoCsv(valor) {
+      const texto = String(valor == null ? '' : valor);
+      return `"${texto.replace(/"/g, '""')}"`;
+    }
+    function baixarCsv(nomeArquivo, titulo, cabecalhos, linhas, incluirEmails, emailsPais = []) {
+      const emails = [...new Set(emailsPais.filter(Boolean))];
+      const conteudo = [
+        titulo,
+        incluirEmails ? `E-mails dos pais;${campoCsv(emails.join(','))}` : '',
+        incluirEmails ? '' : null,
+        cabecalhos.map(campoCsv).join(';'),
+        ...linhas.map(linha => linha.map(campoCsv).join(';'))
+      ].filter(linha => linha !== null).join('\r\n');
+      const arquivo = new Blob(["\uFEFF", conteudo], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(arquivo);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = nomeArquivo;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+    async function fecharDia() {
+      const data = $('filtro-data').value;
+      if (!data) { mostrarMensagemFechamento('Selecione a data que deseja fechar.', 'error'); return; }
+      $('fechar-dia').disabled = true;
+      mostrarMensagemFechamento('Gerando os arquivos do fechamento...', '');
+      const resposta = await api.get(`api/v1/relatorios/fechamento-dia?data=${encodeURIComponent(data)}`);
+      $('fechar-dia').disabled = false;
+      if (!resposta?.success) { mostrarMensagemFechamento(resposta?.message || 'Não foi possível gerar o fechamento.', 'error'); return; }
+      const fechamento = resposta.data;
+      const sufixo = fechamento.data;
+      baixarCsv(`fechamento-${sufixo}-atrasados.csv`, 'ALUNOS ATRASADOS', ['Nome', 'Matrícula', 'Turma', 'Data', 'Horário', 'E-mail do pai'], fechamento.atrasados.map(item => [item.alunoNome, item.matricula, item.turma, item.data, item.horario || '', item.emailPai]), true, fechamento.atrasados.map(item => item.emailPai));
+      baixarCsv(`fechamento-${sufixo}-saidas-antecipadas.csv`, 'SAÍDAS ANTECIPADAS', ['Nome', 'Matrícula', 'Turma', 'Data', 'Horário', 'E-mail do pai'], fechamento.saidasAntecipadas.map(item => [item.alunoNome, item.matricula, item.turma, item.data, item.horario || '', item.emailPai]), true, fechamento.saidasAntecipadas.map(item => item.emailPai));
+      baixarCsv(`fechamento-${sufixo}-faltas-do-dia.csv`, 'FALTAS DO DIA', ['Nome', 'Matrícula', 'Turma', 'Data', 'E-mail do pai'], fechamento.faltasDoDia.map(item => [item.alunoNome, item.matricula, item.turma, item.data, item.emailPai]), true, fechamento.faltasDoDia.map(item => item.emailPai));
+      baixarCsv('faltas-geral-escola.csv', 'HISTÓRICO DE FALTAS DA ESCOLA', ['Nome', 'Matrícula', 'Turma', 'Data', 'Ano', 'Situação'], fechamento.faltasHistoricas.map(item => [item.alunoNome, item.matricula, item.turma, item.data, item.ano, item.situacao]), false);
+      mostrarMensagemFechamento('Fechamento concluído: os quatro arquivos CSV foram baixados.', 'ok');
+    }
+    async function baixarResumoPdf() {
+      const data = $('filtro-data').value;
+      if (!data) { mostrarMensagemFechamento('Selecione a data do resumo.', 'error'); return; }
+      $('baixar-resumo-pdf').disabled = true;
+      const resposta = await api.download(`api/v1/relatorios/fechamento-dia/pdf?data=${encodeURIComponent(data)}`, `fechamento-${data}.pdf`);
+      $('baixar-resumo-pdf').disabled = false;
+      mostrarMensagemFechamento(resposta.success ? 'Resumo em PDF baixado com sucesso.' : (resposta.message || 'Não foi possível gerar o PDF.'), resposta.success ? 'ok' : 'error');
+    }
+    $('fechar-dia').addEventListener('click', fecharDia);
+    $('baixar-resumo-pdf').addEventListener('click', baixarResumoPdf);
     carregar();
   </script>
 </body>

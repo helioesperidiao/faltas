@@ -23,6 +23,32 @@ export interface FaltasPorAluno {
     movimentacao: { tipo: string; horario: string } | null;
 }
 
+export interface LinhaFechamentoDia {
+    matricula: string;
+    alunoNome: string;
+    turma: string;
+    data: string;
+    horario?: string;
+    emailPai: string;
+}
+
+export interface FaltaHistoricaEscola {
+    matricula: string;
+    alunoNome: string;
+    turma: string;
+    data: string;
+    ano: number;
+    situacao: string;
+}
+
+export interface FechamentoDia {
+    data: string;
+    atrasados: LinhaFechamentoDia[];
+    saidasAntecipadas: LinhaFechamentoDia[];
+    faltasDoDia: LinhaFechamentoDia[];
+    faltasHistoricas: FaltaHistoricaEscola[];
+}
+
 export interface AlertaFaltaBimestral {
     matricula: string;
     alunoNome: string;
@@ -214,6 +240,82 @@ export class RelatorioService {
         const dataInicio = new Date(ano, mes - 1, 1);
         const dataFim = new Date(ano, mes, 0, 23, 59, 59);
         return await this.faltasPorTurmaEPeriodo(turma, dataInicio, dataFim);
+    };
+
+    /**
+     * Reúne os dados do encerramento sem alterar as chamadas já registradas.
+     * A movimentação de entrada representa atraso e a de saída, saída antecipada.
+     */
+    public fechamentoDia = async (data: Date): Promise<FechamentoDia> => {
+        if (!(data instanceof Date) || isNaN(data.getTime())) {
+            throw new ErrorResponse(400, "Data inválida para o fechamento do dia.");
+        }
+
+        const [alunos, registros, movimentacoesDoDia] = await Promise.all([
+            this._alunoDAO.findAll(),
+            this._registroDAO.findAll(),
+            this._movimentacaoDAO.findAll(data)
+        ]);
+        const alunosPorMatricula = new Map(alunos.map(aluno => [aluno.matricula, aluno]));
+        const dataFormatada = this.chaveData(data);
+        const dadosDoAluno = (matricula: string, nomeRegistrado: string, turmaRegistrada = '') => {
+            const aluno = alunosPorMatricula.get(matricula);
+            return {
+                matricula,
+                alunoNome: aluno?.alunoNome || nomeRegistrado,
+                turma: turmaRegistrada || aluno?.turma || '',
+                emailPai: aluno?.paiEmail || ''
+            };
+        };
+        const compararLinhas = (primeira: LinhaFechamentoDia, segunda: LinhaFechamentoDia): number =>
+            primeira.alunoNome.localeCompare(segunda.alunoNome, 'pt-BR') || (primeira.horario || '').localeCompare(segunda.horario || '');
+
+        const atrasados = movimentacoesDoDia
+            .filter(movimentacao => movimentacao.tipo === 'entrada')
+            .map(movimentacao => ({
+                ...dadosDoAluno(movimentacao.matricula, movimentacao.nomeAluno),
+                data: dataFormatada,
+                horario: movimentacao.horario
+            }))
+            .sort(compararLinhas);
+        const saidasAntecipadas = movimentacoesDoDia
+            .filter(movimentacao => movimentacao.tipo === 'saida')
+            .map(movimentacao => ({
+                ...dadosDoAluno(movimentacao.matricula, movimentacao.nomeAluno),
+                data: dataFormatada,
+                horario: movimentacao.horario
+            }))
+            .sort(compararLinhas);
+        const faltasValidas = registros.filter(registro =>
+            registro.falta === true && !['Abonada', 'Dispensada'].includes(registro.situacao)
+        );
+
+        // Uma chamada geral deve aparecer uma única vez por aluno no fechamento,
+        // mesmo se a base ainda tiver duplicatas antigas daquela mesma data.
+        const faltasDoDiaPorMatricula = new Map<string, LinhaFechamentoDia>();
+        faltasValidas
+            .filter(registro => this.mesmaData(registro.dia, data))
+            .forEach(registro => {
+                if (faltasDoDiaPorMatricula.has(registro.matricula)) return;
+                faltasDoDiaPorMatricula.set(registro.matricula, {
+                    ...dadosDoAluno(registro.matricula, registro.alunoNome, registro.turma),
+                    data: dataFormatada
+                });
+            });
+        const faltasDoDia = Array.from(faltasDoDiaPorMatricula.values()).sort(compararLinhas);
+
+        const faltasHistoricas = faltasValidas
+            .map(registro => ({
+                matricula: registro.matricula,
+                alunoNome: registro.alunoNome,
+                turma: registro.turma,
+                data: this.chaveData(registro.dia),
+                ano: registro.ano,
+                situacao: registro.situacao
+            }))
+            .sort((primeira, segunda) => primeira.data.localeCompare(segunda.data) || primeira.alunoNome.localeCompare(segunda.alunoNome, 'pt-BR'));
+
+        return { data: dataFormatada, atrasados, saidasAntecipadas, faltasDoDia, faltasHistoricas };
     };
 
     /**

@@ -9,3 +9,4 @@
 - [Alertas de faltas bimestrais](alertas-de-faltas.md): limites por disciplina e cálculo da carga semanal.
 - [Chamada e relatórios](chamada-e-relatorios.md): presença padrão, registro de faltas e filtro de turma.
 - [Exclusão de registros](exclusao-de-registros.md): exclusão lógica, atualização das listagens e mensagens de resultado.
+- [Fechamento diário](fechamento-diario.md): arquivos de atrasos, saídas, faltas e contatos dos responsáveis.

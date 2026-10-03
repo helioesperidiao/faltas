@@ -102,8 +102,8 @@
   <div class="card mb-3" id="cardImportacaoAluno">
     <div class="card-header">Importar Alunos via planilha</div>
     <div class="card-body">
-      <p class="text-muted">Use os cabeçalhos ANO_REF, CURSO, TURMA_PREF, SERIE, SIT_ALUNO, ALUNO, NOME_COMPL e os dados de contato dos responsáveis. Todos os cabeçalhos da planilha são identificados antes da importação.</p>
-      <input type="file" id="fileCsv" class="form-control mb-2" accept=".xlsx,.xls,.xlsm,.csv,.tsv,.txt" aria-label="Planilha de alunos para importação" />
+      <p class="text-muted">Use os cabeçalhos ANO_REF, CURSO, TURMA_PREF, SERIE, SIT_ALUNO, ALUNO, NOME_COMPL e os dados de contato dos responsáveis. Também aceitamos PDF com texto selecionável e colunas da tabela preservadas.</p>
+      <input type="file" id="fileCsv" class="form-control mb-2" accept=".xlsx,.xls,.xlsm,.csv,.tsv,.txt,.pdf,application/pdf" aria-label="Planilha ou PDF de alunos para importação" />
       <button type="button" id="btnImportar" class="btn btn-primary mb-2">Importar</button>
       <div class="progress mb-2" style="display:none;" id="divProgressoWrap">
         <div id="barraProgresso" class="progress-bar" role="progressbar" style="width: 0%">0%</div>
@@ -488,7 +488,13 @@
         return;
       }
 
-      const texto = await lerArquivoPlanilha(fileCsv.files[0] || null);
+      let texto;
+      try {
+        texto = await lerArquivoPlanilha(fileCsv.files[0] || null, api);
+      } catch (erro) {
+        mostrarMensagem(erro.message || "Não foi possível ler o arquivo selecionado.", "danger");
+        return;
+      }
       if (texto === null) {
         mostrarMensagem("A leitura da planilha foi concluída sem dados para importar.", "warning");
         return;
@@ -505,44 +511,44 @@
         return;
       }
 
-      divProgressoWrap.style.display = "block";
       divFalhas.innerHTML = "";
       const falhas = [];
-
+      const alunosParaImportar = [];
       for (let i = 0; i < linhas.length; i++) {
         const linha = linhas[i];
-        try {
-          const erroValidacao = validarLinha(linha);
-          if (erroValidacao) {
-            falhas.push({ linha: linha.__linha || i + 2, motivo: erroValidacao });
-            continue;
-          }
-          const resposta = await api.post("api/v1/alunos", {
-            aluno: alunoDaPlanilha(linha)
-          });
-          if (!resposta?.success) {
-            falhas.push({ linha: linha.__linha, motivo: resposta.message || "Falha desconhecida" });
-          }
-        } catch (erro) {
-          falhas.push({ linha: linha.__linha, motivo: erro.message });
+        const erroValidacao = validarLinha(linha);
+        if (erroValidacao) {
+          falhas.push({ linha: linha.__linha || i + 2, motivo: erroValidacao });
+        } else {
+          alunosParaImportar.push(alunoDaPlanilha(linha));
         }
-
-        const percentual = Math.round(((i + 1) / linhas.length) * 100);
-        barraProgresso.style.width = `${percentual}%`;
-        barraProgresso.textContent = `${percentual}%`;
       }
 
       if (falhas.length > 0) {
         const lista = falhas.map(f => `<li>Linha ${f.linha}: ${f.motivo}</li>`).join("");
         divFalhas.innerHTML = `<div class="alert alert-danger"><strong>Falhas na importação:</strong><ul>${lista}</ul></div>`;
-      } else {
-        const cabecalhos = Object.entries(importacao.mapeamento).map(([campo, indice]) =>
-          `${campo} ← ${importacao.cabecalhos[indice]}`).join(" · ");
-        divFalhas.innerHTML = `<div class="alert alert-success">Importação concluída sem falhas.<br><small>Cabeçalhos identificados: ${cabecalhos}</small></div>`;
+        return;
       }
 
+      divProgressoWrap.style.display = "block";
+      barraProgresso.style.width = "50%";
+      barraProgresso.textContent = "50%";
+      btnImportar.disabled = true;
+      const resposta = await api.post("api/v1/alunos/importacao/substituir", { alunos: alunosParaImportar });
+      btnImportar.disabled = false;
+      barraProgresso.style.width = "100%";
+      barraProgresso.textContent = "100%";
+      if (!resposta?.success) {
+        divFalhas.innerHTML = `<div class="alert alert-danger">${resposta?.message || "Não foi possível importar a lista oficial."}</div>`;
+        return;
+      }
+
+      const cabecalhos = Object.entries(importacao.mapeamento).map(([campo, indice]) =>
+        `${campo} ← ${importacao.cabecalhos[indice]}`).join(" · ");
+      divFalhas.innerHTML = `<div class="alert alert-success">Importação concluída: ${resposta.data.criados} criado(s), ${resposta.data.atualizados} atualizado(s) e ${resposta.data.arquivados} cadastro(s) antigo(s) removido(s) da lista ativa.<br><small>Histórico e registros anteriores foram preservados. Cabeçalhos identificados: ${cabecalhos}</small></div>`;
+
       fileCsv.value = "";
-      listAll();
+      await listAll();
     };
 
     listAll();

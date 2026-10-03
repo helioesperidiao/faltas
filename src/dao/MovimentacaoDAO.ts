@@ -28,6 +28,25 @@ export class MovimentacaoDAO {
         return movimentacao;
     }
 
+    /** Persiste de uma vez a lista que o inspetor revisou no navegador. */
+    async createLote(movimentacoes: Movimentacao[], funcionario: Funcionario): Promise<Movimentacao[]> {
+        if (movimentacoes.length === 0) return [];
+        movimentacoes.forEach(movimentacao => movimentacao.marcarCriadoPor(funcionario.idFuncionario));
+        const documentos: OptionalId<Document>[] = movimentacoes.map(movimentacao => ({
+            nomeAluno: movimentacao.nomeAluno,
+            matricula: movimentacao.matricula,
+            data: movimentacao.data,
+            horario: movimentacao.horario,
+            tipo: movimentacao.tipo,
+            auditoria: movimentacao.auditoria.toJSON()
+        }));
+        const resultado = await (await this.getCollection()).insertMany(documentos);
+        movimentacoes.forEach((movimentacao, indice) => {
+            movimentacao.idMovimentacao = resultado.insertedIds[indice].toString();
+        });
+        return movimentacoes;
+    }
+
     async findAll(data?: Date): Promise<Movimentacao[]> {
         const filter: Filter<Document> = { "auditoria.deletadoEm": null };
         if (data) {

@@ -123,9 +123,9 @@ faltas_cti/
 
 O sistema conserva por 12 meses o vínculo anterior de cada aluno ao trocar sua turma. A operação coletiva de virada anual está disponível em Alunos para o cargo Administrador. Consulte `docs/turmas-e-historico.md` para a regra de retenção e o efeito nos registros e relatórios.
 
-8. IMPORTAÇÃO DE PLANILHAS
+8. IMPORTAÇÃO E EXPORTAÇÃO DE ARQUIVOS
 
-As telas de alunos e grade de horários aceitam Excel, CSV e TSV e identificam as colunas pelos cabeçalhos, sem depender da ordem. Consulte `docs/importacao-de-planilhas.md` para os cabeçalhos reconhecidos e formatos de horário.
+As telas de alunos e grade de horários aceitam Excel, CSV, TSV e PDFs com texto selecionável e identificam as colunas pelos cabeçalhos, sem depender da ordem. A tela Entradas e Saídas também gera resumo em PDF e arquivos CSV do fechamento diário. Consulte `docs/importacao-de-planilhas.md` e `docs/fechamento-diario.md`.
 
 9. CARGOS ACEITOS
 
@@ -142,3 +142,7 @@ No painel de `Processo Pedagógico`, o sistema avisa quando um aluno atinge o li
 12. CHAMADA E RELATÓRIOS
 
 A chamada registra presença como padrão e grava a turma completa ao ser concluída. Os relatórios usam a mesma lista de turmas da chamada. Consulte `docs/chamada-e-relatorios.md`.
+
+13. FECHAMENTO DIÁRIO
+
+Em Entradas e Saídas, o fechamento da data selecionada baixa quatro CSVs: atrasados, saídas antecipadas, faltas do dia e histórico completo de faltas. Os três arquivos diários incluem os contatos dos pais. Consulte `docs/fechamento-diario.md`.

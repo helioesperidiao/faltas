@@ -14,53 +14,77 @@ export class AlunoController extends BaseController {
         this._alunoService = alunoServiceDependency;
     }
 
+    private montarAluno = (dados: any): Aluno => {
+        const aluno = new Aluno();
+        aluno.matricula = dados.matricula;
+        aluno.alunoNome = dados.alunoNome;
+        aluno.turma = dados.turma;
+        aluno.curso = dados.curso;
+        aluno.serie = dados.serie;
+        aluno.situacao = dados.situacao;
+        aluno.ano = dados.ano;
+        aluno.dataNascimento = dados.dataNascimento;
+        aluno.alunoRG = dados.alunoRG;
+        aluno.alunoFone = dados.alunoFone;
+        aluno.alunoEmail = dados.alunoEmail;
+        aluno.alunoFoneCel = dados.alunoFoneCel;
+        aluno.paiNome = dados.paiNome;
+        aluno.paiFoneCel = dados.paiFoneCel;
+        aluno.paiFoneFixo = dados.paiFoneFixo;
+        aluno.paiFoneRecado = dados.paiFoneRecado;
+        aluno.paiEmail = dados.paiEmail;
+        aluno.maeNome = dados.maeNome;
+        aluno.maeFoneCel = dados.maeFoneCel;
+        aluno.maeFoneFixo = dados.maeFoneFixo;
+        aluno.maeFoneRecado = dados.maeFoneRecado;
+        aluno.maeEmail = dados.maeEmail;
+        aluno.finanNome = dados.finanNome;
+        aluno.finanFone = dados.finanFone;
+        aluno.legalNome = dados.legalNome;
+        aluno.legalFone = dados.legalFone;
+        return aluno;
+    };
+
+    private dadosMinimosValidos = (dados: any): boolean => {
+        const matricula = typeof dados?.matricula === "string" ? dados.matricula.trim() : "";
+        const alunoNome = typeof dados?.alunoNome === "string" ? dados.alunoNome.trim() : "";
+        const turma = typeof dados?.turma === "string" ? dados.turma.trim() : "";
+        return Boolean(matricula && matricula.length <= 8 && alunoNome && turma);
+    };
+
     public create = async (request: Request, response: Response): Promise<void> => {
         console.log("🔵 AlunoController.create()");
 
         const funcionarioLogado: Funcionario = this.getFuncionarioLogado(request);
         const dados = request.body.aluno;
-        const matricula = typeof dados?.matricula === "string" ? dados.matricula.trim() : "";
-        const alunoNome = typeof dados?.alunoNome === "string" ? dados.alunoNome.trim() : "";
-        const turma = typeof dados?.turma === "string" ? dados.turma.trim() : "";
-
-        if (!matricula || matricula.length > 8 || !alunoNome || !turma) {
+        if (!this.dadosMinimosValidos(dados)) {
             StandardResponse.error("Dados inválidos. Matrícula (até 8 caracteres), nome e turma são obrigatórios.", null, 400).send(response);
             return;
         }
-
-        const novoAluno = new Aluno();
-        novoAluno.matricula = matricula;
-        novoAluno.alunoNome = alunoNome;
-        novoAluno.turma = turma;
-        novoAluno.curso = dados.curso;
-        novoAluno.serie = dados.serie;
-        novoAluno.situacao = dados.situacao;
-        novoAluno.ano = dados.ano;
-        novoAluno.dataNascimento = dados.dataNascimento;
-        novoAluno.alunoRG = dados.alunoRG;
-        novoAluno.alunoFone = dados.alunoFone;
-        novoAluno.alunoEmail = dados.alunoEmail;
-        novoAluno.alunoFoneCel = dados.alunoFoneCel;
-        novoAluno.paiNome = dados.paiNome;
-        novoAluno.paiFoneCel = dados.paiFoneCel;
-        novoAluno.paiFoneFixo = dados.paiFoneFixo;
-        novoAluno.paiFoneRecado = dados.paiFoneRecado;
-        novoAluno.paiEmail = dados.paiEmail;
-        novoAluno.maeNome = dados.maeNome;
-        novoAluno.maeFoneCel = dados.maeFoneCel;
-        novoAluno.maeFoneFixo = dados.maeFoneFixo;
-        novoAluno.maeFoneRecado = dados.maeFoneRecado;
-        novoAluno.maeEmail = dados.maeEmail;
-        novoAluno.finanNome = dados.finanNome;
-        novoAluno.finanFone = dados.finanFone;
-        novoAluno.legalNome = dados.legalNome;
-        novoAluno.legalFone = dados.legalFone;
+        const novoAluno = this.montarAluno(dados);
 
         const resultado = await this._alunoService.create(novoAluno, funcionarioLogado);
 
         StandardResponse.created("Aluno cadastrado com sucesso", {
             alunos: [resultado]
         }).send(response);
+    };
+
+    public substituirImportacao = async (request: Request, response: Response): Promise<void> => {
+        const funcionarioLogado = this.getFuncionarioLogado(request);
+        const dadosImportados = request.body.alunos;
+        if (!Array.isArray(dadosImportados) || dadosImportados.length === 0) {
+            StandardResponse.error("Envie ao menos um aluno para importar.", null, 400).send(response);
+            return;
+        }
+        if (dadosImportados.some(dados => !this.dadosMinimosValidos(dados))) {
+            StandardResponse.error("Há alunos inválidos na planilha. Matrícula, nome e turma são obrigatórios.", null, 400).send(response);
+            return;
+        }
+
+        const alunos = dadosImportados.map(dados => this.montarAluno(dados));
+        const resultado = await this._alunoService.substituirImportacao(alunos, funcionarioLogado);
+        StandardResponse.success("Lista oficial de alunos importada com sucesso", resultado).send(response);
     };
 
     public findAll = async (_request: Request, response: Response): Promise<void> => {

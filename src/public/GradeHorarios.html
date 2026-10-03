@@ -39,8 +39,8 @@
   <div class="card mb-3">
     <div class="card-header">Importar Grade via planilha</div>
     <div class="card-body">
-      <p class="text-muted">Use os cabeçalhos TURMA, DISCIPLINA, NOME_DESCIPLINA, SEMANA_EXTENSO e HORAINICIALFINAL. O sistema separa horários como 10:50-11:40 e normaliza dias como quarta-feira.</p>
-      <input type="file" id="fileCsv" class="form-control mb-2" accept=".xlsx,.xls,.xlsm,.csv,.tsv,.txt" aria-label="Planilha de grade de horários para importação" />
+      <p class="text-muted">Use os cabeçalhos TURMA, DISCIPLINA, NOME_DESCIPLINA, SEMANA_EXTENSO e HORAINICIALFINAL. O sistema separa horários como 10:50-11:40 e normaliza dias como quarta-feira. PDF com texto selecionável também é aceito.</p>
+      <input type="file" id="fileCsv" class="form-control mb-2" accept=".xlsx,.xls,.xlsm,.csv,.tsv,.txt,.pdf,application/pdf" aria-label="Planilha ou PDF de grade de horários para importação" />
       <button type="button" id="btnImportar" class="btn btn-primary mb-2">Importar</button>
       <div class="progress mb-2" style="display:none;" id="divProgressoWrap">
         <div id="barraProgresso" class="progress-bar" role="progressbar" style="width: 0%">0%</div>
@@ -241,7 +241,13 @@
         return;
       }
 
-      const texto = await lerArquivoPlanilha(fileCsv.files[0] || null);
+      let texto;
+      try {
+        texto = await lerArquivoPlanilha(fileCsv.files[0] || null, api);
+      } catch (erro) {
+        mostrarMensagem(erro.message || "Não foi possível ler o arquivo selecionado.", "danger");
+        return;
+      }
       if (texto === null) {
         mostrarMensagem("A leitura da planilha foi concluída sem dados para importar.", "warning");
         return;
@@ -259,68 +265,59 @@
         return;
       }
 
-      divProgressoWrap.style.display = "block";
       divFalhas.innerHTML = "";
       const falhas = [];
       let ignoradas = 0;
-      const respostaGradesAtuais = await api.get("api/v1/gradehorarios");
-      const gradesParaImportar = respostaGradesAtuais.success
-        ? respostaGradesAtuais.data.gradeHorarios || []
-        : gradesAtuais;
-      const gradesPorChave = new Map(gradesParaImportar.map(grade => [chaveDaGrade(grade), grade]));
-      let criadas = 0;
-      let atualizadas = 0;
+      const gradesParaImportar = [];
 
       for (let i = 0; i < linhas.length; i++) {
         const linha = linhas[i];
-        try {
-          const textoLinha = Object.values(linha).join(" ").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-          if (textoLinha.includes("estagio supervisionado")) {
-            ignoradas++;
-            const percentualIgnorada = Math.round(((i + 1) / linhas.length) * 100);
-            barraProgresso.style.width = `${percentualIgnorada}%`;
-            barraProgresso.textContent = `${percentualIgnorada}%`;
-            continue;
-          }
-          const gradeHorario = {
-            turma: linha.turma,
-            horaInicio: linha.horaInicio,
-            horaFim: linha.horaFim,
-            dia: linha.dia,
-            cod: linha.cod,
-            disciplina: linha.disciplina
-          };
-          const chave = chaveDaGrade(gradeHorario);
-          const existente = gradesPorChave.get(chave);
-          const resposta = existente
-            ? await api.put("api/v1/gradehorarios", existente.idGradeHorario, { gradeHorario })
-            : await api.post("api/v1/gradehorarios", { gradeHorario });
-          if (!resposta?.success) {
-            falhas.push({ linha: linha.__linha, motivo: resposta?.message || "Falha desconhecida" });
-          } else if (existente) {
-            atualizadas += 1;
-          } else {
-            criadas += 1;
-            gradesPorChave.set(chave, resposta.data.gradeHorarios[0]);
-          }
-        } catch (erro) {
-          falhas.push({ linha: linha.__linha, motivo: erro.message });
+        const textoLinha = Object.values(linha).join(" ").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+        if (textoLinha.includes("estagio supervisionado")) {
+          ignoradas++;
+          continue;
         }
-
-        const percentual = Math.round(((i + 1) / linhas.length) * 100);
-        barraProgresso.style.width = `${percentual}%`;
-        barraProgresso.textContent = `${percentual}%`;
+        if (!linha.turma || !linha.horaInicio || !linha.horaFim || !linha.dia || !linha.cod || !linha.disciplina) {
+          falhas.push({ linha: linha.__linha, motivo: "Turma, horários, dia, código e disciplina são obrigatórios." });
+          continue;
+        }
+        gradesParaImportar.push({
+          turma: linha.turma,
+          horaInicio: linha.horaInicio,
+          horaFim: linha.horaFim,
+          dia: linha.dia,
+          cod: linha.cod,
+          disciplina: linha.disciplina
+        });
       }
 
       const avisoIgnoradas = ignoradas > 0 ? `<p>Foram ignoradas ${ignoradas} linha(s) de Estágio Supervisionado.</p>` : "";
       if (falhas.length > 0) {
         const lista = falhas.map(f => `<li>Linha ${f.linha}: ${f.motivo}</li>`).join("");
         divFalhas.innerHTML = `<div class="alert alert-danger"><strong>Falhas na importação:</strong>${avisoIgnoradas}<ul>${lista}</ul></div>`;
-      } else {
-        const cabecalhos = Object.entries(importacao.mapeamento).map(([campo, indice]) =>
-          `${campo} ← ${importacao.cabecalhos[indice]}`).join(" · ");
-        divFalhas.innerHTML = `<div class="alert alert-success">Importação concluída sem falhas: ${criadas} criada(s) e ${atualizadas} atualizada(s).${avisoIgnoradas}<br><small>Cabeçalhos identificados: ${cabecalhos}</small></div>`;
+        return;
       }
+      if (!gradesParaImportar.length) {
+        divFalhas.innerHTML = `<div class="alert alert-warning">Não há aulas válidas para importar.${avisoIgnoradas}</div>`;
+        return;
+      }
+
+      divProgressoWrap.style.display = "block";
+      barraProgresso.style.width = "50%";
+      barraProgresso.textContent = "50%";
+      btnImportar.disabled = true;
+      const resposta = await api.post("api/v1/gradehorarios/importacao/substituir", { gradeHorarios: gradesParaImportar });
+      btnImportar.disabled = false;
+      barraProgresso.style.width = "100%";
+      barraProgresso.textContent = "100%";
+      if (!resposta?.success) {
+        divFalhas.innerHTML = `<div class="alert alert-danger">${resposta?.message || "Não foi possível importar a grade oficial."}</div>`;
+        return;
+      }
+
+      const cabecalhos = Object.entries(importacao.mapeamento).map(([campo, indice]) =>
+        `${campo} ← ${importacao.cabecalhos[indice]}`).join(" · ");
+      divFalhas.innerHTML = `<div class="alert alert-success">Importação concluída: ${resposta.data.criadas} criada(s), ${resposta.data.atualizadas} atualizada(s) e ${resposta.data.arquivadas} aula(s) antiga(s) removida(s) da grade ativa.${avisoIgnoradas}<br><small>As aulas antigas continuam preservadas no banco. Cabeçalhos identificados: ${cabecalhos}</small></div>`;
 
       fileCsv.value = "";
       await listAll();

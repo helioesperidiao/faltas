@@ -26,6 +26,11 @@ export class AlunoRouter {
             alunoController.create
         );
 
+        this._router.post(AlunoRouter.PREFIX + "/importacao/substituir",
+            jwtMiddleware.validateToken,
+            alunoController.substituirImportacao
+        );
+
         this._router.get(AlunoRouter.PREFIX + "/",
             jwtMiddleware.validateToken,
             alunoController.findAll
