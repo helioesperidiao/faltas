@@ -39,6 +39,7 @@ export interface FaltaHistoricaEscola {
     data: string;
     ano: number;
     situacao: string;
+    emailPai: string;
 }
 
 export interface FechamentoDia {
@@ -251,12 +252,18 @@ export class RelatorioService {
             throw new ErrorResponse(400, "Data inválida para o fechamento do dia.");
         }
 
-        const [alunos, registros, movimentacoesDoDia] = await Promise.all([
+        const [alunos, alunosArquivados, registros, movimentacoesDoDia] = await Promise.all([
             this._alunoDAO.findAll(),
+            this._alunoDAO.findAllDeleted(),
             this._registroDAO.findAll(),
             this._movimentacaoDAO.findAll(data)
         ]);
-        const alunosPorMatricula = new Map(alunos.map(aluno => [aluno.matricula, aluno]));
+        // Registros históricos podem pertencer a alunos arquivados após uma
+        // importação. Mantemos seus contatos para montar os CSVs completos.
+        const alunosPorMatricula = new Map([
+            ...alunosArquivados.map(aluno => [aluno.matricula, aluno] as const),
+            ...alunos.map(aluno => [aluno.matricula, aluno] as const)
+        ]);
         const dataFormatada = this.chaveData(data);
         const dadosDoAluno = (matricula: string, nomeRegistrado: string, turmaRegistrada = '') => {
             const aluno = alunosPorMatricula.get(matricula);
@@ -306,9 +313,7 @@ export class RelatorioService {
 
         const faltasHistoricas = faltasValidas
             .map(registro => ({
-                matricula: registro.matricula,
-                alunoNome: registro.alunoNome,
-                turma: registro.turma,
+                ...dadosDoAluno(registro.matricula, registro.alunoNome, registro.turma),
                 data: this.chaveData(registro.dia),
                 ano: registro.ano,
                 situacao: registro.situacao

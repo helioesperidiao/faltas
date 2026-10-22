@@ -1,17 +1,13 @@
-# Fechamento diário
+# Entradas, saídas e arquivos CSV
 
 ## Finalidade
 
-Na tela **Entradas e Saídas**, o botão **Fechar dia e baixar CSVs** monta o fechamento da data escolhida sem alterar ou apagar registros existentes. O sistema baixa quatro arquivos: alunos atrasados, alunos que saíram antecipadamente, faltas daquele dia e o histórico de faltas da escola de todos os anos.
+Na tela **Entradas e Saídas**, a pessoa informa a matrícula do aluno. O nome é buscado automaticamente no cadastro e aparece no campo ao lado. Ao pressionar Enter, o aluno entra apenas na prévia; os registros não são gravados nesse momento. Depois de incluir todos, o botão **Finalizar lista de alunos** salva de uma vez os atrasos e as saídas antecipadas.
 
-Quando for necessário somente o arquivo de faltas do dia, o botão **Gerar CSV das faltas do dia** baixa apenas esse CSV. As faltas continuam sendo lidas exclusivamente da **Chamada**, sem existir cadastro manual de faltas em Entradas e Saídas.
+A tela não permite cadastrar faltas. As faltas são registradas exclusivamente na **Chamada** e são essas informações que alimentam o arquivo de faltas gerais da escola. Faltas abonadas, dispensadas ou excluídas não aparecem no arquivo.
 
-Os três arquivos referentes ao dia trazem uma coluna com o e-mail do pai de cada aluno e, no começo do arquivo, uma lista única de todos os e-mails encontrados, separados por vírgula. Isso permite abrir o CSV e copiar a lista diretamente para uma comunicação com os responsáveis. Quando o e-mail do pai não estiver cadastrado, o campo fica em branco.
+## Arquivos CSV
 
-Entradas registradas no módulo são tratadas como atrasos e saídas como saídas antecipadas. As faltas dos CSVs vêm exclusivamente da **Chamada**. Faltas abonadas e dispensadas não entram nos arquivos. O arquivo histórico mantém todas as faltas válidas da escola, inclusive de anos anteriores.
+A área **Arquivos CSV** oferece três ações: antecipados, atrasados e faltas gerais. Cada ação baixa dois arquivos: um CSV com os alunos e seus dados e outro CSV somente com os e-mails dos pais correspondentes, separados por vírgula. Os arquivos de antecipados e atrasados usam a data selecionada em **Dia dos registros**; o de faltas gerais reúne todo o histórico válido da escola.
 
-Para registrar vários alunos de uma vez, a pessoa pesquisa ou digita o aluno e usa **Adicionar à lista** (ou pressiona Enter). A prévia aparece abaixo sem salvar nada. Ao terminar, usa **Salvar lista de atrasados** ou **Salvar lista de saídas antecipadas**; somente nessa confirmação toda a lista correspondente é gravada no banco de uma vez.
-
-## Horários
-
-O fechamento diário é disponibilizado exclusivamente em CSV. Para registrar movimentações no período da tarde, estão disponíveis os horários 13:00, 13:50, 14:40, 15:30, 16:20 e 17:00, além dos horários da manhã.
+Para registrar movimentações no período da tarde, estão disponíveis os horários 13:00, 13:50, 14:40, 15:30, 16:20 e 17:00, além dos horários da manhã.

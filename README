@@ -145,4 +145,4 @@ A chamada registra presença como padrão e grava a turma completa ao ser conclu
 
 13. FECHAMENTO DIÁRIO
 
-Em Entradas e Saídas, o fechamento da data selecionada baixa quatro CSVs: atrasados, saídas antecipadas, faltas do dia e histórico completo de faltas. Os três arquivos diários incluem os contatos dos pais. Consulte `docs/fechamento-diario.md`.
+Em Entradas e Saídas, a matrícula adiciona o aluno à prévia de atrasos ou saídas, e a finalização grava a lista inteira. A área de arquivos gera pares de CSVs para antecipados, atrasados e faltas gerais da escola: uma lista de alunos e outra com os e-mails dos pais. Consulte `docs/fechamento-diario.md`.
