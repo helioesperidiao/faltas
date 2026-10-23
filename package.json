@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "kill-port 3000 && taskkill /IM nginx.exe /F 2>nul & cd nginx && start /B nginx && cd .. && nodemon",
-    "build": "tsc",
+    "build": "tsc && tsc-alias",
     "start": "node dist/server.js",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -13,8 +13,8 @@
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
-    "compression": "^1.8.1",
     "codepage": "^1.15.0",
+    "compression": "^1.8.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
@@ -42,6 +42,7 @@
     "nodemon": "^3.1.14",
     "ts-jest": "^29.4.11",
     "ts-node": "^10.9.2",
+    "tsc-alias": "^1.9.9",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^6.0.3"
   },

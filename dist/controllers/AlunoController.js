@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AlunoController = void 0;
-const Aluno_1 = require("@/models/Aluno");
-const StandardResponse_1 = require("@/http/StandardResponse");
+const Aluno_1 = require("../models/Aluno.js");
+const StandardResponse_1 = require("../http/StandardResponse.js");
 const BaseController_1 = require("./BaseController");
 class AlunoController extends BaseController_1.BaseController {
     _alunoService;

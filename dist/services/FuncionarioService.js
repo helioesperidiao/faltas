@@ -9,7 +9,7 @@ const Cargo_1 = require("../models/Cargo");
 const Funcionario_1 = require("../models/Funcionario");
 const ErrorResponse_1 = require("../http/ErrorResponse");
 const MeuTokenJWT_1 = require("../http/MeuTokenJWT");
-const Cargos_1 = require("@/constants/Cargos");
+const Cargos_1 = require("../constants/Cargos.js");
 class FuncionarioService {
     _funcionarioDAO;
     _cargoDAO;

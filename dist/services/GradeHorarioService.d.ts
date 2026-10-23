@@ -1,6 +1,6 @@
 import { GradeHorarioDAO } from "../dao/GradeHorarioDAO";
 import { GradeHorario } from "../models/GradeHorario";
-import { Funcionario } from "@/models/Funcionario";
+import { Funcionario } from "../models/Funcionario.js";
 export declare class GradeHorarioService {
     private _gradeHorarioDAO;
     constructor(gradeHorarioDAODependency: GradeHorarioDAO);

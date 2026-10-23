@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.BaseController = void 0;
-const Funcionario_1 = require("@/models/Funcionario");
+const Funcionario_1 = require("../models/Funcionario.js");
 class BaseController {
     getFuncionarioLogado(request) {
         const funcionarioLogadoJson = request.funcionarioLogado;

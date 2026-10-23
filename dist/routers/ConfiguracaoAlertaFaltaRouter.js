@@ -2,10 +2,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ConfiguracaoAlertaFaltaRouter = void 0;
 const express_1 = require("express");
-const ConfiguracaoAlertaFaltaDAO_1 = require("@/dao/ConfiguracaoAlertaFaltaDAO");
-const ConfiguracaoAlertaFaltaService_1 = require("@/services/ConfiguracaoAlertaFaltaService");
-const ConfiguracaoAlertaFaltaController_1 = require("@/controllers/ConfiguracaoAlertaFaltaController");
-const JwtMiddleware_1 = require("@/middlewares/JwtMiddleware");
+const ConfiguracaoAlertaFaltaDAO_1 = require("../dao/ConfiguracaoAlertaFaltaDAO.js");
+const ConfiguracaoAlertaFaltaService_1 = require("../services/ConfiguracaoAlertaFaltaService.js");
+const ConfiguracaoAlertaFaltaController_1 = require("../controllers/ConfiguracaoAlertaFaltaController.js");
+const JwtMiddleware_1 = require("../middlewares/JwtMiddleware.js");
 class ConfiguracaoAlertaFaltaRouter {
     static PREFIX = "/api/v1/alertas-faltas/configuracoes";
     router;

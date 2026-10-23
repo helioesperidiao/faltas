@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RegistroController = void 0;
-const Registro_1 = require("@/models/Registro");
-const StandardResponse_1 = require("@/http/StandardResponse");
+const Registro_1 = require("../models/Registro.js");
+const StandardResponse_1 = require("../http/StandardResponse.js");
 const BaseController_1 = require("./BaseController");
 class RegistroController extends BaseController_1.BaseController {
     _registroService;

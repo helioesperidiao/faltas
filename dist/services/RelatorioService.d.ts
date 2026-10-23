@@ -2,9 +2,9 @@ import { AlunoDAO } from "../dao/AlunoDAO";
 import { RegistroDAO } from "../dao/RegistroDAO";
 import { MovimentacaoDAO } from "../dao/MovimentacaoDAO";
 import { GradeHorarioDAO } from "../dao/GradeHorarioDAO";
-import { Funcionario } from "@/models/Funcionario";
-import { ConfiguracaoAlertaFaltaDAO } from "@/dao/ConfiguracaoAlertaFaltaDAO";
-import { AlertaFaltaDAO } from "@/dao/AlertaFaltaDAO";
+import { Funcionario } from "../models/Funcionario.js";
+import { ConfiguracaoAlertaFaltaDAO } from "../dao/ConfiguracaoAlertaFaltaDAO.js";
+import { AlertaFaltaDAO } from "../dao/AlertaFaltaDAO.js";
 export interface FrequenciaAluno {
     matricula: string;
     alunoNome: string;

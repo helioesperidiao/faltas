@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.CargoService = void 0;
 const Cargo_1 = require("../models/Cargo");
 const ErrorResponse_1 = require("../http/ErrorResponse");
-const Cargos_1 = require("@/constants/Cargos");
+const Cargos_1 = require("../constants/Cargos.js");
 class CargoService {
     _cargoDAO;
     constructor(cargoDAODependency) {

@@ -1,6 +1,6 @@
 import { GradeHorario } from "../models/GradeHorario";
 import { MongoDatabase } from "../database/MongoDatabase";
-import { Funcionario } from "@/models/Funcionario";
+import { Funcionario } from "../models/Funcionario.js";
 export declare class GradeHorarioDAO {
     private _database;
     constructor(dbInstance: MongoDatabase);

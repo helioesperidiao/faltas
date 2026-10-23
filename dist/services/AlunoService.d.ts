@@ -1,6 +1,6 @@
 import { AlunoDAO } from "../dao/AlunoDAO";
 import { Aluno } from "../models/Aluno";
-import { Funcionario } from "@/models/Funcionario";
+import { Funcionario } from "../models/Funcionario.js";
 export declare class AlunoService {
     private _alunoDAO;
     constructor(alunoDAODependency: AlunoDAO);

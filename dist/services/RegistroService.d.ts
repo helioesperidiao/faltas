@@ -1,6 +1,6 @@
 import { RegistroDAO } from "../dao/RegistroDAO";
 import { Registro } from "../models/Registro";
-import { Funcionario } from "@/models/Funcionario";
+import { Funcionario } from "../models/Funcionario.js";
 import { AlunoDAO } from "../dao/AlunoDAO";
 import { DispensaDAO } from "../dao/DispensaDAO";
 export declare class RegistroService {

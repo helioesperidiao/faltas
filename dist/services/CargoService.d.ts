@@ -1,6 +1,6 @@
 import { CargoDAO } from "../dao/CargoDAO";
 import { Cargo } from "../models/Cargo";
-import { Funcionario } from "@/models/Funcionario";
+import { Funcionario } from "../models/Funcionario.js";
 export declare class CargoService {
     private _cargoDAO;
     constructor(cargoDAODependency: CargoDAO);

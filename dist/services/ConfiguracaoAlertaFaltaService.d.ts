@@ -1,5 +1,5 @@
-import { ConfiguracaoAlertaFalta, ConfiguracaoAlertaFaltaDAO } from "@/dao/ConfiguracaoAlertaFaltaDAO";
-import { Funcionario } from "@/models/Funcionario";
+import { ConfiguracaoAlertaFalta, ConfiguracaoAlertaFaltaDAO } from "../dao/ConfiguracaoAlertaFaltaDAO.js";
+import { Funcionario } from "../models/Funcionario.js";
 export declare class ConfiguracaoAlertaFaltaService {
     private readonly dao;
     constructor(dao: ConfiguracaoAlertaFaltaDAO);

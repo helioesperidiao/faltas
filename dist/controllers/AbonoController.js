@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AbonoController = void 0;
-const Abono_1 = require("@/models/Abono");
-const StandardResponse_1 = require("@/http/StandardResponse");
+const Abono_1 = require("../models/Abono.js");
+const StandardResponse_1 = require("../http/StandardResponse.js");
 const BaseController_1 = require("./BaseController");
 class AbonoController extends BaseController_1.BaseController {
     _abonoService;

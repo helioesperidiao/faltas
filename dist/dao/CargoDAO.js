@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.CargoDAO = void 0;
 const mongodb_1 = require("mongodb");
 const Cargo_1 = require("../models/Cargo");
-const Auditoria_1 = require("@/models/Auditoria");
+const Auditoria_1 = require("../models/Auditoria.js");
 class CargoDAO {
     _database;
     constructor(dbInstance) {

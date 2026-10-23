@@ -1,5 +1,5 @@
 import { MongoDatabase } from "../database/MongoDatabase";
-import { Funcionario } from "@/models/Funcionario";
+import { Funcionario } from "../models/Funcionario.js";
 export declare class FuncionarioDAO {
     private _database;
     constructor(dbInstance: MongoDatabase);

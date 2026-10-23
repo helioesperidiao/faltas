@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RelatorioService = void 0;
-const ErrorResponse_1 = require("@/http/ErrorResponse");
+const ErrorResponse_1 = require("../http/ErrorResponse.js");
 class RelatorioService {
     _alunoDAO;
     _registroDAO;

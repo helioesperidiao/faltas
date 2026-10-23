@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GradeHorarioController = void 0;
-const GradeHorario_1 = require("@/models/GradeHorario");
-const StandardResponse_1 = require("@/http/StandardResponse");
+const GradeHorario_1 = require("../models/GradeHorario.js");
+const StandardResponse_1 = require("../http/StandardResponse.js");
 const BaseController_1 = require("./BaseController");
 class GradeHorarioController extends BaseController_1.BaseController {
     _gradeHorarioService;

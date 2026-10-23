@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { ConfiguracaoAlertaFaltaService } from "@/services/ConfiguracaoAlertaFaltaService";
+import { ConfiguracaoAlertaFaltaService } from "../services/ConfiguracaoAlertaFaltaService.js";
 import { BaseController } from "./BaseController";
 export declare class ConfiguracaoAlertaFaltaController extends BaseController {
     private readonly service;

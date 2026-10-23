@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RelatorioController = void 0;
-const StandardResponse_1 = require("@/http/StandardResponse");
+const StandardResponse_1 = require("../http/StandardResponse.js");
 const BaseController_1 = require("./BaseController");
 class RelatorioController extends BaseController_1.BaseController {
     _relatorioService;

@@ -6,8 +6,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.MeuTokenJWT = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const crypto_1 = __importDefault(require("crypto"));
-const Funcionario_1 = require("@/models/Funcionario");
-const Cargo_1 = require("@/models/Cargo");
+const Funcionario_1 = require("../models/Funcionario.js");
+const Cargo_1 = require("../models/Cargo.js");
 class MeuTokenJWT {
     _key;
     _alg;

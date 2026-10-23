@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DispensaController = void 0;
-const Dispensa_1 = require("@/models/Dispensa");
-const StandardResponse_1 = require("@/http/StandardResponse");
+const Dispensa_1 = require("../models/Dispensa.js");
+const StandardResponse_1 = require("../http/StandardResponse.js");
 const BaseController_1 = require("./BaseController");
 class DispensaController extends BaseController_1.BaseController {
     _dispensaService;

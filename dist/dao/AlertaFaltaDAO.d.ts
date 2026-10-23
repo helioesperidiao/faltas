@@ -1,5 +1,5 @@
-import { MongoDatabase } from "@/database/MongoDatabase";
-import { Funcionario } from "@/models/Funcionario";
+import { MongoDatabase } from "../database/MongoDatabase.js";
+import { Funcionario } from "../models/Funcionario.js";
 export interface DadosAlertaFalta {
     matricula: string;
     alunoNome: string;
