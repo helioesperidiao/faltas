@@ -141,6 +141,7 @@
       const classeSituacao = situacao => {
         if (situacao === "Ausente") return "text-danger fw-bold";
         if (situacao === "Presente") return "text-success fw-bold";
+        if (situacao === "Atrasado") return "text-warning-emphasis fw-bold";
         return "";
       };
       const linhas = resposta.data.frequencia.map(item =>
