@@ -210,6 +210,51 @@ export default class ApiService {
         }
     }
 
+    /** Envia um arquivo protegido por autenticação sem forçar cabeçalho JSON. */
+    async upload(uri, formData) {
+        const fullUri = this._buildUrl(uri);
+        try {
+            const headers = { "Accept": "application/json" };
+            if (this.#token) headers["Authorization"] = `Bearer ${this.#token}`;
+            const options = { method: "POST", headers, body: formData };
+            const response = await fetch(fullUri, options);
+            const jsonObj = await response.json();
+            this._logRequest('POST', fullUri, { method: "POST", headers }, response, jsonObj);
+            return jsonObj;
+        } catch (error) {
+            this._logRequest('POST', fullUri, {}, null, null, error);
+            return { success: false, message: error.message || "Não foi possível enviar o arquivo." };
+        }
+    }
+
+    /** Baixa um arquivo protegido por token, como o resumo PDF do fechamento. */
+    async download(uri, fileName) {
+        const fullUri = this._buildUrl(uri);
+        try {
+            const headers = { "Accept": "application/pdf" };
+            if (this.#token) headers["Authorization"] = `Bearer ${this.#token}`;
+            const response = await fetch(fullUri, { method: "GET", headers });
+            if (!response.ok) {
+                let mensagem = `HTTP ${response.status}`;
+                try { mensagem = (await response.json()).message || mensagem; } catch { /* resposta sem JSON */ }
+                throw new Error(mensagem);
+            }
+            const arquivo = await response.blob();
+            const url = URL.createObjectURL(arquivo);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+            return { success: true };
+        } catch (error) {
+            this._logRequest('GET', fullUri, {}, null, null, error);
+            return { success: false, message: error.message || "Não foi possível baixar o arquivo." };
+        }
+    }
+
     /**
      * Método para atualizar um recurso via PUT usando ID e objeto JSON.
      * @param {string} uri - URL base do recurso.

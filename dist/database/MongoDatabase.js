@@ -6,8 +6,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.MongoDatabase = void 0;
 const mongodb_1 = require("mongodb");
 const dotenv_1 = __importDefault(require("dotenv"));
-const Cargos_1 = require("../constants/Cargos.js");
-const GradeHorario_1 = require("../models/GradeHorario.js");
+const Cargos_1 = require("@/constants/Cargos");
+const GradeHorario_1 = require("@/models/GradeHorario");
 dotenv_1.default.config();
 class MongoDatabase {
     static _client = null;

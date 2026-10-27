@@ -19,6 +19,7 @@ class GradeHorarioRouter {
         const gradeHorarioController = new GradeHorarioController_1.GradeHorarioController(gradeHorarioService);
         const jwtMiddleware = new JwtMiddleware_1.JwtMiddleware();
         this._router.post(GradeHorarioRouter.PREFIX + "/", jwtMiddleware.validateToken, gradeHorarioController.create);
+        this._router.post(GradeHorarioRouter.PREFIX + "/importacao/substituir", jwtMiddleware.validateToken, gradeHorarioController.substituirImportacao);
         this._router.get(GradeHorarioRouter.PREFIX + "/", jwtMiddleware.validateToken, gradeHorarioController.findAll);
         this._router.get(GradeHorarioRouter.PREFIX + "/count", jwtMiddleware.validateToken, gradeHorarioController.count);
         this._router.get(GradeHorarioRouter.PREFIX + "/deleted", jwtMiddleware.validateToken, gradeHorarioController.findAllDeleted);

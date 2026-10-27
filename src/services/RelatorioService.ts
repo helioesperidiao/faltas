@@ -4,6 +4,7 @@ import { Registro } from "../models/Registro";
 import { Movimentacao } from "../models/Movimentacao";
 import { MovimentacaoDAO } from "../dao/MovimentacaoDAO";
 import { GradeHorarioDAO } from "../dao/GradeHorarioDAO";
+import { GradeHorario } from "../models/GradeHorario";
 import { Funcionario } from "@/models/Funcionario";
 import { ErrorResponse } from "@/http/ErrorResponse";
 import { ConfiguracaoAlertaFaltaDAO } from "@/dao/ConfiguracaoAlertaFaltaDAO";
@@ -21,6 +22,33 @@ export interface FaltasPorAluno {
     alunoNome: string;
     totalFaltas: number;
     movimentacao: { tipo: string; horario: string } | null;
+}
+
+export interface LinhaFechamentoDia {
+    matricula: string;
+    alunoNome: string;
+    turma: string;
+    data: string;
+    horario?: string;
+    emailPai: string;
+}
+
+export interface FaltaHistoricaEscola {
+    matricula: string;
+    alunoNome: string;
+    turma: string;
+    data: string;
+    ano: number;
+    situacao: string;
+    emailPai: string;
+}
+
+export interface FechamentoDia {
+    data: string;
+    atrasados: LinhaFechamentoDia[];
+    saidasAntecipadas: LinhaFechamentoDia[];
+    faltasDoDia: LinhaFechamentoDia[];
+    faltasHistoricas: FaltaHistoricaEscola[];
 }
 
 export interface AlertaFaltaBimestral {
@@ -75,17 +103,32 @@ export class RelatorioService {
         return data.toISOString().slice(0, 10);
     }
 
-    private faltaConsiderandoMovimentacao(registro: Registro, movimentacoes: Movimentacao[]): boolean {
-        const doAlunoNoDia = movimentacoes
+    private movimentacoesDoAlunoNoDia(registro: Registro, movimentacoes: Movimentacao[]): Movimentacao[] {
+        return movimentacoes
             .filter(movimentacao => movimentacao.matricula === registro.matricula && this.mesmaData(movimentacao.data, registro.dia))
             .sort((a, b) => a.horario.localeCompare(b.horario));
+    }
 
-        if (doAlunoNoDia.length === 0) return registro.falta;
-        if (registro.horaInicio === 0) return doAlunoNoDia[doAlunoNoDia.length - 1].tipo === "saida";
+    /**
+     * Retorna a situação da aula no seu horário de início. A chamada fornece a
+     * situação inicial do dia; cada entrada ou saída registrada até o começo
+     * daquela aula atualiza essa situação. Logo, quem entra às 08:40 falta às
+     * 07:50 e está presente na aula iniciada às 08:40.
+     */
+    private faltaNoHorario(registro: Registro, movimentacoes: Movimentacao[], horarioInicio: string): boolean {
+        const doAlunoNoDia = this.movimentacoesDoAlunoNoDia(registro, movimentacoes);
+        let falta = registro.falta;
+        doAlunoNoDia
+            .filter(movimentacao => movimentacao.horario <= horarioInicio)
+            .forEach(movimentacao => {
+                falta = movimentacao.tipo === "saida";
+            });
+        return falta;
+    }
 
+    private faltaConsiderandoMovimentacao(registro: Registro, movimentacoes: Movimentacao[]): boolean {
         const horarioDaAula = `${String(registro.horaInicio).padStart(2, "0")}:00`;
-        const movimentoAplicavel = doAlunoNoDia.filter(movimentacao => movimentacao.horario <= horarioDaAula).pop();
-        return movimentoAplicavel ? movimentoAplicavel.tipo === "saida" : registro.falta;
+        return this.faltaNoHorario(registro, movimentacoes, horarioDaAula);
     }
 
     private ultimaMovimentacao(matricula: string, movimentacoes: Movimentacao[], dataInicio?: Date, dataFim?: Date): { tipo: string; horario: string } | null {
@@ -143,13 +186,39 @@ export class RelatorioService {
     private normalizarTurmaEquivalente = (valor: string): string =>
         this.normalizarTurma(valor).replace(/^(etec|econ)/, '');
 
+    /** Recupera a grade exata da turma ou a sigla histórica equivalente. */
+    private aulasDaTurmaNoDia(turma: string, dia: string, grades: GradeHorario[]): GradeHorario[] {
+        const normalizada = this.normalizarTurma(turma);
+        const equivalente = this.normalizarTurmaEquivalente(turma);
+        const doMesmoDia = grades.filter(grade => this.normalizarDiaSemana(grade.dia) === dia);
+        const aulasExatas = doMesmoDia.filter(grade => this.normalizarTurma(grade.turma) === normalizada);
+        return aulasExatas.length > 0
+            ? aulasExatas
+            : doMesmoDia.filter(grade => this.normalizarTurmaEquivalente(grade.turma) === equivalente);
+    }
+
+    /** Indica se a chegada/saída parcial deixou ao menos uma aula ausente no dia. */
+    private possuiFaltaNaGradeDoDia(registro: Registro, movimentacoes: Movimentacao[], grades: GradeHorario[]): boolean {
+        if (registro.codDisciplina.trim().toUpperCase() !== "GERAL") {
+            return this.faltaConsiderandoMovimentacao(registro, movimentacoes);
+        }
+        const aulas = this.aulasDaTurmaNoDia(registro.turma, this.diaSemanaDaData(registro.dia), grades);
+        // Grades ainda não importadas não podem fazer uma ausência geral parecer
+        // presença; nesse caso preservamos a situação registrada na chamada.
+        if (aulas.length === 0) return registro.falta;
+        return aulas.some(aula => this.faltaNoHorario(registro, movimentacoes, aula.horaInicio));
+    }
+
     //frequência de uma turma num dia: busca os alunos da turma, depois os registros do dia, e interpola via software
     public frequenciaPorTurma = async (turma: string, dia: Date): Promise<FrequenciaAluno[]> => {
         console.log("🟣 RelatorioService.frequenciaPorTurma()");
 
         const alunosDaTurma = await this._alunoDAO.findByTurmaNoPeriodo(turma, dia, dia);
-        const todosRegistros = await this._registroDAO.findAll();
-        const movimentacoes = await this._movimentacaoDAO.findAll();
+        const [todosRegistros, movimentacoes, grades] = await Promise.all([
+            this._registroDAO.findAll(),
+            this._movimentacaoDAO.findAll(),
+            this._gradeHorarioDAO.findAll()
+        ]);
 
         return alunosDaTurma.map(aluno => {
             const registroDoDia = todosRegistros.find(registro =>
@@ -163,7 +232,10 @@ export class RelatorioService {
                 if (registroDoDia.situacao !== "Normal") {
                     situacao = registroDoDia.situacao;
                 } else {
-                    situacao = this.faltaConsiderandoMovimentacao(registroDoDia, movimentacoes) ? "Ausente" : "Presente";
+                    const possuiFalta = this.possuiFaltaNaGradeDoDia(registroDoDia, movimentacoes, grades);
+                    const possuiEntrada = this.movimentacoesDoAlunoNoDia(registroDoDia, movimentacoes)
+                        .some(movimentacao => movimentacao.tipo === "entrada");
+                    situacao = possuiFalta ? (possuiEntrada ? "Atrasado" : "Ausente") : "Presente";
                 }
             }
 
@@ -181,12 +253,15 @@ export class RelatorioService {
         console.log("🟣 RelatorioService.faltasPorTurmaEPeriodo()");
 
         const alunosDaTurma = await this._alunoDAO.findByTurmaNoPeriodo(turma, dataInicio, dataFim);
-        const todosRegistros = await this._registroDAO.findAll();
-        const movimentacoes = await this._movimentacaoDAO.findAll();
+        const [todosRegistros, movimentacoes, grades] = await Promise.all([
+            this._registroDAO.findAll(),
+            this._movimentacaoDAO.findAll(),
+            this._gradeHorarioDAO.findAll()
+        ]);
 
         const registrosNoPeriodo = todosRegistros.filter((registro: Registro) =>
             registro.turma === turma &&
-            registro.dia >= dataInicio && registro.dia <= dataFim && this.faltaConsiderandoMovimentacao(registro, movimentacoes)
+            registro.dia >= dataInicio && registro.dia <= dataFim && this.possuiFaltaNaGradeDoDia(registro, movimentacoes, grades)
         );
 
         return alunosDaTurma.map(aluno => {
@@ -214,6 +289,86 @@ export class RelatorioService {
         const dataInicio = new Date(ano, mes - 1, 1);
         const dataFim = new Date(ano, mes, 0, 23, 59, 59);
         return await this.faltasPorTurmaEPeriodo(turma, dataInicio, dataFim);
+    };
+
+    /**
+     * Reúne os dados do encerramento sem alterar as chamadas já registradas.
+     * A movimentação de entrada representa atraso e a de saída, saída antecipada.
+     */
+    public fechamentoDia = async (data: Date): Promise<FechamentoDia> => {
+        if (!(data instanceof Date) || isNaN(data.getTime())) {
+            throw new ErrorResponse(400, "Data inválida para o fechamento do dia.");
+        }
+
+        const [alunos, alunosArquivados, registros, movimentacoesDoDia] = await Promise.all([
+            this._alunoDAO.findAll(),
+            this._alunoDAO.findAllDeleted(),
+            this._registroDAO.findAll(),
+            this._movimentacaoDAO.findAll(data)
+        ]);
+        // Registros históricos podem pertencer a alunos arquivados após uma
+        // importação. Mantemos seus contatos para montar os CSVs completos.
+        const alunosPorMatricula = new Map([
+            ...alunosArquivados.map(aluno => [aluno.matricula, aluno] as const),
+            ...alunos.map(aluno => [aluno.matricula, aluno] as const)
+        ]);
+        const dataFormatada = this.chaveData(data);
+        const dadosDoAluno = (matricula: string, nomeRegistrado: string, turmaRegistrada = '') => {
+            const aluno = alunosPorMatricula.get(matricula);
+            return {
+                matricula,
+                alunoNome: aluno?.alunoNome || nomeRegistrado,
+                turma: turmaRegistrada || aluno?.turma || '',
+                emailPai: aluno?.paiEmail || ''
+            };
+        };
+        const compararLinhas = (primeira: LinhaFechamentoDia, segunda: LinhaFechamentoDia): number =>
+            primeira.alunoNome.localeCompare(segunda.alunoNome, 'pt-BR') || (primeira.horario || '').localeCompare(segunda.horario || '');
+
+        const atrasados = movimentacoesDoDia
+            .filter(movimentacao => movimentacao.tipo === 'entrada')
+            .map(movimentacao => ({
+                ...dadosDoAluno(movimentacao.matricula, movimentacao.nomeAluno),
+                data: dataFormatada,
+                horario: movimentacao.horario
+            }))
+            .sort(compararLinhas);
+        const saidasAntecipadas = movimentacoesDoDia
+            .filter(movimentacao => movimentacao.tipo === 'saida')
+            .map(movimentacao => ({
+                ...dadosDoAluno(movimentacao.matricula, movimentacao.nomeAluno),
+                data: dataFormatada,
+                horario: movimentacao.horario
+            }))
+            .sort(compararLinhas);
+        const faltasValidas = registros.filter(registro =>
+            registro.falta === true && !['Abonada', 'Dispensada'].includes(registro.situacao)
+        );
+
+        // Uma chamada geral deve aparecer uma única vez por aluno no fechamento,
+        // mesmo se a base ainda tiver duplicatas antigas daquela mesma data.
+        const faltasDoDiaPorMatricula = new Map<string, LinhaFechamentoDia>();
+        faltasValidas
+            .filter(registro => this.mesmaData(registro.dia, data))
+            .forEach(registro => {
+                if (faltasDoDiaPorMatricula.has(registro.matricula)) return;
+                faltasDoDiaPorMatricula.set(registro.matricula, {
+                    ...dadosDoAluno(registro.matricula, registro.alunoNome, registro.turma),
+                    data: dataFormatada
+                });
+            });
+        const faltasDoDia = Array.from(faltasDoDiaPorMatricula.values()).sort(compararLinhas);
+
+        const faltasHistoricas = faltasValidas
+            .map(registro => ({
+                ...dadosDoAluno(registro.matricula, registro.alunoNome, registro.turma),
+                data: this.chaveData(registro.dia),
+                ano: registro.ano,
+                situacao: registro.situacao
+            }))
+            .sort((primeira, segunda) => primeira.data.localeCompare(segunda.data) || primeira.alunoNome.localeCompare(segunda.alunoNome, 'pt-BR'));
+
+        return { data: dataFormatada, atrasados, saidasAntecipadas, faltasDoDia, faltasHistoricas };
     };
 
     /**
@@ -245,39 +400,20 @@ export class RelatorioService {
         const periodo = periodos[bimestre - 1];
         const dataInicio = new Date(ano, periodo.inicio, 1);
         const dataFim = new Date(ano, periodo.fim + 1, 0, 23, 59, 59, 999);
-        const [registros, grades, configuracoes] = await Promise.all([
-            this._registroDAO.findFaltasNoPeriodo(dataInicio, dataFim),
+        const [todosRegistros, grades, configuracoes, movimentacoes] = await Promise.all([
+            this._registroDAO.findAll(),
             this._gradeHorarioDAO.findAll(),
-            this._configuracaoAlertaFaltaDAO.findAll()
+            this._configuracaoAlertaFaltaDAO.findAll(),
+            this._movimentacaoDAO.findAll()
         ]);
+        const registros = todosRegistros.filter(registro =>
+            registro.dia >= dataInicio && registro.dia <= dataFim &&
+            !["Abonada", "Dispensada"].includes(registro.situacao)
+        );
         const limitesPorCarga = new Map(configuracoes.map(configuracao => [
             configuracao.cargaHorariaSemanalMinutos,
             configuracao.limiteFaltas
         ]));
-
-        const gradesPorTurmaEDia = new Map<string, typeof grades>();
-        const gradesPorTurmaEquivalenteEDia = new Map<string, typeof grades>();
-        grades.forEach(grade => {
-            const dia = this.normalizarDiaSemana(grade.dia);
-            const chaveDia = `${this.normalizarTurma(grade.turma)}\u0000${dia}`;
-            const aulasDoDia = gradesPorTurmaEDia.get(chaveDia) || [];
-            aulasDoDia.push(grade);
-            gradesPorTurmaEDia.set(chaveDia, aulasDoDia);
-
-            const chaveEquivalente = `${this.normalizarTurmaEquivalente(grade.turma)}\u0000${dia}`;
-            const aulasDaTurmaEquivalente = gradesPorTurmaEquivalenteEDia.get(chaveEquivalente) || [];
-            aulasDaTurmaEquivalente.push(grade);
-            gradesPorTurmaEquivalenteEDia.set(chaveEquivalente, aulasDaTurmaEquivalente);
-        });
-
-        const aulasDaTurmaNoDia = (turma: string, dia: string): typeof grades => {
-            const chaveExata = `${this.normalizarTurma(turma)}\u0000${dia}`;
-            const aulasExatas = gradesPorTurmaEDia.get(chaveExata) || [];
-            if (aulasExatas.length > 0) return aulasExatas;
-
-            const chaveEquivalente = `${this.normalizarTurmaEquivalente(turma)}\u0000${dia}`;
-            return gradesPorTurmaEquivalenteEDia.get(chaveEquivalente) || [];
-        };
 
         // A chamada diária é geral (código GERAL). Para cada ausência, ela é
         // distribuída entre as disciplinas que a turma tinha naquele dia da semana.
@@ -306,10 +442,12 @@ export class RelatorioService {
 
         registros.forEach(registro => {
             const diaSemana = this.diaSemanaDaData(registro.dia);
-            const aulasDoDia = aulasDaTurmaNoDia(registro.turma, diaSemana);
+            const aulasDoDia = this.aulasDaTurmaNoDia(registro.turma, diaSemana, grades);
             if (registro.codDisciplina.trim().toUpperCase() !== "GERAL") {
                 const gradeDaDisciplina = aulasDoDia.find(grade => grade.cod === registro.codDisciplina);
-                if (gradeDaDisciplina) registrarFaltaDaDisciplina(registro, gradeDaDisciplina);
+                if (gradeDaDisciplina && this.faltaNoHorario(registro, movimentacoes, gradeDaDisciplina.horaInicio)) {
+                    registrarFaltaDaDisciplina(registro, gradeDaDisciplina);
+                }
                 return;
             }
 
@@ -317,7 +455,9 @@ export class RelatorioService {
             aulasDoDia.forEach(grade => {
                 if (codigosDaChamada.has(grade.cod)) return;
                 codigosDaChamada.add(grade.cod);
-                registrarFaltaDaDisciplina(registro, grade);
+                if (this.faltaNoHorario(registro, movimentacoes, grade.horaInicio)) {
+                    registrarFaltaDaDisciplina(registro, grade);
+                }
             });
         });
 

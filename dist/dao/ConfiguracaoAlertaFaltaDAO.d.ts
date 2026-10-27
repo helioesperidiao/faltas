@@ -1,5 +1,5 @@
-import { MongoDatabase } from "../database/MongoDatabase.js";
-import { Funcionario } from "../models/Funcionario.js";
+import { MongoDatabase } from "@/database/MongoDatabase";
+import { Funcionario } from "@/models/Funcionario";
 export interface ConfiguracaoAlertaFalta {
     idConfiguracao: string;
     cargaHorariaSemanalMinutos: number;

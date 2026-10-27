@@ -21,6 +21,47 @@ class AlunoService {
         }
         return await this._alunoDAO.create(aluno, funcionarioLogado);
     };
+    substituirImportacao = async (alunosImportados, funcionarioLogado) => {
+        if (funcionarioLogado.cargo.nomeCargo !== "Processo Pedagógico") {
+            throw new ErrorResponse_1.ErrorResponse(403, "Não autorizado", {
+                message: "Apenas Processo Pedagógico pode importar a lista oficial de alunos."
+            });
+        }
+        if (alunosImportados.length === 0) {
+            throw new ErrorResponse_1.ErrorResponse(400, "A planilha não contém alunos para importar.");
+        }
+        const matriculasImportadas = new Set();
+        alunosImportados.forEach(aluno => {
+            if (matriculasImportadas.has(aluno.matricula)) {
+                throw new ErrorResponse_1.ErrorResponse(400, `A matrícula ${aluno.matricula} aparece mais de uma vez na planilha.`);
+            }
+            matriculasImportadas.add(aluno.matricula);
+        });
+        const alunosAtivos = await this._alunoDAO.findAll();
+        const alunosPorMatricula = new Map(alunosAtivos.map(aluno => [aluno.matricula, aluno]));
+        let criados = 0;
+        let atualizados = 0;
+        for (const alunoImportado of alunosImportados) {
+            const alunoExistente = alunosPorMatricula.get(alunoImportado.matricula);
+            if (!alunoExistente) {
+                await this._alunoDAO.create(alunoImportado, funcionarioLogado);
+                criados += 1;
+                continue;
+            }
+            alunoImportado.idAluno = alunoExistente.idAluno;
+            await this.update(alunoImportado, funcionarioLogado);
+            atualizados += 1;
+        }
+        let arquivados = 0;
+        for (const alunoAtivo of alunosAtivos) {
+            if (matriculasImportadas.has(alunoAtivo.matricula))
+                continue;
+            if (await this._alunoDAO.delete(alunoAtivo, funcionarioLogado)) {
+                arquivados += 1;
+            }
+        }
+        return { criados, atualizados, arquivados };
+    };
     findAll = async () => {
         console.log("🟣 AlunoService.findAll()");
         return await this._alunoDAO.findAll();

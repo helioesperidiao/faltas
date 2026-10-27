@@ -188,12 +188,37 @@ export function normalizarLinhaGradeHorario(linha) {
   return linha;
 }
 
-/** Lê a primeira aba de arquivos CSV, TSV e Excel sem alterar os cabeçalhos. */
-export async function lerArquivoPlanilha(arquivo) {
+/**
+ * PDFs de tabela normalmente preservam uma coluna por espaços repetidos. A conversão
+ * mantém CSV/TSV já estruturados e transforma esse espaçamento em ponto e vírgula.
+ */
+function prepararTextoExtraidoDePdf(texto) {
+  return String(texto || '')
+    .split(/\r?\n/)
+    .map(linha => linha.trim())
+    .filter(Boolean)
+    .map(linha => /[;,\t]/.test(linha) ? linha : linha.split(/\s{2,}/).join(';'))
+    .join('\n');
+}
+
+/** Lê a primeira aba de arquivos CSV, TSV, Excel ou PDF com tabela textual. */
+export async function lerArquivoPlanilha(arquivo, api = null) {
   if (arquivo == null) {
     return null;
   }
   const extensao = (arquivo.name.split('.').pop() || '').toLowerCase();
+  if (extensao === 'pdf') {
+    if (!api?.upload) {
+      throw new Error('Leitor de PDF indisponível nesta tela. Entre novamente no sistema e tente de novo.');
+    }
+    const formulario = new FormData();
+    formulario.append('arquivo', arquivo);
+    const resposta = await api.upload('api/v1/importacoes/pdf', formulario);
+    if (!resposta?.success) {
+      throw new Error(resposta?.message || 'Não foi possível ler o PDF.');
+    }
+    return prepararTextoExtraidoDePdf(resposta.data?.texto);
+  }
   if (["xlsx", "xls", "xlsm"].includes(extensao)) {
     if (!window.XLSX) {
       throw new Error("Leitor de planilhas Excel indisponível.");

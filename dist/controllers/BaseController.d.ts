@@ -1,5 +1,5 @@
 import { Request } from "express";
-import { Funcionario } from "../models/Funcionario.js";
+import { Funcionario } from "@/models/Funcionario";
 export declare abstract class BaseController {
     protected getFuncionarioLogado(request: Request): Funcionario;
 }

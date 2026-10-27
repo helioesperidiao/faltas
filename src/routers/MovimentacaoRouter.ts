@@ -13,6 +13,7 @@ export class MovimentacaoRouter {
         this.router = Router();
         const controller = new MovimentacaoController(new MovimentacaoService(new MovimentacaoDAO(database)));
         const jwt = new JwtMiddleware();
+        this.router.post(MovimentacaoRouter.PREFIX + "/lote", jwt.validateToken, controller.createLote);
         this.router.post(MovimentacaoRouter.PREFIX + "/", jwt.validateToken, controller.create);
         this.router.get(MovimentacaoRouter.PREFIX + "/", jwt.validateToken, controller.findAll);
     }

@@ -6,6 +6,7 @@ export declare class MovimentacaoDAO {
     constructor(database: MongoDatabase);
     private getCollection;
     create(movimentacao: Movimentacao, funcionario: Funcionario): Promise<Movimentacao>;
+    createLote(movimentacoes: Movimentacao[], funcionario: Funcionario): Promise<Movimentacao[]>;
     findAll(data?: Date): Promise<Movimentacao[]>;
     private toMovimentacao;
 }

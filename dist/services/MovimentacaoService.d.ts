@@ -5,6 +5,7 @@ export declare class MovimentacaoService {
     private readonly movimentacaoDAO;
     constructor(movimentacaoDAO: MovimentacaoDAO);
     create(movimentacao: Movimentacao, funcionario: Funcionario): Promise<Movimentacao>;
+    createLote(movimentacoes: Movimentacao[], funcionario: Funcionario): Promise<Movimentacao[]>;
     findAll(data?: Date): Promise<Movimentacao[]>;
 }
 //# sourceMappingURL=MovimentacaoService.d.ts.map

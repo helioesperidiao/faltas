@@ -4,7 +4,9 @@ import { BaseController } from "./BaseController";
 export declare class GradeHorarioController extends BaseController {
     private _gradeHorarioService;
     constructor(gradeHorarioServiceDependency: GradeHorarioService);
+    private montarGrade;
     create: (request: Request, response: Response) => Promise<void>;
+    substituirImportacao: (request: Request, response: Response) => Promise<void>;
     findAll: (_request: Request, response: Response) => Promise<void>;
     findAllDeleted: (request: Request, response: Response) => Promise<void>;
     findById: (request: Request, response: Response) => Promise<void>;

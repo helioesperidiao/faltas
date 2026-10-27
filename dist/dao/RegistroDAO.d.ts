@@ -1,6 +1,6 @@
 import { Registro } from "../models/Registro";
 import { MongoDatabase } from "../database/MongoDatabase";
-import { Funcionario } from "../models/Funcionario.js";
+import { Funcionario } from "@/models/Funcionario";
 export declare class RegistroDAO {
     private _database;
     constructor(dbInstance: MongoDatabase);

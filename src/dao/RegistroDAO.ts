@@ -251,4 +251,5 @@ export class RegistroDAO {
         }).toArray();
         return docs.map(doc => this.toRegistro(doc));
     }
+
 }

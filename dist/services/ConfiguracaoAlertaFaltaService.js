@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ConfiguracaoAlertaFaltaService = void 0;
-const ErrorResponse_1 = require("../http/ErrorResponse.js");
+const ErrorResponse_1 = require("@/http/ErrorResponse");
 class ConfiguracaoAlertaFaltaService {
     dao;
     constructor(dao) {

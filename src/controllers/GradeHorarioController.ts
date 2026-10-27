@@ -14,6 +14,17 @@ export class GradeHorarioController extends BaseController {
         this._gradeHorarioService = gradeHorarioServiceDependency;
     }
 
+    private montarGrade = (dados: any): GradeHorario => {
+        const grade = new GradeHorario();
+        grade.turma = dados.turma;
+        grade.horaInicio = dados.horaInicio;
+        grade.horaFim = dados.horaFim;
+        grade.dia = dados.dia;
+        grade.cod = dados.cod;
+        grade.disciplina = dados.disciplina;
+        return grade;
+    };
+
     public create = async (request: Request, response: Response): Promise<void> => {
         console.log("🔵 GradeHorarioController.create()");
 
@@ -27,19 +38,32 @@ export class GradeHorarioController extends BaseController {
             return;
         }
 
-        const novaGrade = new GradeHorario();
-        novaGrade.turma = dados.turma;
-        novaGrade.horaInicio = horaInicio;
-        novaGrade.horaFim = horaFim;
-        novaGrade.dia = dados.dia;
-        novaGrade.cod = dados.cod;
-        novaGrade.disciplina = dados.disciplina;
+        const novaGrade = this.montarGrade(dados);
 
         const resultado = await this._gradeHorarioService.create(novaGrade, funcionarioLogado);
 
         StandardResponse.created("Grade de horário cadastrada com sucesso", {
             gradeHorarios: [resultado]
         }).send(response);
+    };
+
+    public substituirImportacao = async (request: Request, response: Response): Promise<void> => {
+        const funcionarioLogado = this.getFuncionarioLogado(request);
+        const dadosImportados = request.body.gradeHorarios;
+        if (!Array.isArray(dadosImportados) || dadosImportados.length === 0) {
+            StandardResponse.error("Envie ao menos uma aula para importar.", null, 400).send(response);
+            return;
+        }
+        const possuiHorarioInvalido = dadosImportados.some(dados =>
+            !dados || !GradeHorario.isHorarioValido(dados.horaInicio) || !GradeHorario.isHorarioValido(dados.horaFim)
+        );
+        if (possuiHorarioInvalido) {
+            StandardResponse.error("Há horários inválidos na planilha.", null, 400).send(response);
+            return;
+        }
+        const grades = dadosImportados.map(dados => this.montarGrade(dados));
+        const resultado = await this._gradeHorarioService.substituirImportacao(grades, funcionarioLogado);
+        StandardResponse.success("Grade oficial importada com sucesso", resultado).send(response);
     };
 
     public findAll = async (_request: Request, response: Response): Promise<void> => {

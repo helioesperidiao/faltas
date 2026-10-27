@@ -91,6 +91,7 @@
   <script type="module">
     import { montarTopbar } from './js/Topbar.js';
     import ApiService from './ApiService.js';
+    import { montarControlesListagem } from './js/ControlesListagem.js';
 
     let userData = localStorage.getItem("userData");
     if (userData) {
@@ -350,7 +351,7 @@
 
         const tdAcoes = document.createElement("td");
         const divBtns = document.createElement("div");
-        divBtns.className = "d-flex gap-2";
+        divBtns.className = "acoes-listagem";
 
         const btnSel = createButton("Selecionar", "btn-info");
         btnSel.onclick = () => {
@@ -382,6 +383,7 @@
 
       table.appendChild(tbody);
       divTabela.appendChild(table);
+      montarControlesListagem(divTabela, table, { colunaOrdenacao: 1 });
     }
 
     txtFiltroMatricula.addEventListener("input", function () {

@@ -4,7 +4,10 @@ import { BaseController } from "./BaseController";
 export declare class AlunoController extends BaseController {
     private _alunoService;
     constructor(alunoServiceDependency: AlunoService);
+    private montarAluno;
+    private dadosMinimosValidos;
     create: (request: Request, response: Response) => Promise<void>;
+    substituirImportacao: (request: Request, response: Response) => Promise<void>;
     findAll: (_request: Request, response: Response) => Promise<void>;
     findAllDeleted: (request: Request, response: Response) => Promise<void>;
     findById: (request: Request, response: Response) => Promise<void>;

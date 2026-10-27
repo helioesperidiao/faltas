@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.DispensaDAO = void 0;
 const mongodb_1 = require("mongodb");
 const Dispensa_1 = require("../models/Dispensa");
-const Auditoria_1 = require("../models/Auditoria.js");
+const Auditoria_1 = require("@/models/Auditoria");
 class DispensaDAO {
     _database;
     constructor(dbInstance) {

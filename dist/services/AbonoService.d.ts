@@ -1,8 +1,8 @@
 import { AbonoDAO } from "../dao/AbonoDAO";
 import { RegistroDAO } from "../dao/RegistroDAO";
 import { Abono } from "../models/Abono";
-import { Funcionario } from "../models/Funcionario.js";
-import { AlunoDAO } from "../dao/AlunoDAO.js";
+import { Funcionario } from "@/models/Funcionario";
+import { AlunoDAO } from "@/dao/AlunoDAO";
 export declare class AbonoService {
     private _abonoDAO;
     private _registroDAO;

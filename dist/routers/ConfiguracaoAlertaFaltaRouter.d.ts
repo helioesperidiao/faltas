@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { MongoDatabase } from "../database/MongoDatabase.js";
+import { MongoDatabase } from "@/database/MongoDatabase";
 export declare class ConfiguracaoAlertaFaltaRouter {
     static readonly PREFIX = "/api/v1/alertas-faltas/configuracoes";
     private readonly router;

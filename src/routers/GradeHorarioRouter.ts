@@ -26,6 +26,11 @@ export class GradeHorarioRouter {
             gradeHorarioController.create
         );
 
+        this._router.post(GradeHorarioRouter.PREFIX + "/importacao/substituir",
+            jwtMiddleware.validateToken,
+            gradeHorarioController.substituirImportacao
+        );
+
         this._router.get(GradeHorarioRouter.PREFIX + "/",
             jwtMiddleware.validateToken,
             gradeHorarioController.findAll

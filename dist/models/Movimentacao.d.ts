@@ -1,6 +1,6 @@
 import { Auditoria } from "./Auditoria";
 export type TipoMovimentacao = "entrada" | "saida";
-export declare const HORARIOS_MOVIMENTACAO: readonly ["07:50", "08:40", "09:50", "10:40", "11:40"];
+export declare const HORARIOS_MOVIMENTACAO: readonly ["07:50", "08:40", "09:50", "10:40", "11:40", "13:00", "13:50", "14:40", "15:30", "16:20", "17:00"];
 export declare class Movimentacao {
     private _idMovimentacao;
     private _nomeAluno;

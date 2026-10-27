@@ -305,6 +305,7 @@ table.table thead,
 .badge-presente { background: #e7f4ec; color: var(--univap-verde); }
 .badge-falta { background: #fbe9e8; color: var(--univap-vermelho); }
 .badge-pendente { background: var(--univap-cinza-fundo); color: var(--univap-texto-suave); }
+.badge-atrasado { background: #fff4d6; color: #815d00; }
 
 .alert {
   border-radius: 4px;
@@ -313,11 +314,67 @@ table.table thead,
 
 #divTabela,
 #divTabelaFrequencia,
-#divTabelaFaltas {
+#divTabelaFaltas,
+#tabelaConfiguracoes,
+#tabelaAlertas,
+#historico {
   max-width: 100%;
   overflow-x: auto;
   overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
+}
+
+/* ---------- PESQUISA E ORDENAÇÃO DE LISTAGENS ---------- */
+.controles-listagem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 0 0 12px;
+}
+.campo-pesquisa-listagem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 260px;
+  max-width: 460px;
+  min-height: 40px;
+  padding: 0 11px;
+  border: 1px solid var(--univap-cinza-borda);
+  border-radius: 4px;
+  background: #ffffff;
+}
+.campo-pesquisa-listagem:focus-within {
+  border-color: var(--univap-azul);
+  box-shadow: 0 0 0 .2rem rgba(22, 59, 107, .18);
+}
+.campo-pesquisa-listagem input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font: inherit;
+}
+.ordenacao-listagem {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.acoes-listagem {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.acoes-listagem .btn {
+  flex: 1 1 110px;
+}
+#divBotoes {
+  flex-wrap: wrap;
+}
+#divBotoes .btn {
+  flex: 1 1 120px;
 }
 
 /* ---------- CAMPOS DE FORMULÁRIO ---------- */
@@ -499,6 +556,32 @@ textarea.form-control:focus {
   #divTabelaFrequencia > table,
   #divTabelaFaltas > table {
     min-width: 36rem;
+  }
+  .controles-listagem {
+    align-items: stretch;
+  }
+  .campo-pesquisa-listagem {
+    max-width: none;
+    min-height: 44px;
+  }
+  .ordenacao-listagem {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .acoes-listagem {
+    display: grid;
+    grid-template-columns: 1fr;
+    min-width: 130px;
+  }
+  .acoes-listagem .btn {
+    width: 100%;
+  }
+  #divBotoes {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  #divBotoes .btn {
+    width: 100%;
   }
 }
 

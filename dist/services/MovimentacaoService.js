@@ -9,6 +9,9 @@ class MovimentacaoService {
     async create(movimentacao, funcionario) {
         return this.movimentacaoDAO.create(movimentacao, funcionario);
     }
+    async createLote(movimentacoes, funcionario) {
+        return this.movimentacaoDAO.createLote(movimentacoes, funcionario);
+    }
     async findAll(data) {
         return this.movimentacaoDAO.findAll(data);
     }

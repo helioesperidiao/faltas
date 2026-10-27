@@ -16,6 +16,7 @@ const AlunoRouter_1 = require("./routers/AlunoRouter");
 const GradeHorarioRouter_1 = require("./routers/GradeHorarioRouter");
 const RelatorioRouter_1 = require("./routers/RelatorioRouter");
 const MovimentacaoRouter_1 = require("./routers/MovimentacaoRouter");
+const ImportacaoRouter_1 = require("./routers/ImportacaoRouter");
 const ConfiguracaoAlertaFaltaRouter_1 = require("./routers/ConfiguracaoAlertaFaltaRouter");
 const ErrorResponse_1 = require("./http/ErrorResponse");
 const StandardResponse_1 = require("./http/StandardResponse");
@@ -32,6 +33,7 @@ class Server {
     _gradeHorarioRouter;
     _relatorioRouter;
     _movimentacaoRouter;
+    _importacaoRouter;
     _configuracaoAlertaFaltaRouter;
     _dataBase;
     constructor(porta) {
@@ -48,6 +50,7 @@ class Server {
         this._gradeHorarioRouter = new GradeHorarioRouter_1.GradeHorarioRouter(this._dataBase);
         this._relatorioRouter = new RelatorioRouter_1.RelatorioRouter(this._dataBase);
         this._movimentacaoRouter = new MovimentacaoRouter_1.MovimentacaoRouter(this._dataBase);
+        this._importacaoRouter = new ImportacaoRouter_1.ImportacaoRouter();
         this._configuracaoAlertaFaltaRouter = new ConfiguracaoAlertaFaltaRouter_1.ConfiguracaoAlertaFaltaRouter(this._dataBase);
     }
     async init() {
@@ -67,6 +70,7 @@ class Server {
         this._app.use(this._gradeHorarioRouter.getRouter());
         this._app.use(this._relatorioRouter.getRouter());
         this._app.use(this._movimentacaoRouter.getRouter());
+        this._app.use(this._importacaoRouter.getRouter());
         this._app.use(this._configuracaoAlertaFaltaRouter.getRouter());
         this.setupErrorMiddleware();
     }

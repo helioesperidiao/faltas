@@ -31,6 +31,7 @@ class RelatorioRouter {
         this._router.get(RelatorioRouter.PREFIX + "/faltas/semana", jwtMiddleware.validateToken, relatorioController.faltasPorSemana);
         this._router.get(RelatorioRouter.PREFIX + "/faltas/mes", jwtMiddleware.validateToken, relatorioController.faltasPorMes);
         this._router.get(RelatorioRouter.PREFIX + "/alertas-faltas-bimestral", jwtMiddleware.validateToken, relatorioController.alertasFaltaBimestral);
+        this._router.get(RelatorioRouter.PREFIX + "/fechamento-dia", jwtMiddleware.validateToken, relatorioController.fechamentoDia);
     }
     getRouter = () => {
         return this._router;

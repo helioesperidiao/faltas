@@ -2,9 +2,9 @@ import { AlunoDAO } from "../dao/AlunoDAO";
 import { RegistroDAO } from "../dao/RegistroDAO";
 import { MovimentacaoDAO } from "../dao/MovimentacaoDAO";
 import { GradeHorarioDAO } from "../dao/GradeHorarioDAO";
-import { Funcionario } from "../models/Funcionario.js";
-import { ConfiguracaoAlertaFaltaDAO } from "../dao/ConfiguracaoAlertaFaltaDAO.js";
-import { AlertaFaltaDAO } from "../dao/AlertaFaltaDAO.js";
+import { Funcionario } from "@/models/Funcionario";
+import { ConfiguracaoAlertaFaltaDAO } from "@/dao/ConfiguracaoAlertaFaltaDAO";
+import { AlertaFaltaDAO } from "@/dao/AlertaFaltaDAO";
 export interface FrequenciaAluno {
     matricula: string;
     alunoNome: string;
@@ -22,6 +22,30 @@ export interface FaltasPorAluno {
         tipo: string;
         horario: string;
     } | null;
+}
+export interface LinhaFechamentoDia {
+    matricula: string;
+    alunoNome: string;
+    turma: string;
+    data: string;
+    horario?: string;
+    emailPai: string;
+}
+export interface FaltaHistoricaEscola {
+    matricula: string;
+    alunoNome: string;
+    turma: string;
+    data: string;
+    ano: number;
+    situacao: string;
+    emailPai: string;
+}
+export interface FechamentoDia {
+    data: string;
+    atrasados: LinhaFechamentoDia[];
+    saidasAntecipadas: LinhaFechamentoDia[];
+    faltasDoDia: LinhaFechamentoDia[];
+    faltasHistoricas: FaltaHistoricaEscola[];
 }
 export interface AlertaFaltaBimestral {
     matricula: string;
@@ -50,16 +74,21 @@ export declare class RelatorioService {
     constructor(alunoDAODependency: AlunoDAO, registroDAODependency: RegistroDAO, movimentacaoDAODependency: MovimentacaoDAO, gradeHorarioDAODependency: GradeHorarioDAO, configuracaoAlertaFaltaDAODependency: ConfiguracaoAlertaFaltaDAO, alertaFaltaDAODependency: AlertaFaltaDAO);
     private mesmaData;
     private chaveData;
+    private movimentacoesDoAlunoNoDia;
+    private faltaNoHorario;
     private faltaConsiderandoMovimentacao;
     private ultimaMovimentacao;
     private normalizarDiaSemana;
     private diaSemanaDaData;
     private normalizarTurma;
     private normalizarTurmaEquivalente;
+    private aulasDaTurmaNoDia;
+    private possuiFaltaNaGradeDoDia;
     frequenciaPorTurma: (turma: string, dia: Date) => Promise<FrequenciaAluno[]>;
     faltasPorTurmaEPeriodo: (turma: string, dataInicio: Date, dataFim: Date) => Promise<FaltasPorAluno[]>;
     faltasPorTurmaSemana: (turma: string, data: Date) => Promise<FaltasPorAluno[]>;
     faltasPorTurmaMes: (turma: string, ano: number, mes: number) => Promise<FaltasPorAluno[]>;
+    fechamentoDia: (data: Date) => Promise<FechamentoDia>;
     alertasFaltaBimestral: (ano: number, bimestre: number, funcionarioLogado: Funcionario) => Promise<AlertasFaltaBimestral>;
 }
 //# sourceMappingURL=RelatorioService.d.ts.map

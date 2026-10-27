@@ -60,6 +60,12 @@ export class RelatorioRouter {
             jwtMiddleware.validateToken,
             relatorioController.alertasFaltaBimestral
         );
+
+        this._router.get(RelatorioRouter.PREFIX + "/fechamento-dia",
+            jwtMiddleware.validateToken,
+            relatorioController.fechamentoDia
+        );
+
     }
 
     public getRouter = (): Router => {

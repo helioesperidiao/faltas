@@ -1,8 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RelatorioController = void 0;
-const StandardResponse_1 = require("../http/StandardResponse.js");
+const StandardResponse_1 = require("@/http/StandardResponse");
 const BaseController_1 = require("./BaseController");
+const ErrorResponse_1 = require("@/http/ErrorResponse");
 class RelatorioController extends BaseController_1.BaseController {
     _relatorioService;
     constructor(relatorioServiceDependency) {
@@ -10,6 +11,18 @@ class RelatorioController extends BaseController_1.BaseController {
         console.log("⬆️  RelatorioController.constructor()");
         this._relatorioService = relatorioServiceDependency;
     }
+    lerDataDoFechamento = (request) => {
+        const valor = request.query.data;
+        if (typeof valor !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(valor)) {
+            throw new ErrorResponse_1.ErrorResponse(400, "Data inválida. Use o formato AAAA-MM-DD.");
+        }
+        const [ano, mes, dia] = valor.split('-').map(Number);
+        const data = new Date(ano, mes - 1, dia);
+        if (data.getFullYear() !== ano || data.getMonth() !== mes - 1 || data.getDate() !== dia) {
+            throw new ErrorResponse_1.ErrorResponse(400, "Data inválida. Use o formato AAAA-MM-DD.");
+        }
+        return data;
+    };
     frequenciaPorTurma = async (request, response) => {
         console.log("🔵 RelatorioController.frequenciaPorTurma()");
         const turma = request.query.turma?.toString() || '';
@@ -50,6 +63,10 @@ class RelatorioController extends BaseController_1.BaseController {
         const funcionarioLogado = this.getFuncionarioLogado(request);
         const resultado = await this._relatorioService.alertasFaltaBimestral(ano, bimestre, funcionarioLogado);
         StandardResponse_1.StandardResponse.success("Alertas de faltas obtidos com sucesso", resultado).send(response);
+    };
+    fechamentoDia = async (request, response) => {
+        const resultado = await this._relatorioService.fechamentoDia(this.lerDataDoFechamento(request));
+        StandardResponse_1.StandardResponse.success("Fechamento do dia gerado com sucesso", resultado).send(response);
     };
 }
 exports.RelatorioController = RelatorioController;

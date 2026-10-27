@@ -19,6 +19,7 @@ class AlunoRouter {
         const alunoController = new AlunoController_1.AlunoController(alunoService);
         const jwtMiddleware = new JwtMiddleware_1.JwtMiddleware();
         this._router.post(AlunoRouter.PREFIX + "/", jwtMiddleware.validateToken, alunoController.create);
+        this._router.post(AlunoRouter.PREFIX + "/importacao/substituir", jwtMiddleware.validateToken, alunoController.substituirImportacao);
         this._router.get(AlunoRouter.PREFIX + "/", jwtMiddleware.validateToken, alunoController.findAll);
         this._router.get(AlunoRouter.PREFIX + "/count", jwtMiddleware.validateToken, alunoController.count);
         this._router.get(AlunoRouter.PREFIX + "/deleted", jwtMiddleware.validateToken, alunoController.findAllDeleted);

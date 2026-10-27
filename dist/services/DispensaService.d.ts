@@ -1,6 +1,6 @@
 import { DispensaDAO } from "../dao/DispensaDAO";
 import { Dispensa } from "../models/Dispensa";
-import { Funcionario } from "../models/Funcionario.js";
+import { Funcionario } from "@/models/Funcionario";
 export declare class DispensaService {
     private _dispensaDAO;
     constructor(dispensaDAODependency: DispensaDAO);

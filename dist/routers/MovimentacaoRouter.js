@@ -13,6 +13,7 @@ class MovimentacaoRouter {
         this.router = (0, express_1.Router)();
         const controller = new MovimentacaoController_1.MovimentacaoController(new MovimentacaoService_1.MovimentacaoService(new MovimentacaoDAO_1.MovimentacaoDAO(database)));
         const jwt = new JwtMiddleware_1.JwtMiddleware();
+        this.router.post(MovimentacaoRouter.PREFIX + "/lote", jwt.validateToken, controller.createLote);
         this.router.post(MovimentacaoRouter.PREFIX + "/", jwt.validateToken, controller.create);
         this.router.get(MovimentacaoRouter.PREFIX + "/", jwt.validateToken, controller.findAll);
     }

@@ -28,6 +28,24 @@ class MovimentacaoDAO {
         movimentacao.idMovimentacao = result.insertedId.toString();
         return movimentacao;
     }
+    async createLote(movimentacoes, funcionario) {
+        if (movimentacoes.length === 0)
+            return [];
+        movimentacoes.forEach(movimentacao => movimentacao.marcarCriadoPor(funcionario.idFuncionario));
+        const documentos = movimentacoes.map(movimentacao => ({
+            nomeAluno: movimentacao.nomeAluno,
+            matricula: movimentacao.matricula,
+            data: movimentacao.data,
+            horario: movimentacao.horario,
+            tipo: movimentacao.tipo,
+            auditoria: movimentacao.auditoria.toJSON()
+        }));
+        const resultado = await (await this.getCollection()).insertMany(documentos);
+        movimentacoes.forEach((movimentacao, indice) => {
+            movimentacao.idMovimentacao = resultado.insertedIds[indice].toString();
+        });
+        return movimentacoes;
+    }
     async findAll(data) {
         const filter = { "auditoria.deletadoEm": null };
         if (data) {

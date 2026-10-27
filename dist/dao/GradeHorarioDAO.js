@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.GradeHorarioDAO = void 0;
 const mongodb_1 = require("mongodb");
 const GradeHorario_1 = require("../models/GradeHorario");
-const Auditoria_1 = require("../models/Auditoria.js");
+const Auditoria_1 = require("@/models/Auditoria");
 class GradeHorarioDAO {
     _database;
     constructor(dbInstance) {

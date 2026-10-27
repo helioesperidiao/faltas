@@ -1,4 +1,4 @@
-import { Funcionario } from '../models/Funcionario.js';
+import { Funcionario } from '@/models/Funcionario';
 export declare class MeuTokenJWT {
     private _key;
     private _alg;

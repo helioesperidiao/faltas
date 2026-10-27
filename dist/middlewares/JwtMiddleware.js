@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.JwtMiddleware = void 0;
 const MeuTokenJWT_1 = require("../http/MeuTokenJWT");
 const ErrorResponse_1 = require("../http/ErrorResponse");
-const Cargos_1 = require("../constants/Cargos.js");
+const Cargos_1 = require("@/constants/Cargos");
 class JwtMiddleware {
     validateToken = (request, _response, next) => {
         console.log("🔷 JwtMiddleware.validateToken()");

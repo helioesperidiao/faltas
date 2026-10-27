@@ -42,6 +42,7 @@
   <script type="module">
     import ApiService from './ApiService.js';
     import { exigirSessao, montarTopbar, temAcessoTotal, escaparHtml } from './js/Topbar.js';
+    import { montarControlesListagem } from './js/ControlesListagem.js';
 
     const sessao = exigirSessao();
     if (!sessao || !temAcessoTotal(sessao.cargo)) {
@@ -66,8 +67,10 @@
         document.getElementById('tabelaConfiguracoes').innerHTML = configuracoes.length === 0
           ? '<p class="mb-0 text-muted">Nenhuma regra cadastrada.</p>'
           : '<table class="table table-bordered table-striped mb-0"><thead><tr><th>Minutos semanais</th><th>Limite de faltas</th><th>Ações</th></tr></thead><tbody>'
-            + configuracoes.map(configuracao => '<tr><td>' + configuracao.cargaHorariaSemanalMinutos + '</td><td>' + configuracao.limiteFaltas + '</td><td><button class="btn btn-sm btn-warning me-1" data-editar="' + configuracao.idConfiguracao + '">Editar</button><button class="btn btn-sm btn-danger" data-excluir="' + configuracao.idConfiguracao + '">Excluir</button></td></tr>').join('')
+            + configuracoes.map(configuracao => '<tr><td>' + configuracao.cargaHorariaSemanalMinutos + '</td><td>' + configuracao.limiteFaltas + '</td><td><div class="acoes-listagem"><button class="btn btn-sm btn-warning" data-editar="' + configuracao.idConfiguracao + '">Editar</button><button class="btn btn-sm btn-danger" data-excluir="' + configuracao.idConfiguracao + '">Excluir</button></div></td></tr>').join('')
             + '</tbody></table>';
+        const tabelaConfiguracoes = document.querySelector('#tabelaConfiguracoes table');
+        if (tabelaConfiguracoes) montarControlesListagem(document.getElementById('tabelaConfiguracoes'), tabelaConfiguracoes);
         document.querySelectorAll('[data-editar]').forEach(botao => botao.onclick = () => {
           const configuracao = configuracoes.find(item => item.idConfiguracao === botao.dataset.editar);
           id.value = configuracao.idConfiguracao;
@@ -93,6 +96,8 @@
           : '<table class="table table-bordered table-striped mb-0"><thead><tr><th>Aluno</th><th>Turma</th><th>Disciplina</th><th>Faltas</th><th>Regra aplicada</th></tr></thead><tbody>'
             + alertas.map(alerta => '<tr><td>' + escaparHtml(alerta.alunoNome) + '</td><td>' + escaparHtml(alerta.turma) + '</td><td>' + escaparHtml(alerta.disciplina) + '</td><td>' + alerta.totalFaltas + '</td><td>' + alerta.cargaHorariaSemanalMinutos + ' min/semana · limite ' + alerta.limiteFaltas + '</td></tr>').join('')
             + '</tbody></table>';
+        const tabelaAlertas = document.querySelector('#tabelaAlertas table');
+        if (tabelaAlertas) montarControlesListagem(document.getElementById('tabelaAlertas'), tabelaAlertas, { colunaOrdenacao: 0 });
       }
 
       document.getElementById('btnLimpar').onclick = limparFormulario;

@@ -1,10 +1,15 @@
 import { AlunoDAO } from "../dao/AlunoDAO";
 import { Aluno } from "../models/Aluno";
-import { Funcionario } from "../models/Funcionario.js";
+import { Funcionario } from "@/models/Funcionario";
 export declare class AlunoService {
     private _alunoDAO;
     constructor(alunoDAODependency: AlunoDAO);
     create: (aluno: Aluno, funcionarioLogado: Funcionario) => Promise<Aluno>;
+    substituirImportacao: (alunosImportados: Aluno[], funcionarioLogado: Funcionario) => Promise<{
+        criados: number;
+        atualizados: number;
+        arquivados: number;
+    }>;
     findAll: () => Promise<Aluno[]>;
     findById: (idAluno: string) => Promise<Aluno | null>;
     findByMatricula: (matricula: string) => Promise<Aluno | null>;

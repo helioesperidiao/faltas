@@ -3,8 +3,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.FuncionarioDAO = void 0;
 const mongodb_1 = require("mongodb");
 const Cargo_1 = require("../models/Cargo");
-const Auditoria_1 = require("../models/Auditoria.js");
-const Funcionario_1 = require("../models/Funcionario.js");
+const Auditoria_1 = require("@/models/Auditoria");
+const Funcionario_1 = require("@/models/Funcionario");
 class FuncionarioDAO {
     _database;
     constructor(dbInstance) {

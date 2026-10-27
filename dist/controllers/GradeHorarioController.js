@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GradeHorarioController = void 0;
-const GradeHorario_1 = require("../models/GradeHorario.js");
-const StandardResponse_1 = require("../http/StandardResponse.js");
+const GradeHorario_1 = require("@/models/GradeHorario");
+const StandardResponse_1 = require("@/http/StandardResponse");
 const BaseController_1 = require("./BaseController");
 class GradeHorarioController extends BaseController_1.BaseController {
     _gradeHorarioService;
@@ -11,6 +11,16 @@ class GradeHorarioController extends BaseController_1.BaseController {
         console.log("⬆️  GradeHorarioController.constructor()");
         this._gradeHorarioService = gradeHorarioServiceDependency;
     }
+    montarGrade = (dados) => {
+        const grade = new GradeHorario_1.GradeHorario();
+        grade.turma = dados.turma;
+        grade.horaInicio = dados.horaInicio;
+        grade.horaFim = dados.horaFim;
+        grade.dia = dados.dia;
+        grade.cod = dados.cod;
+        grade.disciplina = dados.disciplina;
+        return grade;
+    };
     create = async (request, response) => {
         console.log("🔵 GradeHorarioController.create()");
         const funcionarioLogado = this.getFuncionarioLogado(request);
@@ -21,17 +31,27 @@ class GradeHorarioController extends BaseController_1.BaseController {
             StandardResponse_1.StandardResponse.error("Horários inválidos. Informe horas inteiras ou no formato HHMM.", null, 400).send(response);
             return;
         }
-        const novaGrade = new GradeHorario_1.GradeHorario();
-        novaGrade.turma = dados.turma;
-        novaGrade.horaInicio = horaInicio;
-        novaGrade.horaFim = horaFim;
-        novaGrade.dia = dados.dia;
-        novaGrade.cod = dados.cod;
-        novaGrade.disciplina = dados.disciplina;
+        const novaGrade = this.montarGrade(dados);
         const resultado = await this._gradeHorarioService.create(novaGrade, funcionarioLogado);
         StandardResponse_1.StandardResponse.created("Grade de horário cadastrada com sucesso", {
             gradeHorarios: [resultado]
         }).send(response);
+    };
+    substituirImportacao = async (request, response) => {
+        const funcionarioLogado = this.getFuncionarioLogado(request);
+        const dadosImportados = request.body.gradeHorarios;
+        if (!Array.isArray(dadosImportados) || dadosImportados.length === 0) {
+            StandardResponse_1.StandardResponse.error("Envie ao menos uma aula para importar.", null, 400).send(response);
+            return;
+        }
+        const possuiHorarioInvalido = dadosImportados.some(dados => !dados || !GradeHorario_1.GradeHorario.isHorarioValido(dados.horaInicio) || !GradeHorario_1.GradeHorario.isHorarioValido(dados.horaFim));
+        if (possuiHorarioInvalido) {
+            StandardResponse_1.StandardResponse.error("Há horários inválidos na planilha.", null, 400).send(response);
+            return;
+        }
+        const grades = dadosImportados.map(dados => this.montarGrade(dados));
+        const resultado = await this._gradeHorarioService.substituirImportacao(grades, funcionarioLogado);
+        StandardResponse_1.StandardResponse.success("Grade oficial importada com sucesso", resultado).send(response);
     };
     findAll = async (_request, response) => {
         console.log("🔵 GradeHorarioController.findAll()");

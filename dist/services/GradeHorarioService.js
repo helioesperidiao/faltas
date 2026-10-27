@@ -17,6 +17,51 @@ class GradeHorarioService {
         }
         return await this._gradeHorarioDAO.create(grade, funcionarioLogado);
     };
+    substituirImportacao = async (gradesImportadas, funcionarioLogado) => {
+        if (funcionarioLogado.cargo.nomeCargo !== "Processo Pedagógico") {
+            throw new ErrorResponse_1.ErrorResponse(403, "Não autorizado", {
+                message: "Apenas Processo Pedagógico pode importar a grade oficial."
+            });
+        }
+        if (gradesImportadas.length === 0) {
+            throw new ErrorResponse_1.ErrorResponse(400, "A planilha não contém aulas para importar.");
+        }
+        const chave = (grade) => [grade.turma, grade.horaInicio, grade.horaFim, grade.dia, grade.cod]
+            .map(valor => valor.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim())
+            .join('\u0000');
+        const chavesImportadas = new Set();
+        gradesImportadas.forEach(grade => {
+            const identificador = chave(grade);
+            if (chavesImportadas.has(identificador)) {
+                throw new ErrorResponse_1.ErrorResponse(400, `A aula ${grade.turma} ${grade.dia} ${grade.horaInicio} já aparece na planilha.`);
+            }
+            chavesImportadas.add(identificador);
+        });
+        const gradesAtivas = await this._gradeHorarioDAO.findAll();
+        const gradesPorChave = new Map(gradesAtivas.map(grade => [chave(grade), grade]));
+        let criadas = 0;
+        let atualizadas = 0;
+        for (const gradeImportada of gradesImportadas) {
+            const gradeExistente = gradesPorChave.get(chave(gradeImportada));
+            if (!gradeExistente) {
+                await this._gradeHorarioDAO.create(gradeImportada, funcionarioLogado);
+                criadas += 1;
+                continue;
+            }
+            gradeImportada.idGradeHorario = gradeExistente.idGradeHorario;
+            await this._gradeHorarioDAO.update(gradeImportada, funcionarioLogado);
+            atualizadas += 1;
+        }
+        let arquivadas = 0;
+        for (const gradeAtiva of gradesAtivas) {
+            if (chavesImportadas.has(chave(gradeAtiva)))
+                continue;
+            if (await this._gradeHorarioDAO.delete(gradeAtiva, funcionarioLogado)) {
+                arquivadas += 1;
+            }
+        }
+        return { criadas, atualizadas, arquivadas };
+    };
     findAll = async () => {
         console.log("🟣 GradeHorarioService.findAll()");
         return await this._gradeHorarioDAO.findAll();

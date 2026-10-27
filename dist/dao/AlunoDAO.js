@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AlunoDAO = void 0;
 const mongodb_1 = require("mongodb");
 const Aluno_1 = require("../models/Aluno");
-const Auditoria_1 = require("../models/Auditoria.js");
+const Auditoria_1 = require("@/models/Auditoria");
 class AlunoDAO {
     _database;
     constructor(dbInstance) {

@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ConfiguracaoAlertaFaltaController = void 0;
 const BaseController_1 = require("./BaseController");
-const StandardResponse_1 = require("../http/StandardResponse.js");
+const StandardResponse_1 = require("@/http/StandardResponse");
 class ConfiguracaoAlertaFaltaController extends BaseController_1.BaseController {
     service;
     constructor(service) {

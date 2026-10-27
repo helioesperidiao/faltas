@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CargoController = void 0;
-const Cargo_1 = require("../models/Cargo.js");
-const StandardResponse_1 = require("../http/StandardResponse.js");
+const Cargo_1 = require("@/models/Cargo");
+const StandardResponse_1 = require("@/http/StandardResponse");
 const BaseController_1 = require("./BaseController");
 class CargoController extends BaseController_1.BaseController {
     _cargoService;

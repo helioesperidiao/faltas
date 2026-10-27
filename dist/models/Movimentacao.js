@@ -3,7 +3,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Movimentacao = exports.HORARIOS_MOVIMENTACAO = void 0;
 const mongodb_1 = require("mongodb");
 const Auditoria_1 = require("./Auditoria");
-exports.HORARIOS_MOVIMENTACAO = ["07:50", "08:40", "09:50", "10:40", "11:40"];
+exports.HORARIOS_MOVIMENTACAO = [
+    "07:50", "08:40", "09:50", "10:40", "11:40",
+    "13:00", "13:50", "14:40", "15:30", "16:20", "17:00"
+];
 class Movimentacao {
     _idMovimentacao = "";
     _nomeAluno = "";

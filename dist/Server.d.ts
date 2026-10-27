@@ -10,6 +10,7 @@ export declare class Server {
     private _gradeHorarioRouter;
     private _relatorioRouter;
     private _movimentacaoRouter;
+    private _importacaoRouter;
     private _configuracaoAlertaFaltaRouter;
     private _dataBase;
     constructor(porta?: number);

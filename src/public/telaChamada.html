@@ -301,6 +301,34 @@
   .st-present .rstatus { background: #e7f4ec; color: #1c7a3e; }
   .st-absent .rstatus { background: #fbe9e8; color: #a6231e; }
   .st-pending .rstatus { background: #f1f2f4; color: #7a7f88; }
+  .controles-roster {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
+  .controles-roster input {
+    flex: 1 1 180px;
+    min-width: 0;
+    border: 1px solid #c7cbd1;
+    border-radius: 4px;
+    padding: 9px 10px;
+    font: inherit;
+  }
+  .controles-roster button {
+    width: auto;
+    margin: 0;
+    padding: 8px 10px;
+    border: 1px solid #c7cbd1;
+    border-radius: 4px;
+    background: #ffffff;
+    color: #0f2a4d;
+    font: inherit;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+  }
 
   .empty-state {
     text-align: center;
@@ -652,6 +680,13 @@
         <div class="card">
           <div class="card-header"><h2>Lista da Turma</h2></div>
           <div class="card-body">
+            <div class="controles-roster">
+              <label class="sr-only" for="pesquisa-roster">Pesquisar aluno na lista</label>
+              <input type="search" id="pesquisa-roster" placeholder="🔎 Pesquisar aluno" autocomplete="off">
+              <button type="button" id="ordenar-roster-az">A–Z</button>
+              <button type="button" id="ordenar-roster-za">Z–A</button>
+              <button type="button" id="limpar-roster">Limpar</button>
+            </div>
             <div id="roster"></div>
           </div>
           <div class="actions-footer">
@@ -698,6 +733,8 @@
 
   var turmaAtual = "";
   var alunosDaTurma = []; // { matricula, alunoNome }
+  var pesquisaRoster = '';
+  var ordemRoster = 0;
   var alunoAtual = 0;
   var statusAlunos = [];
   var registroIds = []; // guarda o id do registro já criado para permitir corrigir via PUT
@@ -742,6 +779,9 @@
     const resposta = await api.get(`api/v1/alunos/turma/${encodeURIComponent(turmaAtual)}`);
     alunosDaTurma = resposta.success ? resposta.data.alunos : [];
     alunoAtual = 0;
+    pesquisaRoster = '';
+    ordemRoster = 0;
+    document.getElementById('pesquisa-roster').value = '';
 
     // A chamada trabalha como um booleano: sem marcação de falta, o aluno está presente.
     // Se já houver uma chamada nesta data, o estado é substituído pelos dados salvos.
@@ -857,7 +897,21 @@
     var roster = document.getElementById('roster');
     roster.innerHTML = '';
 
-    for (var i = 0; i < alunosDaTurma.length; i++) {
+    var indices = alunosDaTurma.map(function (_, indice) { return indice; });
+    var consulta = pesquisaRoster.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    indices = indices.filter(function (indice) {
+      var texto = (alunosDaTurma[indice].alunoNome + ' ' + alunosDaTurma[indice].matricula)
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+      return !consulta || texto.includes(consulta);
+    });
+    if (ordemRoster) {
+      indices.sort(function (a, b) {
+        return alunosDaTurma[a].alunoNome.localeCompare(alunosDaTurma[b].alunoNome, 'pt-BR', { numeric: true }) * ordemRoster;
+      });
+    }
+
+    for (var posicao = 0; posicao < indices.length; posicao++) {
+      var i = indices[posicao];
       var linha = document.createElement('button');
       linha.type = 'button';
       linha.className = 'roster-item';
@@ -877,6 +931,9 @@
 
       roster.appendChild(linha);
     }
+    if (!indices.length) {
+      roster.innerHTML = '<p class="empty-state">Nenhum aluno encontrado.</p>';
+    }
     atualizarListaVisual();
   }
 
@@ -885,6 +942,7 @@
       var item = document.getElementById('roster-item-' + i);
       var statusTexto = document.getElementById('roster-status-' + i);
       var status = statusAlunos[i];
+      if (!item || !statusTexto) continue;
 
       item.className = 'roster-item';
       if (i === alunoAtual) {
@@ -1012,6 +1070,25 @@
   window.irParaAluno = irParaAluno;
   window.limparChamada = limparChamada;
   window.salvarChamada = salvarChamada;
+
+  document.getElementById('pesquisa-roster').addEventListener('input', function () {
+    pesquisaRoster = this.value;
+    montarLista();
+  });
+  document.getElementById('ordenar-roster-az').addEventListener('click', function () {
+    ordemRoster = 1;
+    montarLista();
+  });
+  document.getElementById('ordenar-roster-za').addEventListener('click', function () {
+    ordemRoster = -1;
+    montarLista();
+  });
+  document.getElementById('limpar-roster').addEventListener('click', function () {
+    pesquisaRoster = '';
+    ordemRoster = 0;
+    document.getElementById('pesquisa-roster').value = '';
+    montarLista();
+  });
 </script>
 
 </body>
