@@ -128,6 +128,7 @@
     import { montarTopbar } from './js/Topbar.js';
     import ApiService from './ApiService.js';
     import { ESQUEMAS_IMPORTACAO, lerArquivoPlanilha, prepararImportacao } from './js/ImportadorCsv.js';
+    import { montarControlesListagem } from './js/ControlesListagem.js';
 
     let userData = localStorage.getItem("userData");
     if (userData) {
@@ -303,6 +304,8 @@
         });
 
         const tdAcoes = document.createElement("td");
+        const acoes = document.createElement("div");
+        acoes.className = "acoes-listagem";
         const btnSel = createButton("Selecionar", "btn-info");
         btnSel.onclick = () => {
           alunoSelecionado = aluno;
@@ -317,7 +320,7 @@
             input.value = aluno[campo] || (campo === "situacao" ? "Ativo" : "");
           });
         };
-        tdAcoes.appendChild(btnSel);
+        acoes.appendChild(btnSel);
 
         const btnExcluir = createButton("Excluir", "btn-danger");
         btnExcluir.onclick = async () => {
@@ -335,7 +338,8 @@
             mostrarMensagem(resposta.message || "Não foi possível excluir o aluno", "danger");
           }
         };
-        tdAcoes.appendChild(btnExcluir);
+        acoes.appendChild(btnExcluir);
+        tdAcoes.appendChild(acoes);
         tr.appendChild(tdAcoes);
 
         tbody.appendChild(tr);
@@ -343,6 +347,7 @@
 
       table.appendChild(tbody);
       divTabela.appendChild(table);
+      montarControlesListagem(divTabela, table, { colunaOrdenacao: 1 });
     }
 
     function filtrar() {

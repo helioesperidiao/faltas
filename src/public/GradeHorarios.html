@@ -65,6 +65,7 @@
     import { montarTopbar } from './js/Topbar.js';
     import ApiService from './ApiService.js';
     import { ESQUEMAS_IMPORTACAO, lerArquivoPlanilha, normalizarLinhaGradeHorario, prepararImportacao } from './js/ImportadorCsv.js';
+    import { montarControlesListagem } from './js/ControlesListagem.js';
 
     let userData = localStorage.getItem("userData");
     if (userData) {
@@ -216,6 +217,7 @@
 
       table.appendChild(tbody);
       divTabela.appendChild(table);
+      montarControlesListagem(divTabela, table, { colunaOrdenacao: 0 });
     }
 
     const fileCsv = document.getElementById("fileCsv");

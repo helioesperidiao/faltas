@@ -88,8 +88,9 @@
   </main>
 
   <script type="module">
-    import { montarTopbar } from './js/Topbar.js';
+    import { montarTopbar, escaparHtml } from './js/Topbar.js';
     import ApiService from './ApiService.js';
+    import { montarControlesListagem } from './js/ControlesListagem.js';
 
     let userData = localStorage.getItem("userData");
     if (userData) {
@@ -145,11 +146,12 @@
         return "";
       };
       const linhas = resposta.data.frequencia.map(item =>
-  `<tr><td>${item.matricula}</td><td>${item.alunoNome}</td><td class="${classeSituacao(item.situacao)}">${item.situacao}</td><td>${textoMovimentacao(item.movimentacao)}</td></tr>`
+  `<tr><td>${escaparHtml(item.matricula)}</td><td>${escaparHtml(item.alunoNome)}</td><td class="${classeSituacao(item.situacao)}">${escaparHtml(item.situacao)}</td><td>${escaparHtml(textoMovimentacao(item.movimentacao))}</td></tr>`
       ).join("");
       divTabela.innerHTML = `<table class="table table-bordered table-striped">
         <thead><tr><th>Matrícula</th><th>Nome</th><th>Situação</th><th>Entrada/Saída</th></tr></thead>
         <tbody>${linhas}</tbody></table>`;
+      montarControlesListagem(divTabela, divTabela.querySelector('table'), { colunaOrdenacao: 1 });
     };
 
     const cboTipoPeriodo = document.getElementById("cboTipoPeriodo");
@@ -188,11 +190,12 @@
       }
 
       const linhas = resposta.data.faltas.map(item =>
-        `<tr><td>${item.matricula}</td><td>${item.alunoNome}</td><td>${item.totalFaltas}</td><td>${textoMovimentacao(item.movimentacao)}</td></tr>`
+        `<tr><td>${escaparHtml(item.matricula)}</td><td>${escaparHtml(item.alunoNome)}</td><td>${item.totalFaltas}</td><td>${escaparHtml(textoMovimentacao(item.movimentacao))}</td></tr>`
       ).join("");
       divTabela.innerHTML = `<table class="table table-bordered table-striped">
         <thead><tr><th>Matrícula</th><th>Nome</th><th>Total de Faltas</th><th>Entrada/Saída</th></tr></thead>
         <tbody>${linhas}</tbody></table>`;
+      montarControlesListagem(divTabela, divTabela.querySelector('table'), { colunaOrdenacao: 1 });
     };
   </script>
 </body>

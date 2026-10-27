@@ -68,28 +68,6 @@
     width: 100%;
   }
 
-  /* ---------- BOTÃO DE PDF ---------- */
-  .btn-pdf {
-    background: var(--univap-azul);
-    border: 1.5px solid var(--univap-azul);
-    color: #ffffff;
-    border-radius: 4px;
-    padding: 9px 18px;
-    font-size: 12.5px;
-    font-weight: bold;
-    cursor: pointer;
-    font-family: inherit;
-  }
-  .btn-pdf:hover {
-    background: var(--univap-azul-escuro);
-    border-color: var(--univap-azul-escuro);
-  }
-  .btn-pdf:disabled {
-    background: var(--univap-cinza-borda);
-    border-color: var(--univap-cinza-borda);
-    cursor: not-allowed;
-  }
-
   /* ---------- TABELA DE ALUNOS ---------- */
   table.alunos-table {
     width: 100%;
@@ -158,11 +136,6 @@
     display: none;
   }
 
-  /* ---------- CABEÇALHO QUE SÓ APARECE NO PDF/IMPRESSÃO ---------- */
-  #print-cabecalho {
-    display: none;
-  }
-
   @media (max-width: 700px) {
     /* !important porque os <td> carregam width inline (25% / 60% / 40%), que de outro
        modo vence o CSS e deixa os cards espremidos numa coluna estreita no celular. */
@@ -187,85 +160,6 @@
     table.alunos-table { min-width: 480px; }
   }
 
-  /* ---------- IMPRESSÃO / SALVAR COMO PDF ---------- */
-  @media print {
-    body {
-      background: #ffffff;
-    }
-    .crumbbar,
-    .page-title,
-    .resumo-table,
-    #card-filtro,
-    #empty-card,
-    .btn-pdf {
-      display: none !important;
-    }
-    main.conteudo-pagina {
-      margin: 0;
-      padding: 0;
-      max-width: none;
-    }
-    body.com-turma #print-cabecalho {
-      display: block;
-      margin-bottom: 16px;
-    }
-    #print-cabecalho h1 {
-      font-size: 18px;
-      color: #000000;
-      margin: 0 0 4px 0;
-    }
-    #print-cabecalho .print-sub {
-      font-size: 12px;
-      color: #333333;
-      margin: 0 0 10px 0;
-    }
-    #print-cabecalho .print-totais {
-      font-size: 12px;
-      color: #000000;
-      border-top: 1px solid #999999;
-      border-bottom: 1px solid #999999;
-      padding: 6px 0;
-    }
-    /* Sem !important de propósito: quando nenhuma turma foi escolhida, #tabela-wrap
-       continua com display:none e a impressão sai sem uma tabela vazia. */
-    #tabela-wrap {
-      border: none;
-      margin: 0;
-    }
-    #tabela-wrap .card-header {
-      display: none;
-    }
-    #tabela-wrap .card-body {
-      padding: 0;
-      overflow: visible;
-    }
-    .alunos-table th,
-    .alunos-table td {
-      border-bottom: 1px solid #999999;
-      color: #000000;
-    }
-    .alunos-table tr:hover td {
-      background: transparent;
-    }
-    .alunos-table tr {
-      page-break-inside: avoid;
-    }
-    .avatar-mini {
-      display: none;
-    }
-    .badge {
-      background: transparent !important;
-      color: #000000 !important;
-      padding: 0;
-      font-size: 11px;
-    }
-    .faltas-total.alerta {
-      color: #000000;
-    }
-    @page {
-      margin: 14mm;
-    }
-  }
 </style>
 </head>
 <body>
@@ -280,13 +174,6 @@
   <div class="page-title">
     <h1>Frequência por Turma</h1>
     <p>Escolha uma turma para ver a lista de alunos e a situação de frequência de cada um.</p>
-  </div>
-
-  <!-- CABEÇALHO EXCLUSIVO DO PDF -->
-  <div id="print-cabecalho">
-    <h1>UNIVAP &mdash; Relatório de Frequência</h1>
-    <p class="print-sub" id="print-sub"></p>
-    <div class="print-totais" id="print-totais"></div>
   </div>
 
   <!-- CARDS DE RESUMO -->
@@ -356,7 +243,6 @@
   <div class="card" id="tabela-wrap">
     <div class="card-header com-acao">
       <h2 id="titulo-turma">Alunos da Turma</h2>
-      <button type="button" class="btn-pdf" id="btn-pdf" onclick="baixarPdf()">Baixar PDF da frequência</button>
     </div>
     <div class="card-body">
       <table class="alunos-table">
@@ -376,6 +262,7 @@
 <script type="module">
   import ApiService from './ApiService.js';
   import { exigirSessao, montarTopbar, escaparHtml } from './js/Topbar.js';
+  import { montarControlesListagem } from './js/ControlesListagem.js';
 
   const sessao = exigirSessao();
 
@@ -400,6 +287,8 @@
     var turmaAtual = "";
     var todosAlunos = [];
     var turmas = [];
+    const tabelaDeAlunos = document.querySelector('#tabela-wrap .alunos-table');
+    montarControlesListagem(document.querySelector('#tabela-wrap .card-body'), tabelaDeAlunos, { colunaOrdenacao: 0 });
 
     /**
      * Quebra 'AAAA-MM-DD' em números sem passar por new Date(): o construtor trata
@@ -413,12 +302,6 @@
         mes: Number(partes[1]),
         dia: Number(partes[2])
       };
-    }
-
-    function formatarDataBr(texto) {
-      const { ano, mes, dia } = partesDaData(texto);
-      if (!ano || !mes || !dia) return texto || '';
-      return String(dia).padStart(2, '0') + '/' + String(mes).padStart(2, '0') + '/' + ano;
     }
 
     function pegarIniciais(nome) {
@@ -547,6 +430,10 @@
           textoBadge = 'Falta';
           classeBadge = 'badge-falta';
           ausentes++;
+        } else if (aluno.situacao === 'Atrasado') {
+          textoBadge = 'Atrasado';
+          classeBadge = 'badge-atrasado';
+          presentes++;
         } else if (aluno.situacao === 'Abonada' || aluno.situacao === 'Dispensada') {
           textoBadge = aluno.situacao;
           classeBadge = 'badge-presente';
@@ -566,39 +453,12 @@
         corpo.appendChild(linha);
       });
 
-      prepararCabecalhoDoPdf(dia, frequencia.length, presentes, ausentes);
-      document.getElementById('btn-pdf').disabled = frequencia.length === 0;
-    }
-
-    // ---------- PDF DA FREQUÊNCIA DA TURMA ----------
-    // Monta o bloco que só aparece na impressão e abre a caixa de impressão do
-    // navegador, onde o usuário escolhe "Salvar como PDF".
-    function prepararCabecalhoDoPdf(dia, total, presentes, ausentes) {
-      const agora = new Date();
-      const emitidoEm = String(agora.getDate()).padStart(2, '0')
-        + '/' + String(agora.getMonth() + 1).padStart(2, '0')
-        + '/' + agora.getFullYear();
-
-      document.getElementById('print-sub').textContent =
-        'Turma ' + turmaAtual + ' · Data de referência: ' + formatarDataBr(dia);
-
-      document.getElementById('print-totais').textContent =
-        'Alunos: ' + total
-        + '   |   Presentes: ' + presentes
-        + '   |   Faltas: ' + ausentes
-        + '   |   Emitido em: ' + emitidoEm;
-    }
-
-    function baixarPdf() {
-      if (turmaAtual === '' || document.getElementById('corpo-tabela').children.length === 0) {
-        return;
-      }
-      window.print();
+      document.querySelector('#tabela-wrap .campo-pesquisa-listagem input')
+        ?.dispatchEvent(new Event('input'));
     }
 
     window.selecionarTurma = selecionarTurma;
     window.mostrarTurma = mostrarTurma;
-    window.baixarPdf = baixarPdf;
 
     carregarResumoGeral();
   }

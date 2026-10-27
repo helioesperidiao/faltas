@@ -105,7 +105,8 @@
   </main>
   <script type="module">
     import ApiService from './ApiService.js';
-    import { montarTopbar } from './js/Topbar.js';
+    import { montarTopbar, escaparHtml } from './js/Topbar.js';
+    import { montarControlesListagem } from './js/ControlesListagem.js';
 
     const userData = JSON.parse(localStorage.getItem('userData') || 'null');
     const token = userData?.data?.token || userData?.token;
@@ -123,9 +124,14 @@
 
     function mostrarMensagem(texto, tipo) { $('mensagem').textContent = texto; $('mensagem').className = `message ${tipo || ''}`; }
     function mostrarMensagemFechamento(texto, tipo) { $('mensagem-fechamento').textContent = texto; $('mensagem-fechamento').className = `message ${tipo || ''}`; }
+    function formatarDataLocal(texto) {
+      const [ano, mes, dia] = String(texto || '').slice(0, 10).split('-');
+      return ano && mes && dia ? `${dia}/${mes}/${ano}` : '';
+    }
     function renderHistorico(registros) {
       if (!registros.length) { $('historico').textContent = 'Nenhuma movimentação registrada.'; return; }
-      $('historico').innerHTML = `<table><thead><tr><th>Aluno</th><th>Data</th><th>Hora</th><th>Tipo</th></tr></thead><tbody>${registros.map(item => `<tr><td>${item.nomeAluno}<br><small>${item.matricula}</small></td><td>${new Date(item.data).toLocaleDateString('pt-BR')}</td><td>${item.horario}</td><td><span class="badge ${item.tipo}">${item.tipo === 'entrada' ? 'Entrada' : 'Saída'}</span></td></tr>`).join('')}</tbody></table>`;
+      $('historico').innerHTML = `<table><thead><tr><th>Aluno</th><th>Data</th><th>Hora</th><th>Tipo</th></tr></thead><tbody>${registros.map(item => `<tr><td>${escaparHtml(item.nomeAluno)}<br><small>${escaparHtml(item.matricula)}</small></td><td>${formatarDataLocal(item.data)}</td><td>${escaparHtml(item.horario)}</td><td><span class="badge ${item.tipo === 'saida' ? 'saida' : 'entrada'}">${item.tipo === 'entrada' ? 'Entrada' : 'Saída'}</span></td></tr>`).join('')}</tbody></table>`;
+      montarControlesListagem($('historico'), $('historico').querySelector('table'), { colunaOrdenacao: 0 });
     }
     function limparCamposDeAluno() {
       $('matricula-aluno').value = '';
