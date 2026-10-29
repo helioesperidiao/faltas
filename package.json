@@ -2,7 +2,7 @@
   "name": "faltas_cti",
   "version": "1.0.0",
   "scripts": {
-    "dev": "kill-port 3000 && taskkill /IM nginx.exe /F 2>nul & cd nginx && start /B nginx && cd .. && nodemon",
+    "dev": " nodemon",
    "build": "tsc && tsc-alias && copyfiles -u 1 \"src/public/**/*\" dist",
 
     "start": "node dist/index.js",

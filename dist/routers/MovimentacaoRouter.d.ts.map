@@ -1,1 +1,0 @@
-{"version":3,"file":"MovimentacaoRouter.d.ts","sourceRoot":"","sources":["../../src/routers/MovimentacaoRouter.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,MAAM,EAAE,MAAM,SAAS,CAAC;AAKjC,OAAO,EAAE,aAAa,EAAE,MAAM,2BAA2B,CAAC;AAE1D,qBAAa,kBAAkB;IAC3B,MAAM,CAAC,QAAQ,CAAC,MAAM,2BAA2B;IACjD,OAAO,CAAC,QAAQ,CAAC,MAAM,CAAS;gBAEpB,QAAQ,EAAE,aAAa;IAQnC,SAAS,QAAO,MAAM,CAAgB;CACzC"}

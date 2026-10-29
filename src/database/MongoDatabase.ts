@@ -238,14 +238,14 @@ export class MongoDatabase {
             for (const cargoLegado of cargosLegados) {
                 if (String(cargoLegado._id) === String(cargoCanonico._id)) continue;
 
-            await funcionarios.updateMany(
+                await funcionarios.updateMany(
                     { cargoId: cargoLegado._id, ...filtroAtivo },
-                { $set: { cargoId: cargoCanonico._id } }
-            );
-            await cargos.updateOne(
+                    { $set: { cargoId: cargoCanonico._id } }
+                );
+                await cargos.updateOne(
                     { _id: cargoLegado._id },
-                { $set: { "auditoria.deletadoPor": "sistema", "auditoria.deletadoEm": new Date() } }
-            );
+                    { $set: { "auditoria.deletadoPor": "sistema", "auditoria.deletadoEm": new Date() } }
+                );
             }
         }
 

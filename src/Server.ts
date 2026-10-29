@@ -101,7 +101,8 @@ export class Server {
                 process.exit(1);
             })
             .on('listening', () => {
-                console.log(`🚀 Server rodando em http://localhost:8080/faltas/Login.html`);
+                //console.log(`🚀 Server rodando em http://localhost:8080/faltas/Login.html`);
+                console.log(`🚀 Server rodando em http://localhost:${this._porta}/Login.html`);
 
             });
     }
