@@ -120,7 +120,7 @@ export class Server {
             })
             .on('listening', () => {
                 //console.log(`🚀 Server rodando em http://localhost:8080/faltas/Login.html`);
-                log.info(`servidor ouvindo em http://localhost:${this._porta}`);
+                log.info(`servidor ouvindo em http://localhost:${this._porta}/Login.html`);
             });
     }
 }
