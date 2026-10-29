@@ -1,25 +1,44 @@
 import { Router } from "express";
-import { MongoDatabase } from "@/database/MongoDatabase";
-import { ConfiguracaoAlertaFaltaDAO } from "@/dao/ConfiguracaoAlertaFaltaDAO";
-import { ConfiguracaoAlertaFaltaService } from "@/services/ConfiguracaoAlertaFaltaService";
-import { ConfiguracaoAlertaFaltaController } from "@/controllers/ConfiguracaoAlertaFaltaController";
-import { JwtMiddleware } from "@/middlewares/JwtMiddleware";
+import { JwtMiddleware } from "../middlewares/JwtMiddleware";
+import { ConfiguracaoAlertaFaltaController } from "../controllers/ConfiguracaoAlertaFaltaController";
+import { ConfiguracaoAlertaFaltaService } from "../services/ConfiguracaoAlertaFaltaService";
+import { ConfiguracaoAlertaFaltaDAO } from "../dao/ConfiguracaoAlertaFaltaDAO";
+import { MongoDatabase } from "../database/MongoDatabase";
+import { asyncHandler } from "../http/asyncHandler";
+import { createLogger } from "../logging/Logger";
 
+const log = createLogger("ConfiguracaoAlertaFaltaRouter");
+
+/**
+ * Router responsável por expor os endpoints de configuração de alerta de faltas.
+ *
+ * As rotas vivem sob `/configuracoes` para que o mesmo router possa, no futuro,
+ * expor outras operações do módulo de alertas sem colidir de nomes.
+ */
 export class ConfiguracaoAlertaFaltaRouter {
-    public static readonly PREFIX = "/api/v1/alertas-faltas/configuracoes";
-    private readonly router: Router;
+    public static readonly PREFIX = "/api/v1/alertas-faltas";
 
-    constructor(database: MongoDatabase) {
-        this.router = Router();
-        const controller = new ConfiguracaoAlertaFaltaController(
-            new ConfiguracaoAlertaFaltaService(new ConfiguracaoAlertaFaltaDAO(database))
-        );
-        const jwt = new JwtMiddleware();
-        this.router.get(ConfiguracaoAlertaFaltaRouter.PREFIX, jwt.validateToken, controller.findAll);
-        this.router.post(ConfiguracaoAlertaFaltaRouter.PREFIX, jwt.validateToken, controller.create);
-        this.router.put(ConfiguracaoAlertaFaltaRouter.PREFIX + "/:idConfiguracao", jwt.validateToken, controller.update);
-        this.router.delete(ConfiguracaoAlertaFaltaRouter.PREFIX + "/:idConfiguracao", jwt.validateToken, controller.delete);
+    private _router: Router;
+
+    constructor(dbInstance: MongoDatabase) {
+        log.debug("constructor()");
+
+        const mainRouter = Router();
+        const subRouter = Router();
+
+        const configuracaoDAO = new ConfiguracaoAlertaFaltaDAO(dbInstance);
+        const configuracaoService = new ConfiguracaoAlertaFaltaService(configuracaoDAO);
+        const configuracaoController = new ConfiguracaoAlertaFaltaController(configuracaoService);
+        const jwtMiddleware = new JwtMiddleware();
+
+        subRouter.get("/configuracoes", jwtMiddleware.validateToken, asyncHandler(configuracaoController.findAll));
+        subRouter.post("/configuracoes", jwtMiddleware.validateToken, asyncHandler(configuracaoController.create));
+        subRouter.put("/configuracoes/:idConfiguracao", jwtMiddleware.validateToken, asyncHandler(configuracaoController.update));
+        subRouter.delete("/configuracoes/:idConfiguracao", jwtMiddleware.validateToken, asyncHandler(configuracaoController.delete));
+
+        mainRouter.use(ConfiguracaoAlertaFaltaRouter.PREFIX, subRouter);
+        this._router = mainRouter;
     }
 
-    public getRouter = (): Router => this.router;
+    public getRouter = (): Router => this._router;
 }

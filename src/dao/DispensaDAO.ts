@@ -3,56 +3,61 @@ import { Dispensa } from "../models/Dispensa";
 import { MongoDatabase } from "../database/MongoDatabase";
 import { Funcionario } from "@/models/Funcionario";
 import { Auditoria } from "@/models/Auditoria";
+// NOVO: logger (padrão de logs)
+import { createLogger } from "../logging/Logger";
+
+const log = createLogger("DispensaDAO");
 
 export class DispensaDAO {
     private _database: MongoDatabase;
 
-    //construtor
     constructor(dbInstance: MongoDatabase){
-        console.log("⬆️ DispensaDAO.constructor()");
         this._database = dbInstance;
     }
 
-    //pegando a tabela de dispensa
     private async getCollection(): Promise<Collection<Document>> {
         const db = await this._database.getDb();
         return db.collection("dispensa");
     }
 
-    //create
     public async create(dispensa: Dispensa, funcionarioLogado: Funcionario): Promise<Dispensa> {
-    console.log("🟢 DispensDAO.create()");
-    const collection = await this.getCollection();
+        log.debug("create()", { idAluno: dispensa.idAluno, turma: dispensa.turma });
+        const collection = await this.getCollection();
 
-    //quem criou
-    dispensa.marcarCriadoPor(funcionarioLogado.idFuncionario);
+        //quem criou
+        dispensa.marcarCriadoPor(funcionarioLogado.idFuncionario);
 
-    const doc: OptionalId<Document> = {
-        idAluno: dispensa.idAluno,
-        turma: dispensa.turma,
-        horaInicio: dispensa.horaInicio,
-        horaFim: dispensa.horaFim,
-        dia: dispensa.dia,
-        dataFim: dispensa.dataFim,
-        cod: dispensa.cod,
-        disciplina: dispensa.disciplina,
-        motivo: dispensa.motivo,
-        nomeArquivo: dispensa.nomeArquivo,
-        auditoria: dispensa.auditoria.toJSON()
-    };
+        const doc: OptionalId<Document> = {
+            idAluno: dispensa.idAluno,
+            turma: dispensa.turma,
+            horaInicio: dispensa.horaInicio,
+            horaFim: dispensa.horaFim,
+            dia: dispensa.dia,
+            dataFim: dispensa.dataFim,
+            cod: dispensa.cod,
+            disciplina: dispensa.disciplina,
+            motivo: dispensa.motivo,
+            nomeArquivo: dispensa.nomeArquivo,
+            auditoria: dispensa.auditoria.toJSON()
+        };
 
-    const result = await collection.insertOne(doc);
-    if (!result.insertedId) {
-        throw new Error("Falha ao inserir dispensa");
-    }
+        const result = await collection.insertOne(doc);
+        if (!result.insertedId) {
+            log.error("falha ao inserir dispensa", { idAluno: dispensa.idAluno });
+            throw new Error("Falha ao inserir dispensa");
+        }
 
-    dispensa.idDispensa = result.insertedId.toString();
+        dispensa.idDispensa = result.insertedId.toString();
+        log.info("dispensa inserida", {
+            idDispensa: dispensa.idDispensa,
+            idAluno: dispensa.idAluno,
+            turma: dispensa.turma,
+        });
         return dispensa;
     }
 
-    //delete
     public async delete (dispensa: Dispensa, funcionarioLogado: Funcionario): Promise<boolean>{
-        console.log("🟢 DispensDAO.delete(" + dispensa.idDispensa + ")");
+        log.debug("delete()", { idDispensa: dispensa.idDispensa });
         const collection = await this.getCollection();
         dispensa.marcarDeletadoPor(funcionarioLogado.idFuncionario);
         const filter: Filter<Document> = {
@@ -66,12 +71,14 @@ export class DispensaDAO {
             }
         };
         const result = await collection.updateOne(filter, update);
-        return result.modifiedCount > 0;
+        const ok = result.modifiedCount > 0;
+        if (ok) log.info("dispensa removida", { idDispensa: dispensa.idDispensa });
+        else log.warn("dispensa não encontrada para remoção", { idDispensa: dispensa.idDispensa });
+        return ok;
     }
 
-    //update
     public async update (dispensa: Dispensa, funcionarioLogado: Funcionario): Promise<boolean>{
-        console.log("🟢 DispensaDAO.update(" + dispensa.idDispensa + ")");
+        log.debug("update()", { idDispensa: dispensa.idDispensa });
         const collection = await this.getCollection();
         dispensa.marcarAlteradoPor(funcionarioLogado.idFuncionario);
         const filter: Filter<Document> = { _id: new ObjectId(dispensa.idDispensa) };
@@ -91,9 +98,12 @@ export class DispensaDAO {
             }
         };
         const result = await collection.updateOne(filter, update);
-        return result.modifiedCount > 0;
+        const ok = result.modifiedCount > 0;
+        if (ok) log.info("dispensa atualizada", { idDispensa: dispensa.idDispensa });
+        else log.warn("dispensa não encontrada para atualização", { idDispensa: dispensa.idDispensa });
+        return ok;
     }
-    //toDispensa
+
     private toDispensa(doc: any): Dispensa {
         const dispensa = new Dispensa();
         dispensa.idDispensa = doc._id.toHexString();
@@ -120,9 +130,8 @@ export class DispensaDAO {
         return dispensa;
     }
 
-    //"select" pelo ID
     public async findById(idDispensa: string): Promise<Dispensa | null> {
-        console.log("🟢 DispensaDAO.findById()");
+        log.debug("findById()", { idDispensa });
         const collection = await this.getCollection();
         const filter: Filter<Document> = {
             _id: new ObjectId(idDispensa),
@@ -132,34 +141,33 @@ export class DispensaDAO {
         return doc ? this.toDispensa(doc) : null;
     }
 
-    //"select" todas
     public async findAll(): Promise<Dispensa[]> {
+        log.debug("findAll()");
         const collection = await this.getCollection();
         const cursor = collection.find({ "auditoria.deletadoEm": null })
         const docs = await cursor.toArray();
         return docs.map(doc => this.toDispensa(doc));
     }
 
-    //"select" deletadas
     public async findAllDeleted(): Promise<Dispensa[]> {
+        log.debug("findAllDeleted()");
         const collection = await this.getCollection();
-        const cursor = collection.find({ "auditoria.deletadoEm": { $ne: null } }); //esse $ne é not equal, entao é o oposto da condição do findAll
+        const cursor = collection.find({ "auditoria.deletadoEm": { $ne: null } });
         const docs = await cursor.toArray();
         return docs.map(doc => this.toDispensa(doc));
     }
 
-    //count
     public async count(): Promise<number> {
-        console.log("🟢 DispensaDAO.count()");
+        log.debug("count()");
         const collection = await this.getCollection();
         return await collection.countDocuments({ "auditoria.deletadoEm": null });
     }
 
-    //se quiser buscar pelo aluno, disciplina ou código da disciplina
     public async findByField(field: string, value: any): Promise<Dispensa[]> {
-        console.log(`🟢 DispensaDAO.findByField() - Campo: ${field}, Valor: ${value}`);
+        log.debug("findByField()", { field, value });
         const allowedFields = ["_id", "idAluno", "disciplina", "cod"];
         if (!allowedFields.includes(field)) {
+            log.warn("campo inválido para busca", { field });
             throw new Error(`Campo inválido para busca: ${field}`);
         }
         const collection = await this.getCollection();
@@ -180,9 +188,8 @@ export class DispensaDAO {
         return docs.map(doc => this.toDispensa(doc));
     }
 
-    //verifica se existe dispensa vigente para o aluno/disciplina numa data (usado pela chamada)
     public async findVigenteParaAluno(idAluno: string, cod: string, data: Date): Promise<Dispensa | null> {
-        console.log(`🟢 DispensaDAO.findVigenteParaAluno(${idAluno}, ${cod})`);
+        log.debug("findVigenteParaAluno()", { idAluno, cod, data });
         const collection = await this.getCollection();
         const filter: Filter<Document> = {
             idAluno,

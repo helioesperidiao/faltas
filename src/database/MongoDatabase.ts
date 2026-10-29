@@ -2,9 +2,13 @@ import { MongoClient, Db, MongoClientOptions, Document } from "mongodb";
 import dotenv from "dotenv";
 import { CARGOS_ACEITOS, CARGO_PROCESSO_PEDAGOGICO } from "@/constants/Cargos";
 import { GradeHorario } from "@/models/GradeHorario";
+// NOVO: logger (padrão de logs)
+import { createLogger } from "../logging/Logger";
 
 // Carrega variáveis de ambiente do arquivo .env
 dotenv.config();
+
+const log = createLogger("MongoDatabase");
 
 /**
  * Classe responsável por gerenciar a conexão com o MongoDB.
@@ -101,13 +105,13 @@ export class MongoDatabase {
             ...config.options, // Permite sobrescrever outras opções não mapeadas
         };
 
-        console.log(`🔧 MongoDatabase configurado:
-  URI: ${this._uri}
-  Database: ${this._databaseName}
-  MaxPoolSize: ${this._options.maxPoolSize}
-  MinPoolSize: ${this._options.minPoolSize}
-  ConnectTimeout: ${this._options.connectTimeoutMS}ms
-  SocketTimeout: ${this._options.socketTimeoutMS}ms`);
+        // Log estruturado com as opções resolvidas (substitui o console.log multilinha)
+        log.debug("configurado", {
+            uri: this._uri,
+            database: this._databaseName,
+            maxPoolSize: this._options.maxPoolSize,
+            minPoolSize: this._options.minPoolSize,
+        });
     }
 
     // ======================== MÉTODOS PÚBLICOS ========================
@@ -131,7 +135,7 @@ export class MongoDatabase {
             MongoDatabase._connectionPromise = MongoDatabase._client.connect()
                 .then(client => {
                     MongoDatabase._db = client.db(this._databaseName);
-                    console.log("⬆️ Conectado ao MongoDB com sucesso!");
+                    log.info("conectado ao MongoDB", { database: this._databaseName });
                     return client;
                 })
                 .catch((error: Error) => {
@@ -145,7 +149,7 @@ export class MongoDatabase {
             await MongoDatabase._connectionPromise;
         } catch (error: unknown) {
             const message = error instanceof Error ? error.message : String(error);
-            console.error("❌ Falha ao conectar ao MongoDB:", message);
+            log.error("falha ao conectar ao MongoDB", { error: message });
             throw error;
         }
 
@@ -188,6 +192,7 @@ export class MongoDatabase {
      */
     public async initializeSchema(): Promise<void> {
         const db = await this.getDb();
+        log.debug("initializeSchema() - criando índices");
 
         await Promise.all([
             db.collection("aluno").createIndex({ turma: 1, turmaInicioEm: 1 }),
@@ -197,15 +202,20 @@ export class MongoDatabase {
             db.collection("gradeHorario").createIndex({ turma: 1, dia: 1, cod: 1 }),
             db.collection("alertasFaltas").createIndex({ ano: 1, bimestre: 1, matricula: 1, turma: 1, codDisciplina: 1 })
         ]);
+        log.debug("initializeSchema() - índices prontos");
 
         await this.migrarVinculosLegados(db);
         await this.migrarCargosAceitos(db);
         await this.migrarCargaHorariaDasGrades(db);
         await this.criarConfiguracoesPadraoDeAlertas(db);
+
+        log.info("initializeSchema() concluído");
     }
 
     /** Mantém no banco somente os dois cargos permitidos pela aplicação. */
     private async migrarCargosAceitos(db: Db): Promise<void> {
+        log.debug("migrarCargosAceitos() - iniciando");
+
         const cargos = db.collection<Document>("cargo");
         const funcionarios = db.collection<Document>("funcionario");
         const filtroAtivo = { "auditoria.deletadoEm": null };
@@ -232,6 +242,10 @@ export class MongoDatabase {
                 }
             );
             cargoCanonico = { ...cargoParaRenomear, nomeCargo: CARGO_PROCESSO_PEDAGOGICO };
+            log.info("migrarCargosAceitos() - cargo legado renomeado", {
+                idCargo: String(cargoParaRenomear._id),
+                nomeNovo: CARGO_PROCESSO_PEDAGOGICO,
+            });
         }
 
         if (cargoCanonico) {
@@ -246,16 +260,27 @@ export class MongoDatabase {
                     { _id: cargoLegado._id },
                     { $set: { "auditoria.deletadoPor": "sistema", "auditoria.deletadoEm": new Date() } }
                 );
+                log.info("migrarCargosAceitos() - cargo legado mesclado", {
+                    idCargoLegado: String(cargoLegado._id),
+                    idCargoCanonico: String(cargoCanonico._id),
+                });
             }
         }
 
-        await cargos.updateMany(
+        const desativados = await cargos.updateMany(
             { nomeCargo: { $nin: [...CARGOS_ACEITOS] }, ...filtroAtivo },
             { $set: { "auditoria.deletadoPor": "sistema", "auditoria.deletadoEm": new Date() } }
         );
+        if (desativados.modifiedCount > 0) {
+            log.info("migrarCargosAceitos() - cargos fora da lista desativados", {
+                total: desativados.modifiedCount,
+            });
+        }
     }
 
     private async migrarVinculosLegados(db: Db): Promise<void> {
+        log.debug("migrarVinculosLegados() - iniciando");
+
         const alunos = db.collection<Document>("aluno");
         const registros = db.collection<Document>("registro");
         const abonos = db.collection<Document>("abonos");
@@ -272,6 +297,9 @@ export class MongoDatabase {
                     }
                 }
             }));
+            log.info("migrarVinculosLegados() - alunos sem turmaInicioEm corrigidos", {
+                total: alunosSemInicio.length,
+            });
         }
 
         const registrosSemTurma = await registros.find({ turma: { $exists: false } }).toArray();
@@ -285,6 +313,10 @@ export class MongoDatabase {
                     { _id: registro._id },
                     { $set: { turma: '', curso: '', serie: '', alunoNome: '', vinculoHistoricoIndisponivel: true } }
                 );
+                log.warn("migrarVinculosLegados() - registro sem aluno correspondente", {
+                    idRegistro: String(registro._id),
+                    matricula: registro.matricula,
+                });
                 continue;
             }
             await registros.updateOne(
@@ -308,6 +340,10 @@ export class MongoDatabase {
                     { _id: abono._id },
                     { $set: { turma: '', curso: '', serie: '', alunoNome: '', vinculoHistoricoIndisponivel: true } }
                 );
+                log.warn("migrarVinculosLegados() - abono sem aluno correspondente", {
+                    idAbono: String(abono._id),
+                    matricula: abono.matricula,
+                });
                 continue;
             }
             await abonos.updateOne(
@@ -322,10 +358,14 @@ export class MongoDatabase {
                 }
             );
         }
+
+        log.debug("migrarVinculosLegados() - concluído");
     }
 
     /** Calcula a duração e a carga semanal das grades já existentes na base. */
     private async migrarCargaHorariaDasGrades(db: Db): Promise<void> {
+        log.debug("migrarCargaHorariaDasGrades() - iniciando");
+
         const grades = db.collection<Document>("gradeHorario");
         const aulasAtivas = await grades.find({ "auditoria.deletadoEm": null }).toArray();
         const cargas = new Map<string, { total: number; aulas: Document[] }>();
@@ -338,9 +378,15 @@ export class MongoDatabase {
                 grupo.total += duracao;
                 grupo.aulas.push({ ...aula, duracaoAulaMinutos: duracao });
                 cargas.set(chave, grupo);
-            } catch {
+            } catch (err) {
                 // Uma grade legada inválida não pode impedir a aplicação de iniciar.
                 // Ela não entra nos alertas até ser corrigida no cadastro da grade.
+                log.warn("migrarCargaHorariaDasGrades() - grade legada inválida ignorada", {
+                    idGradeHorario: String(aula._id),
+                    horaInicio: aula.horaInicio,
+                    horaFim: aula.horaFim,
+                    error: err instanceof Error ? err.message : String(err),
+                });
             }
         });
 
@@ -359,13 +405,21 @@ export class MongoDatabase {
         );
         if (atualizacoes.length > 0) {
             await grades.bulkWrite(atualizacoes);
+            log.info("migrarCargaHorariaDasGrades() - grades atualizadas", {
+                total: atualizacoes.length,
+            });
         }
     }
 
     /** Garante as regras iniciais, que podem ser alteradas pelo Processo Pedagógico. */
     private async criarConfiguracoesPadraoDeAlertas(db: Db): Promise<void> {
+        log.debug("criarConfiguracoesPadraoDeAlertas() - verificando");
+
         const configuracoes = db.collection<Document>("configuracoesAlertasFaltas");
-        if (await configuracoes.countDocuments() > 0) return;
+        if (await configuracoes.countDocuments() > 0) {
+            log.debug("criarConfiguracoesPadraoDeAlertas() - já existem configurações, pulando");
+            return;
+        }
         const padroes = [
             { cargaHorariaSemanalMinutos: 50, limiteFaltas: 3 },
             { cargaHorariaSemanalMinutos: 100, limiteFaltas: 5 }
@@ -381,6 +435,9 @@ export class MongoDatabase {
             }
         }));
         await configuracoes.insertMany(padroes);
+        log.info("criarConfiguracoesPadraoDeAlertas() - regras padrão criadas", {
+            total: padroes.length,
+        });
     }
 
     /**
@@ -404,7 +461,7 @@ export class MongoDatabase {
             MongoDatabase._client = null;
             MongoDatabase._db = null;
             MongoDatabase._connectionPromise = null;
-            console.log("⬆️ Conexão com MongoDB fechada.");
+            log.info("conexão com MongoDB fechada");
         }
     }
 }

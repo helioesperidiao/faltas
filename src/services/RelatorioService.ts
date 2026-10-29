@@ -8,6 +8,10 @@ import { Funcionario } from "@/models/Funcionario";
 import { ErrorResponse } from "@/http/ErrorResponse";
 import { ConfiguracaoAlertaFaltaDAO } from "@/dao/ConfiguracaoAlertaFaltaDAO";
 import { AlertaFaltaDAO } from "@/dao/AlertaFaltaDAO";
+// NOVO: logger (padrão de logs)
+import { createLogger } from "../logging/Logger";
+
+const log = createLogger("RelatorioService");
 
 export interface FrequenciaAluno {
     matricula: string;
@@ -58,7 +62,6 @@ export class RelatorioService {
         configuracaoAlertaFaltaDAODependency: ConfiguracaoAlertaFaltaDAO,
         alertaFaltaDAODependency: AlertaFaltaDAO
     ) {
-        console.log("⬆️  RelatorioService.constructor()");
         this._alunoDAO = alunoDAODependency;
         this._registroDAO = registroDAODependency;
         this._movimentacaoDAO = movimentacaoDAODependency;
@@ -145,7 +148,7 @@ export class RelatorioService {
 
     //frequência de uma turma num dia: busca os alunos da turma, depois os registros do dia, e interpola via software
     public frequenciaPorTurma = async (turma: string, dia: Date): Promise<FrequenciaAluno[]> => {
-        console.log("🟣 RelatorioService.frequenciaPorTurma()");
+        log.debug("frequenciaPorTurma()", { turma, dia });
 
         const alunosDaTurma = await this._alunoDAO.findByTurmaNoPeriodo(turma, dia, dia);
         const todosRegistros = await this._registroDAO.findAll();
@@ -178,7 +181,7 @@ export class RelatorioService {
 
     //faltas de uma turma num período (usado por semana/mês/período customizado)
     public faltasPorTurmaEPeriodo = async (turma: string, dataInicio: Date, dataFim: Date): Promise<FaltasPorAluno[]> => {
-        console.log("🟣 RelatorioService.faltasPorTurmaEPeriodo()");
+        log.debug("faltasPorTurmaEPeriodo()", { turma, dataInicio, dataFim });
 
         const alunosDaTurma = await this._alunoDAO.findByTurmaNoPeriodo(turma, dataInicio, dataFim);
         const todosRegistros = await this._registroDAO.findAll();
@@ -202,7 +205,7 @@ export class RelatorioService {
 
     //faltas por turma/semana: considera os 7 dias a partir da data informada
     public faltasPorTurmaSemana = async (turma: string, data: Date): Promise<FaltasPorAluno[]> => {
-        console.log("🟣 RelatorioService.faltasPorTurmaSemana()");
+        log.debug("faltasPorTurmaSemana()", { turma, data });
         const dataFim = new Date(data);
         dataFim.setDate(dataFim.getDate() + 6);
         return await this.faltasPorTurmaEPeriodo(turma, data, dataFim);
@@ -210,7 +213,7 @@ export class RelatorioService {
 
     //faltas por turma/mês: considera o mês inteiro da data informada
     public faltasPorTurmaMes = async (turma: string, ano: number, mes: number): Promise<FaltasPorAluno[]> => {
-        console.log("🟣 RelatorioService.faltasPorTurmaMes()");
+        log.debug("faltasPorTurmaMes()", { turma, ano, mes });
         const dataInicio = new Date(ano, mes - 1, 1);
         const dataFim = new Date(ano, mes, 0, 23, 59, 59);
         return await this.faltasPorTurmaEPeriodo(turma, dataInicio, dataFim);
@@ -227,7 +230,13 @@ export class RelatorioService {
         bimestre: number,
         funcionarioLogado: Funcionario
     ): Promise<AlertasFaltaBimestral> => {
+        log.debug("alertasFaltaBimestral()", { ano, bimestre });
+
         if (funcionarioLogado.cargo.nomeCargo !== "Processo Pedagógico") {
+            log.warn("consulta de alertas negada", {
+                motivo: "cargo não autorizado",
+                cargoAtor: funcionarioLogado.cargo.nomeCargo,
+            });
             throw new ErrorResponse(403, "Não autorizado", {
                 message: "Apenas Processo Pedagógico pode consultar os alertas de faltas."
             });
@@ -347,6 +356,11 @@ export class RelatorioService {
             alertas: alertas.sort((a, b) => a.alunoNome.localeCompare(b.alunoNome, "pt-BR") || a.disciplina.localeCompare(b.disciplina, "pt-BR"))
         };
         await this._alertaFaltaDAO.sincronizar(ano, bimestre, resultado.alertas, funcionarioLogado);
+        log.info("alertas bimestrais sincronizados", {
+            ano,
+            bimestre,
+            totalAlertas: resultado.alertas.length,
+        });
         return resultado;
     };
 }

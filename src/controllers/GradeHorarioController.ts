@@ -4,18 +4,27 @@ import { GradeHorario } from "@/models/GradeHorario";
 import { StandardResponse } from "@/http/StandardResponse";
 import { Funcionario } from "@/models/Funcionario";
 import { BaseController } from "./BaseController";
+// NOVO: logger (padrão de logs)
+import { createLogger } from "../logging/Logger";
 
+const log = createLogger("GradeHorarioController");
+
+/**
+ * Traduz requisições HTTP de grade de horários em chamadas ao GradeHorarioService.
+ *
+ * O controller valida o formato dos horários (HH:MM ou HHMM) antes de delegar
+ * ao service, que grava a duração e a carga semanal de cada aula.
+ */
 export class GradeHorarioController extends BaseController {
     private _gradeHorarioService: GradeHorarioService;
 
     constructor(gradeHorarioServiceDependency: GradeHorarioService) {
         super();
-        console.log("⬆️  GradeHorarioController.constructor()");
         this._gradeHorarioService = gradeHorarioServiceDependency;
     }
 
     public create = async (request: Request, response: Response): Promise<void> => {
-        console.log("🔵 GradeHorarioController.create()");
+        log.debug("create()");
 
         const funcionarioLogado: Funcionario = this.getFuncionarioLogado(request);
         const dados = request.body.gradeHorario;
@@ -43,7 +52,7 @@ export class GradeHorarioController extends BaseController {
     };
 
     public findAll = async (_request: Request, response: Response): Promise<void> => {
-        console.log("🔵 GradeHorarioController.findAll()");
+        log.debug("findAll()");
 
         const arrayGrades = await this._gradeHorarioService.findAll();
 
@@ -53,7 +62,7 @@ export class GradeHorarioController extends BaseController {
     };
 
     public findAllDeleted = async (request: Request, response: Response): Promise<void> => {
-        console.log("🔵 GradeHorarioController.findAllDeleted()");
+        log.debug("findAllDeleted()");
 
         const funcionarioLogado: Funcionario = this.getFuncionarioLogado(request);
         const gradesDeletadas = await this._gradeHorarioService.findAllDeleted(funcionarioLogado);
@@ -64,7 +73,7 @@ export class GradeHorarioController extends BaseController {
     };
 
     public findById = async (request: Request, response: Response): Promise<void> => {
-        console.log("🔵 GradeHorarioController.findById()");
+        log.debug("findById()", { idGradeHorario: request.params.idGradeHorario });
 
         const idGradeHorario = request.params.idGradeHorario.toString();
         const grade = await this._gradeHorarioService.findById(idGradeHorario);
@@ -75,7 +84,7 @@ export class GradeHorarioController extends BaseController {
     };
 
     public findByTurma = async (request: Request, response: Response): Promise<void> => {
-        console.log("🔵 GradeHorarioController.findByTurma()");
+        log.debug("findByTurma()", { turma: request.params.turma });
 
         const turma = request.params.turma.toString();
         const grades = await this._gradeHorarioService.findByTurma(turma);
@@ -86,7 +95,7 @@ export class GradeHorarioController extends BaseController {
     };
 
     public update = async (request: Request, response: Response): Promise<void> => {
-        console.log("🔵 GradeHorarioController.update()");
+        log.debug("update()", { idGradeHorario: request.params.idGradeHorario });
 
         const funcionarioLogado: Funcionario = this.getFuncionarioLogado(request);
 
@@ -113,7 +122,7 @@ export class GradeHorarioController extends BaseController {
     };
 
     public delete = async (request: Request, response: Response): Promise<void> => {
-        console.log("🔵 GradeHorarioController.delete()");
+        log.debug("delete()", { idGradeHorario: request.params.idGradeHorario });
 
         const funcionarioLogado: Funcionario = this.getFuncionarioLogado(request);
 
@@ -132,7 +141,7 @@ export class GradeHorarioController extends BaseController {
     };
 
     public count = async (_request: Request, response: Response): Promise<void> => {
-        console.log("🔵 GradeHorarioController.count()");
+        log.debug("count()");
 
         const total = await this._gradeHorarioService.count();
 

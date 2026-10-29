@@ -4,20 +4,30 @@ import { Registro } from "@/models/Registro";
 import { StandardResponse } from "@/http/StandardResponse";
 import { Funcionario } from "@/models/Funcionario";
 import { BaseController } from "./BaseController";
+// NOVO: logger (padrão de logs)
+import { createLogger } from "../logging/Logger";
 
+const log = createLogger("RegistroController");
+
+/**
+ * Traduz requisições HTTP de registros de falta em chamadas ao RegistroService.
+ *
+ * Além do CRUD, expõe consultas específicas da chamada:
+ * - `/ausentes-entrada` — lista alunos ausentes de uma turma num dia
+ * - `/chamada`          — devolve a chamada já gravada (turma + dia)
+ */
 export class RegistroController extends BaseController {
     private _registroService: RegistroService;
 
     //construtor
     constructor(registroServiceDependency: RegistroService) {
         super();
-        console.log("⬆️  RegistroController.constructor()");
         this._registroService = registroServiceDependency;
     }
 
     //create
     public create = async (request: Request, response: Response): Promise<void> => {
-        console.log("🔵 RegistroController.create()");
+        log.debug("create()");
 
         const funcionarioLogado: Funcionario = this.getFuncionarioLogado(request);
 
@@ -37,6 +47,10 @@ export class RegistroController extends BaseController {
         const resultado = await this._registroService.create(novoRegistro, funcionarioLogado);
 
         if (!resultado) {
+            log.error("falha ao cadastrar novo registro", {
+                matricula: novoRegistro.matricula,
+                dia: novoRegistro.dia,
+            });
             StandardResponse.error("Falha ao cadastrar novo Registro", null, 500).send(response);
             return;
         }
@@ -48,7 +62,7 @@ export class RegistroController extends BaseController {
 
     //findAll
     public findAll = async (_request: Request, response: Response): Promise<void> => {
-        console.log("🔵 RegistroController.findAll()");
+        log.debug("findAll()");
 
         const arrayRegistros = await this._registroService.findAll();
 
@@ -59,7 +73,7 @@ export class RegistroController extends BaseController {
 
     //findAllDeleted
     public findAllDeleted = async (request: Request, response: Response): Promise<void> => {
-        console.log("🔵 RegistroController.findAllDeleted()");
+        log.debug("findAllDeleted()");
 
         const funcionarioLogado: Funcionario = this.getFuncionarioLogado(request);
 
@@ -72,7 +86,10 @@ export class RegistroController extends BaseController {
 
     //findAusentesEntrada: alunos ausentes na chamada de ENTRADA para uma turma/dia
     public findAusentesEntrada = async (request: Request, response: Response): Promise<void> => {
-        console.log("🔵 RegistroController.findAusentesEntrada()");
+        log.debug("findAusentesEntrada()", {
+            turma: request.query.turma,
+            dia: request.query.dia,
+        });
 
         const turma = request.query.turma?.toString() || '';
         const diaQuery = request.query.dia?.toString() || '';
@@ -93,6 +110,10 @@ export class RegistroController extends BaseController {
 
     /** Consulta uma chamada geral salva, para que a tela mostre as marcações existentes. */
     public findChamadaPorTurmaEDia = async (request: Request, response: Response): Promise<void> => {
+        log.debug("findChamadaPorTurmaEDia()", {
+            turma: request.query.turma,
+            dia: request.query.dia,
+        });
         const turma = request.query.turma?.toString() || '';
         const diaTexto = request.query.dia?.toString() || '';
         const dia = new Date(diaTexto);
@@ -105,10 +126,10 @@ export class RegistroController extends BaseController {
     };
 
     //findById
-    public findById = async (_request: Request, response: Response): Promise<void> => {
-        console.log("🔵 RegistroController.findById()");
+    public findById = async (request: Request, response: Response): Promise<void> => {
+        log.debug("findById()", { idRegistro: request.params.idRegistro });
 
-        const registroId = _request.params.idRegistro.toString();
+        const registroId = request.params.idRegistro.toString();
         const registro = await this._registroService.findById(registroId);
 
         StandardResponse.success("Executado com sucesso", {
@@ -118,7 +139,7 @@ export class RegistroController extends BaseController {
 
     //update
     public update = async (request: Request, response: Response): Promise<void> => {
-        console.log("🔵 RegistroController.update()");
+        log.debug("update()", { idRegistro: request.params.idRegistro });
 
         const funcionarioLogado: Funcionario = this.getFuncionarioLogado(request);
 
@@ -145,7 +166,7 @@ export class RegistroController extends BaseController {
 
     //delete
     public delete = async (request: Request, response: Response): Promise<void> => {
-        console.log("🔵 RegistroController.delete()");
+        log.debug("delete()", { idRegistro: request.params.idRegistro });
 
         const funcionarioLogado: Funcionario = this.getFuncionarioLogado(request);
 
@@ -167,7 +188,7 @@ export class RegistroController extends BaseController {
 
     //count
     public count = async (_request: Request, response: Response): Promise<void> => {
-        console.log("🔵 RegistroController.count()");
+        log.debug("count()");
 
         const total = await this._registroService.count();
 

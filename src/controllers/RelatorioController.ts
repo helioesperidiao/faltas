@@ -3,18 +3,30 @@ import { RelatorioService } from "../services/RelatorioService";
 import { StandardResponse } from "@/http/StandardResponse";
 import { BaseController } from "./BaseController";
 import { Funcionario } from "@/models/Funcionario";
+// NOVO: logger (padrão de logs)
+import { createLogger } from "../logging/Logger";
 
+const log = createLogger("RelatorioController");
+
+/**
+ * Traduz requisições HTTP de relatório em chamadas ao RelatorioService.
+ *
+ * Todos os endpoints são GET (consultas) e recebem parâmetros via querystring
+ * (turma, dia, ano, mes, bimestre, dataInicio, dataFim).
+ */
 export class RelatorioController extends BaseController {
     private _relatorioService: RelatorioService;
 
     constructor(relatorioServiceDependency: RelatorioService) {
         super();
-        console.log("⬆️  RelatorioController.constructor()");
         this._relatorioService = relatorioServiceDependency;
     }
 
     public frequenciaPorTurma = async (request: Request, response: Response): Promise<void> => {
-        console.log("🔵 RelatorioController.frequenciaPorTurma()");
+        log.debug("frequenciaPorTurma()", {
+            turma: request.query.turma,
+            dia: request.query.dia,
+        });
 
         const turma = request.query.turma?.toString() || '';
         const dia = new Date(request.query.dia?.toString() || '');
@@ -25,7 +37,11 @@ export class RelatorioController extends BaseController {
     };
 
     public faltasPorPeriodo = async (request: Request, response: Response): Promise<void> => {
-        console.log("🔵 RelatorioController.faltasPorPeriodo()");
+        log.debug("faltasPorPeriodo()", {
+            turma: request.query.turma,
+            dataInicio: request.query.dataInicio,
+            dataFim: request.query.dataFim,
+        });
 
         const turma = request.query.turma?.toString() || '';
         const dataInicio = new Date(request.query.dataInicio?.toString() || '');
@@ -37,7 +53,10 @@ export class RelatorioController extends BaseController {
     };
 
     public faltasPorSemana = async (request: Request, response: Response): Promise<void> => {
-        console.log("🔵 RelatorioController.faltasPorSemana()");
+        log.debug("faltasPorSemana()", {
+            turma: request.query.turma,
+            data: request.query.data,
+        });
 
         const turma = request.query.turma?.toString() || '';
         const data = new Date(request.query.data?.toString() || '');
@@ -48,7 +67,11 @@ export class RelatorioController extends BaseController {
     };
 
     public faltasPorMes = async (request: Request, response: Response): Promise<void> => {
-        console.log("🔵 RelatorioController.faltasPorMes()");
+        log.debug("faltasPorMes()", {
+            turma: request.query.turma,
+            ano: request.query.ano,
+            mes: request.query.mes,
+        });
 
         const turma = request.query.turma?.toString() || '';
         const ano = Number(request.query.ano);
@@ -60,6 +83,11 @@ export class RelatorioController extends BaseController {
     };
 
     public alertasFaltaBimestral = async (request: Request, response: Response): Promise<void> => {
+        log.debug("alertasFaltaBimestral()", {
+            ano: request.query.ano,
+            bimestre: request.query.bimestre,
+        });
+
         const agora = new Date();
         const ano = request.query.ano == null ? agora.getFullYear() : Number(request.query.ano);
         const bimestreAtual = agora.getMonth() + 1;

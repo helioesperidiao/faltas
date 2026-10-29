@@ -3,25 +3,29 @@ import { Registro } from "../models/Registro";
 import { MongoDatabase } from "../database/MongoDatabase";
 import { Funcionario } from "@/models/Funcionario";
 import { Auditoria } from "@/models/Auditoria";
+// NOVO: logger (padrão de logs)
+import { createLogger } from "../logging/Logger";
+
+const log = createLogger("RegistroDAO");
 
 export class RegistroDAO {
     private _database: MongoDatabase;
 
-    //construtor
     constructor(dbInstance: MongoDatabase){
-        console.log("⬆️ RegistroDAO.constructor()");
         this._database = dbInstance;
     }
 
-    //pegando a tabela de registro
     private async getCollection(): Promise<Collection<Document>> {
         const db = await this._database.getDb();
         return db.collection("registro");
     }
 
-    //create
     public async create(registro: Registro, funcionarioLogado: Funcionario): Promise<Registro> {
-        console.log("🟢 RegistroDAO.create()");
+        log.debug("create()", {
+            matricula: registro.matricula,
+            codDisciplina: registro.codDisciplina,
+            dia: registro.dia,
+        });
         const collection = await this.getCollection();
 
         //quem criou
@@ -47,16 +51,21 @@ export class RegistroDAO {
 
         const result = await collection.insertOne(doc);
         if (!result.insertedId) {
+            log.error("falha ao inserir registro", { matricula: registro.matricula });
             throw new Error("Falha ao inserir registro");
         }
 
         registro.idRegistro = result.insertedId.toString();
+        log.info("registro inserido", {
+            idRegistro: registro.idRegistro,
+            matricula: registro.matricula,
+            falta: registro.falta,
+        });
         return registro;
     }
 
-    //delete
     public async delete (registro: Registro, funcionarioLogado: Funcionario): Promise<boolean>{
-        console.log("🟢 RegistroDAO.delete(" + registro.idRegistro + ")");
+        log.debug("delete()", { idRegistro: registro.idRegistro });
         const collection = await this.getCollection();
         registro.marcarDeletadoPor(funcionarioLogado.idFuncionario);
         const filter: Filter<Document> = {
@@ -70,12 +79,14 @@ export class RegistroDAO {
             }
         };
         const result = await collection.updateOne(filter, update);
-        return result.modifiedCount > 0;
+        const ok = result.modifiedCount > 0;
+        if (ok) log.info("registro removido", { idRegistro: registro.idRegistro });
+        else log.warn("registro não encontrado para remoção", { idRegistro: registro.idRegistro });
+        return ok;
     }
 
-    //update
     public async update (registro: Registro, funcionarioLogado: Funcionario): Promise<boolean>{
-        console.log("🟢 RegistroDAO.update(" + registro.idRegistro + ")");
+        log.debug("update()", { idRegistro: registro.idRegistro });
         const collection = await this.getCollection();
         registro.marcarAlteradoPor(funcionarioLogado.idFuncionario);
         const filter: Filter<Document> = { _id: new ObjectId(registro.idRegistro) };
@@ -90,12 +101,19 @@ export class RegistroDAO {
             }
         };
         const result = await collection.updateOne(filter, update);
-        return result.modifiedCount > 0;
+        const ok = result.modifiedCount > 0;
+        if (ok) log.info("registro atualizado", { idRegistro: registro.idRegistro });
+        else log.warn("registro não encontrado para atualização", { idRegistro: registro.idRegistro });
+        return ok;
     }
 
-    //atualiza em massa a situação (Abonada/Dispensada) de registros de um aluno num período
     public async updateSituacaoPorMatriculaEPeriodo(matricula: string, dataInicio: Date, dataFim: Date, situacao: string, funcionarioLogado: Funcionario): Promise<number> {
-        console.log(`🟢 RegistroDAO.updateSituacaoPorMatriculaEPeriodo(${matricula}, ${situacao})`);
+        log.debug("updateSituacaoPorMatriculaEPeriodo()", {
+            matricula,
+            dataInicio,
+            dataFim,
+            situacao,
+        });
         const collection = await this.getCollection();
         const filter: Filter<Document> = {
             matricula,
@@ -111,10 +129,14 @@ export class RegistroDAO {
             }
         };
         const result = await collection.updateMany(filter, update);
+        log.info("situação atualizada em lote", {
+            matricula,
+            situacao,
+            total: result.modifiedCount,
+        });
         return result.modifiedCount;
     }
 
-    //toRegistro
     private toRegistro(doc: any): Registro {
         const registro = new Registro();
         registro.idRegistro = doc._id.toHexString();
@@ -145,9 +167,8 @@ export class RegistroDAO {
         return registro;
     }
 
-    //"select" pelo ID
     public async findById(idRegistro: string): Promise<Registro | null> {
-        console.log("🟢 RegistroDAO.findById()");
+        log.debug("findById()", { idRegistro });
         const collection = await this.getCollection();
         const filter: Filter<Document> = {
             _id: new ObjectId(idRegistro),
@@ -157,8 +178,8 @@ export class RegistroDAO {
         return doc ? this.toRegistro(doc) : null;
     }
 
-    //"select" todos
     public async findAll(): Promise<Registro[]> {
+        log.debug("findAll()");
         const collection = await this.getCollection();
         const cursor = collection.find({ "auditoria.deletadoEm": null })
         const docs = await cursor.toArray();
@@ -167,6 +188,7 @@ export class RegistroDAO {
 
     /** Faltas válidas no período, sem registros abonados, dispensados ou excluídos. */
     public async findFaltasNoPeriodo(dataInicio: Date, dataFim: Date): Promise<Registro[]> {
+        log.debug("findFaltasNoPeriodo()", { dataInicio, dataFim });
         const collection = await this.getCollection();
         const cursor = collection.find({
             dia: { $gte: dataInicio, $lte: dataFim },
@@ -177,26 +199,25 @@ export class RegistroDAO {
         return (await cursor.toArray()).map(doc => this.toRegistro(doc));
     }
 
-    //"select" deletados
     public async findAllDeleted(): Promise<Registro[]> {
+        log.debug("findAllDeleted()");
         const collection = await this.getCollection();
         const cursor = collection.find({ "auditoria.deletadoEm": { $ne: null } });
         const docs = await cursor.toArray();
         return docs.map(doc => this.toRegistro(doc));
     }
 
-    //count
     public async count(): Promise<number> {
-        console.log("🟢 RegistroDAO.count()");
+        log.debug("count()");
         const collection = await this.getCollection();
         return await collection.countDocuments({ "auditoria.deletadoEm": null });
     }
 
-    //se quiser buscar pela matricula do aluno ou pela disciplina
     public async findByField(field: string, value: any): Promise<Registro[]> {
-        console.log(`🟢 RegistroDAO.findByField() - Campo: ${field}, Valor: ${value}`);
+        log.debug("findByField()", { field, value });
         const allowedFields = ["_id", "matricula", "codDisciplina"];
         if (!allowedFields.includes(field)) {
+            log.warn("campo inválido para busca", { field });
             throw new Error(`Campo inválido para busca: ${field}`);
         }
         const collection = await this.getCollection();
@@ -216,9 +237,9 @@ export class RegistroDAO {
         const docs = await cursor.toArray();
         return docs.map(doc => this.toRegistro(doc));
     }
-    //busca registros com falta=true, filtrando por uma lista de matrículas e um dia específico
+
     public async findAusentesEntrada(matriculas: string[], dia: Date): Promise<Registro[]> {
-        console.log(`🟢 RegistroDAO.findAusentesEntrada() - Matriculas: ${matriculas.length}, Dia: ${dia}`);
+        log.debug("findAusentesEntrada()", { totalMatriculas: matriculas.length, dia });
         const collection = await this.getCollection();
 
         const inicioDia = new Date(dia);
@@ -240,6 +261,7 @@ export class RegistroDAO {
 
     /** Retorna a chamada geral já gravada para uma turma em uma data. */
     public async findChamadaPorTurmaEDia(turma: string, dia: Date): Promise<Registro[]> {
+        log.debug("findChamadaPorTurmaEDia()", { turma, dia });
         const collection = await this.getCollection();
         const inicioDia = new Date(Date.UTC(dia.getUTCFullYear(), dia.getUTCMonth(), dia.getUTCDate(), 0, 0, 0, 0));
         const fimDia = new Date(Date.UTC(dia.getUTCFullYear(), dia.getUTCMonth(), dia.getUTCDate(), 23, 59, 59, 999));

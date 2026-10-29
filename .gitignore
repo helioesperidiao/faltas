@@ -1,0 +1,33 @@
+# Dependências
+node_modules/
+
+# Build
+dist/
+
+# Nginx (binário + config local + logs/temp gerados)
+nginx/
+
+# Uploads de usuários
+uploads/
+
+# Variáveis de ambiente
+#.env
+#.env.*
+#!.env.example
+
+# Logs
+*.log
+logs/
+
+# Cobertura de testes
+coverage/
+
+# Caches / misc
+.cache/
+.tmp/
+.DS_Store
+Thumbs.db
+
+# IDE (opcional — remova se quiser versionar)
+.vscode/
+.idea/

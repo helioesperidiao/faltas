@@ -3,20 +3,27 @@ import { Aluno } from "../models/Aluno";
 import { ErrorResponse } from "../http/ErrorResponse";
 import { Funcionario } from "@/models/Funcionario";
 import { HistoricoTurma } from "@/models/HistoricoTurma";
+// NOVO: logger (padrão de logs)
+import { createLogger } from "../logging/Logger";
+
+const log = createLogger("AlunoService");
 
 export class AlunoService {
     private _alunoDAO: AlunoDAO;
 
     constructor(alunoDAODependency: AlunoDAO) {
-        console.log("⬆️  AlunoService.constructor()");
         this._alunoDAO = alunoDAODependency;
     }
 
     public create = async (aluno: Aluno, funcionarioLogado: Funcionario): Promise<Aluno> => {
-        console.log("🟣 AlunoService.create()");
+        log.debug("create()", { matricula: aluno.matricula, turma: aluno.turma });
 
         const cargosPermitidos = ["Processo Pedagógico"];
         if (!cargosPermitidos.includes(funcionarioLogado.cargo.nomeCargo)) {
+            log.warn("criação de aluno negada", {
+                motivo: "cargo não autorizado",
+                cargoAtor: funcionarioLogado.cargo.nomeCargo,
+            });
             throw new ErrorResponse(
                 403,
                 "Não autorizado",
@@ -29,37 +36,48 @@ export class AlunoService {
             throw new ErrorResponse(400, "Já existe um aluno com esta matrícula");
         }
 
-        return await this._alunoDAO.create(aluno, funcionarioLogado);
+        const criado = await this._alunoDAO.create(aluno, funcionarioLogado);
+        log.info("aluno criado", {
+            idAluno: criado.idAluno,
+            matricula: criado.matricula,
+            turma: criado.turma,
+            criadoPor: funcionarioLogado.email,
+        });
+        return criado;
     };
 
     public findAll = async (): Promise<Aluno[]> => {
-        console.log("🟣 AlunoService.findAll()");
+        log.debug("findAll()");
         return await this._alunoDAO.findAll();
     };
 
     public findById = async (idAluno: string): Promise<Aluno | null> => {
-        console.log("🟣 AlunoService.findById()");
+        log.debug("findById()", { idAluno });
         const aluno = new Aluno();
         aluno.idAluno = idAluno;
         return await this._alunoDAO.findById(aluno.idAluno);
     };
 
     public findByMatricula = async (matricula: string): Promise<Aluno | null> => {
-        console.log("🟣 AlunoService.findByMatricula()");
+        log.debug("findByMatricula()", { matricula });
         const resultado = await this._alunoDAO.findByField("matricula", matricula);
         return resultado.length > 0 ? resultado[0] : null;
     };
 
     public findByTurma = async (turma: string): Promise<Aluno[]> => {
-        console.log("🟣 AlunoService.findByTurma()");
+        log.debug("findByTurma()", { turma });
         return await this._alunoDAO.findByField("turma", turma);
     };
 
     public findAllDeleted = async (funcionarioLogado: Funcionario): Promise<Aluno[]> => {
-        console.log("🟣 AlunoService.findAllDeleted()");
+        log.debug("findAllDeleted()");
 
         const cargosPermitidos = ["Processo Pedagógico"];
         if (!cargosPermitidos.includes(funcionarioLogado.cargo.nomeCargo)) {
+            log.warn("busca de alunos deletados negada", {
+                motivo: "cargo não autorizado",
+                cargoAtor: funcionarioLogado.cargo.nomeCargo,
+            });
             throw new ErrorResponse(
                 403,
                 "Não autorizado",
@@ -71,10 +89,14 @@ export class AlunoService {
     };
 
     public update = async (aluno: Aluno, funcionarioLogado: Funcionario): Promise<boolean> => {
-        console.log("🟣 AlunoService.update()");
+        log.debug("update()", { idAluno: aluno.idAluno });
 
         const cargosPermitidos = ["Processo Pedagógico"];
         if (!cargosPermitidos.includes(funcionarioLogado.cargo.nomeCargo)) {
+            log.warn("atualização de aluno negada", {
+                motivo: "cargo não autorizado",
+                cargoAtor: funcionarioLogado.cargo.nomeCargo,
+            });
             throw new ErrorResponse(
                 403,
                 "Não autorizado",
@@ -96,9 +118,21 @@ export class AlunoService {
                 this.criarHistorico(alunoAnterior)
             ];
             aluno.turmaInicioEm = new Date();
+            log.info("enturmação alterada; histórico preservado", {
+                idAluno: aluno.idAluno,
+                turmaAnterior: alunoAnterior.turma,
+                turmaNova: aluno.turma,
+            });
         }
 
-        return await this._alunoDAO.update(aluno, funcionarioLogado);
+        const atualizou = await this._alunoDAO.update(aluno, funcionarioLogado);
+        if (atualizou) {
+            log.info("aluno atualizado", {
+                idAluno: aluno.idAluno,
+                atualizadoPor: funcionarioLogado.email,
+            });
+        }
+        return atualizou;
     };
 
     /** Atualiza uma turma inteira na virada do ano sem recriar cadastros. */
@@ -109,7 +143,13 @@ export class AlunoService {
         serieDestino: string,
         funcionarioLogado: Funcionario
     ): Promise<number> => {
+        log.debug("promoverTurma()", { turmaOrigem, turmaDestino, anoDestino });
+
         if (funcionarioLogado.cargo.nomeCargo !== "Processo Pedagógico") {
+            log.warn("virada anual negada", {
+                motivo: "cargo não autorizado",
+                cargoAtor: funcionarioLogado.cargo.nomeCargo,
+            });
             throw new ErrorResponse(403, "Não autorizado", {
                 message: "Apenas Processo Pedagógico pode executar a virada anual de turma."
             });
@@ -126,7 +166,14 @@ export class AlunoService {
             aluno.turmaInicioEm = new Date();
         }
 
-        return await this._alunoDAO.atualizarEnturmacaoEmLote(alunos, funcionarioLogado);
+        const total = await this._alunoDAO.atualizarEnturmacaoEmLote(alunos, funcionarioLogado);
+        log.info("virada anual concluída", {
+            turmaOrigem,
+            turmaDestino,
+            totalMovido: total,
+            executadoPor: funcionarioLogado.email,
+        });
+        return total;
     };
 
     private alterouEnturmacao(anterior: Aluno, atualizado: Aluno): boolean {
@@ -153,10 +200,14 @@ export class AlunoService {
     }
 
     public delete = async (aluno: Aluno, funcionarioLogado: Funcionario): Promise<boolean> => {
-        console.log("🟣 AlunoService.delete()");
+        log.debug("delete()", { idAluno: aluno.idAluno });
 
         const cargosPermitidos = ["Processo Pedagógico"];
         if (!cargosPermitidos.includes(funcionarioLogado.cargo.nomeCargo)) {
+            log.warn("exclusão de aluno negada", {
+                motivo: "cargo não autorizado",
+                cargoAtor: funcionarioLogado.cargo.nomeCargo,
+            });
             throw new ErrorResponse(
                 403,
                 "Não autorizado",
@@ -164,11 +215,18 @@ export class AlunoService {
             );
         }
 
-        return await this._alunoDAO.delete(aluno, funcionarioLogado);
+        const excluiu = await this._alunoDAO.delete(aluno, funcionarioLogado);
+        if (excluiu) {
+            log.info("aluno excluído", {
+                idAluno: aluno.idAluno,
+                excluidoPor: funcionarioLogado.email,
+            });
+        }
+        return excluiu;
     };
 
     public count = async (): Promise<number> => {
-        console.log("🟣 AlunoService.count()");
+        log.debug("count()");
         return await this._alunoDAO.count();
     };
 }

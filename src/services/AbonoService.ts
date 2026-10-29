@@ -4,6 +4,10 @@ import { Abono } from "../models/Abono";
 import { ErrorResponse } from "../http/ErrorResponse";
 import { Funcionario } from "@/models/Funcionario";
 import { AlunoDAO } from "@/dao/AlunoDAO";
+// NOVO: logger (padrão de logs)
+import { createLogger } from "../logging/Logger";
+
+const log = createLogger("AbonoService");
 
 export class AbonoService {
     private _abonoDAO: AbonoDAO;
@@ -11,17 +15,20 @@ export class AbonoService {
     private _alunoDAO: AlunoDAO;
 
     constructor(abonoDAODependency: AbonoDAO, registroDAODependency: RegistroDAO, alunoDAODependency: AlunoDAO) {
-        console.log("⬆️  AbonoService.constructor()");
         this._abonoDAO = abonoDAODependency;
         this._registroDAO = registroDAODependency;
         this._alunoDAO = alunoDAODependency;
     }
 
     public create = async (abono: Abono, funcionarioLogado: Funcionario): Promise<Abono> => {
-        console.log("🟣 AbonoService.create()");
+        log.debug("create()", { matricula: abono.matricula });
 
         const cargosPermitidos = ["Inspetor", "Processo Pedagógico"];
         if (!cargosPermitidos.includes(funcionarioLogado.cargo.nomeCargo)) {
+            log.warn("criação de abono negada", {
+                motivo: "cargo não autorizado",
+                cargoAtor: funcionarioLogado.cargo.nomeCargo,
+            });
             throw new ErrorResponse(
                 403,
                 "Não autorizado",
@@ -39,28 +46,39 @@ export class AbonoService {
         abono.turma = aluno.turma;
         abono.curso = aluno.curso;
         abono.serie = aluno.serie;
-        return await this._abonoDAO.create(abono, funcionarioLogado);
+
+        const criado = await this._abonoDAO.create(abono, funcionarioLogado);
+        log.info("abono criado", {
+            idAbono: criado.idAbono,
+            matricula: criado.matricula,
+            criadoPor: funcionarioLogado.email,
+        });
+        return criado;
     };
 
     public findAll = async (): Promise<Abono[]> => {
-        console.log("🟣 AbonoService.findAll()");
+        log.debug("findAll()");
         return await this._abonoDAO.findAll();
     };
 
     public findById = async (idAbono: string): Promise<Abono | null> => {
-        console.log("🟣 AbonoService.findById()");
+        log.debug("findById()", { idAbono });
         const abono = new Abono();
         abono.idAbono = idAbono;
         return await this._abonoDAO.findById(abono.idAbono);
     };
 
     public findAllDeleted = async (funcionarioLogado: Funcionario): Promise<Abono[]> => {
-        console.log("🟣 AbonoService.findAllDeleted()");
+        log.debug("findAllDeleted()");
 
         const cargosPermitidos = ["Processo Pedagógico"];
         const cargoFuncionario = funcionarioLogado.cargo.nomeCargo;
 
         if (!cargosPermitidos.includes(cargoFuncionario)) {
+            log.warn("busca de abonos deletados negada", {
+                motivo: "cargo não autorizado",
+                cargoAtor: cargoFuncionario,
+            });
             throw new ErrorResponse(
                 403,
                 "Não autorizado",
@@ -72,10 +90,14 @@ export class AbonoService {
     };
 
     public update = async (abono: Abono, funcionarioLogado: Funcionario): Promise<boolean> => {
-        console.log("🟣 AbonoService.update()");
+        log.debug("update()", { idAbono: abono.idAbono });
 
         const cargosPermitidos = ["Inspetor", "Processo Pedagógico"];
         if (!cargosPermitidos.includes(funcionarioLogado.cargo.nomeCargo)) {
+            log.warn("atualização de abono negada", {
+                motivo: "cargo não autorizado",
+                cargoAtor: funcionarioLogado.cargo.nomeCargo,
+            });
             throw new ErrorResponse(
                 403,
                 "Não autorizado",
@@ -92,15 +114,27 @@ export class AbonoService {
         abono.turma = aluno.turma;
         abono.curso = aluno.curso;
         abono.serie = aluno.serie;
-        return await this._abonoDAO.update(abono, funcionarioLogado);
+
+        const atualizou = await this._abonoDAO.update(abono, funcionarioLogado);
+        if (atualizou) {
+            log.info("abono atualizado", {
+                idAbono: abono.idAbono,
+                atualizadoPor: funcionarioLogado.email,
+            });
+        }
+        return atualizou;
     };
 
     //aprovar: Processo Pedagógico. Ao aprovar, converte as faltas do período em Abonada.
     public aprovar = async (idAbono: string, funcionarioLogado: Funcionario): Promise<Abono> => {
-        console.log("🟣 AbonoService.aprovar()");
+        log.debug("aprovar()", { idAbono });
 
         const cargosPermitidos = ["Processo Pedagógico"];
         if (!cargosPermitidos.includes(funcionarioLogado.cargo.nomeCargo)) {
+            log.warn("aprovação de abono negada", {
+                motivo: "cargo não autorizado",
+                cargoAtor: funcionarioLogado.cargo.nomeCargo,
+            });
             throw new ErrorResponse(
                 403,
                 "Não autorizado",
@@ -120,7 +154,7 @@ export class AbonoService {
         abono.aprovadoPor = funcionarioLogado.idFuncionario;
         await this._abonoDAO.update(abono, funcionarioLogado);
 
-        await this._registroDAO.updateSituacaoPorMatriculaEPeriodo(
+        const total = await this._registroDAO.updateSituacaoPorMatriculaEPeriodo(
             abono.matricula,
             abono.dataInicio,
             abono.dataFim,
@@ -128,15 +162,25 @@ export class AbonoService {
             funcionarioLogado
         );
 
+        log.info("abono aprovado", {
+            idAbono: abono.idAbono,
+            matricula: abono.matricula,
+            faltasConvertidas: total,
+            aprovadoPor: funcionarioLogado.email,
+        });
         return abono;
     };
 
     //rejeitar: Processo Pedagógico
     public rejeitar = async (idAbono: string, funcionarioLogado: Funcionario): Promise<Abono> => {
-        console.log("🟣 AbonoService.rejeitar()");
+        log.debug("rejeitar()", { idAbono });
 
         const cargosPermitidos = ["Processo Pedagógico"];
         if (!cargosPermitidos.includes(funcionarioLogado.cargo.nomeCargo)) {
+            log.warn("rejeição de abono negada", {
+                motivo: "cargo não autorizado",
+                cargoAtor: funcionarioLogado.cargo.nomeCargo,
+            });
             throw new ErrorResponse(
                 403,
                 "Não autorizado",
@@ -156,14 +200,22 @@ export class AbonoService {
         abono.aprovadoPor = funcionarioLogado.idFuncionario;
         await this._abonoDAO.update(abono, funcionarioLogado);
 
+        log.info("abono rejeitado", {
+            idAbono: abono.idAbono,
+            rejeitadoPor: funcionarioLogado.email,
+        });
         return abono;
     };
 
     public delete = async (abono: Abono, funcionarioLogado: Funcionario): Promise<boolean> => {
-        console.log("🟣 AbonoService.delete()");
+        log.debug("delete()", { idAbono: abono.idAbono });
 
         const cargosPermitidos = ["Processo Pedagógico"];
         if (!cargosPermitidos.includes(funcionarioLogado.cargo.nomeCargo)) {
+            log.warn("exclusão de abono negada", {
+                motivo: "cargo não autorizado",
+                cargoAtor: funcionarioLogado.cargo.nomeCargo,
+            });
             throw new ErrorResponse(
                 403,
                 "Não autorizado",
@@ -171,11 +223,18 @@ export class AbonoService {
             );
         }
 
-        return await this._abonoDAO.delete(abono, funcionarioLogado);
+        const excluiu = await this._abonoDAO.delete(abono, funcionarioLogado);
+        if (excluiu) {
+            log.info("abono excluído", {
+                idAbono: abono.idAbono,
+                excluidoPor: funcionarioLogado.email,
+            });
+        }
+        return excluiu;
     };
 
     public count = async (): Promise<number> => {
-        console.log("🟣 AbonoService.count()");
+        log.debug("count()");
         return await this._abonoDAO.count();
     };
 }

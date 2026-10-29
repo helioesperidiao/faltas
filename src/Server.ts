@@ -15,6 +15,11 @@ import { ConfiguracaoAlertaFaltaRouter } from "./routers/ConfiguracaoAlertaFalta
 import { ErrorResponse } from "./http/ErrorResponse";
 import { StandardResponse } from "./http/StandardResponse";
 import { MongoDatabase } from "./database/MongoDatabase";
+// NOVO: logger e middleware HTTP (padrão de logs)
+import { httpLogger } from "./logging/HttpLogger";
+import { createLogger } from "./logging/Logger";
+
+const log = createLogger("Server");
 
 export class Server {
     private _porta: number;
@@ -33,7 +38,7 @@ export class Server {
     private _dataBase: MongoDatabase;
 
     constructor(porta?: number) {
-        console.log("⬆️ Server.constructor()");
+        log.debug("constructor()");
         this._dataBase = new MongoDatabase();
 
         this._porta = porta ?? 8080;
@@ -52,10 +57,13 @@ export class Server {
     }
 
     async init(): Promise<void> {
-        console.log("⬆️ Server.init()");
+        log.debug("init()");
 
         await this._dataBase.initializeSchema();
 
+        // Middleware de log HTTP — deve vir primeiro entre os middlewares
+        // para abrir o contexto (requestId) antes de qualquer outro processamento.
+        this._app.use(httpLogger);
         this._app.use(cors({ origin: "*" }));
         this._app.use(express.json());
         this._app.use("/vendor/xlsx", express.static(path.resolve(__dirname, "../node_modules/xlsx/dist")));
@@ -76,18 +84,28 @@ export class Server {
         this._app.use(this._movimentacaoRouter.getRouter());
         this._app.use(this._configuracaoAlertaFaltaRouter.getRouter());
         this.setupErrorMiddleware();
+
+        log.debug("init() - middlewares e rotas registrados");
     }
 
     private setupErrorMiddleware(): void {
         this._app.use((error: any, _req: Request, res: Response, _next: NextFunction) => {
-            console.error("❌ Erro capturado:", error);
-
-            // Se for um erro personalizado (ErrorResponse), usa seus dados
+            // Erros de negócio (ErrorResponse) viram WARN — não são bugs da aplicação
             if (error instanceof ErrorResponse) {
+                log.warn("erro de negócio", {
+                    httpCode: error.httpCode,
+                    message: error.message,
+                    details: error.error,
+                });
                 return StandardResponse.error(error.message, error.error, error.httpCode).send(res);
             }
 
-            // Erro genérico (não tratado)
+            // Erros inesperados viram ERROR com stack trace para depuração
+            log.error("erro não tratado", {
+                message: error?.message,
+                stack: error?.stack,
+            });
+
             return StandardResponse.internalError("Erro interno do servidor", {
                 message: error.message || "Erro interno"
             }).send(res);
@@ -97,13 +115,12 @@ export class Server {
     run(): void {
         this._app.listen(this._porta)
             .on('error', (err) => {
-                console.error(`❌ Erro ao iniciar servidor na porta ${this._porta}:`, err);
+                log.error(`falha ao escutar na porta ${this._porta}`, { error: err });
                 process.exit(1);
             })
             .on('listening', () => {
                 //console.log(`🚀 Server rodando em http://localhost:8080/faltas/Login.html`);
-                console.log(`🚀 Server rodando em http://localhost:${this._porta}/Login.html`);
-
+                log.info(`servidor ouvindo em http://localhost:${this._porta}`);
             });
     }
 }

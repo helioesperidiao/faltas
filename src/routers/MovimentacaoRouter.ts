@@ -4,18 +4,38 @@ import { MovimentacaoController } from "../controllers/MovimentacaoController";
 import { MovimentacaoService } from "../services/MovimentacaoService";
 import { MovimentacaoDAO } from "../dao/MovimentacaoDAO";
 import { MongoDatabase } from "../database/MongoDatabase";
+import { asyncHandler } from "../http/asyncHandler";
+import { createLogger } from "../logging/Logger";
 
+const log = createLogger("MovimentacaoRouter");
+
+/**
+ * Router responsável por expor os endpoints de movimentação (entrada/saída).
+ *
+ * GET aceita querystring opcional `data=AAAA-MM-DD` para filtrar por dia.
+ */
 export class MovimentacaoRouter {
-    static readonly PREFIX = "/api/v1/movimentacoes";
-    private readonly router: Router;
+    public static readonly PREFIX = "/api/v1/movimentacoes";
 
-    constructor(database: MongoDatabase) {
-        this.router = Router();
-        const controller = new MovimentacaoController(new MovimentacaoService(new MovimentacaoDAO(database)));
-        const jwt = new JwtMiddleware();
-        this.router.post(MovimentacaoRouter.PREFIX + "/", jwt.validateToken, controller.create);
-        this.router.get(MovimentacaoRouter.PREFIX + "/", jwt.validateToken, controller.findAll);
+    private _router: Router;
+
+    constructor(dbInstance: MongoDatabase) {
+        log.debug("constructor()");
+
+        const mainRouter = Router();
+        const subRouter = Router();
+
+        const movimentacaoDAO = new MovimentacaoDAO(dbInstance);
+        const movimentacaoService = new MovimentacaoService(movimentacaoDAO);
+        const movimentacaoController = new MovimentacaoController(movimentacaoService);
+        const jwtMiddleware = new JwtMiddleware();
+
+        subRouter.post("/", jwtMiddleware.validateToken, asyncHandler(movimentacaoController.create));
+        subRouter.get("/", jwtMiddleware.validateToken, asyncHandler(movimentacaoController.findAll));
+
+        mainRouter.use(MovimentacaoRouter.PREFIX, subRouter);
+        this._router = mainRouter;
     }
 
-    getRouter = (): Router => this.router;
+    public getRouter = (): Router => this._router;
 }

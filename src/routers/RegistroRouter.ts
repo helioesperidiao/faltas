@@ -1,75 +1,55 @@
 import { Router } from "express";
 import { JwtMiddleware } from "../middlewares/JwtMiddleware";
-import { RegistroController} from "../controllers/RegistroController";
+import { RegistroController } from "../controllers/RegistroController";
 import { RegistroService } from "../services/RegistroService";
 import { RegistroDAO } from "../dao/RegistroDAO";
 import { AlunoDAO } from "../dao/AlunoDAO";
 import { DispensaDAO } from "../dao/DispensaDAO";
 import { MongoDatabase } from "../database/MongoDatabase";
+import { asyncHandler } from "../http/asyncHandler";
+import { createLogger } from "../logging/Logger";
 
+const log = createLogger("RegistroRouter");
+
+/**
+ * Router responsável por expor os endpoints de registros de falta.
+ *
+ * Além do CRUD básico, expõe consultas específicas da chamada:
+ * - `/ausentes-entrada` — lista alunos ausentes de uma turma num dia
+ * - `/chamada`          — devolve a chamada já gravada (turma + dia)
+ */
 export class RegistroRouter {
-    public static readonly PREFIX= "/api/v1/registro";
+    public static readonly PREFIX = "/api/v1/registros";
 
     private _router: Router;
-    private _dataBase: MongoDatabase;
 
-    constructor(dataBase: MongoDatabase){
-        console.log("⬆️ RegistroRouter.constructor()");
-        this._router = Router();
-        this._dataBase= dataBase;
-        const registroDAO = new RegistroDAO(this._dataBase);
-        const alunoDAO = new AlunoDAO(this._dataBase);
-        const dispensaDAO = new DispensaDAO(this._dataBase);
+    constructor(dbInstance: MongoDatabase) {
+        log.debug("constructor()");
+
+        const mainRouter = Router();
+        const subRouter = Router();
+
+        const registroDAO = new RegistroDAO(dbInstance);
+        const alunoDAO = new AlunoDAO(dbInstance);
+        const dispensaDAO = new DispensaDAO(dbInstance);
         const registroService = new RegistroService(registroDAO, alunoDAO, dispensaDAO);
         const registroController = new RegistroController(registroService);
         const jwtMiddleware = new JwtMiddleware();
 
-        this._router.post(RegistroRouter.PREFIX + "/",
-            jwtMiddleware.validateToken,
-            registroController.create
-        );
+        // Rotas estáticas antes das parametrizadas.
+        subRouter.post("/", jwtMiddleware.validateToken, asyncHandler(registroController.create));
+        subRouter.get("/", jwtMiddleware.validateToken, asyncHandler(registroController.findAll));
+        subRouter.get("/deleted", jwtMiddleware.validateToken, asyncHandler(registroController.findAllDeleted));
+        subRouter.get("/count", jwtMiddleware.validateToken, asyncHandler(registroController.count));
+        subRouter.get("/ausentes-entrada", jwtMiddleware.validateToken, asyncHandler(registroController.findAusentesEntrada));
+        subRouter.get("/chamada", jwtMiddleware.validateToken, asyncHandler(registroController.findChamadaPorTurmaEDia));
+        subRouter.get("/:idRegistro", jwtMiddleware.validateToken, asyncHandler(registroController.findById));
+        subRouter.put("/:idRegistro", jwtMiddleware.validateToken, asyncHandler(registroController.update));
+        subRouter.delete("/:idRegistro", jwtMiddleware.validateToken, asyncHandler(registroController.delete));
 
-        this._router.get(RegistroRouter.PREFIX + "/",
-            jwtMiddleware.validateToken,
-            registroController.findAll
-        );
-
-        this._router.get(RegistroRouter.PREFIX + "/count",
-            jwtMiddleware.validateToken,
-            registroController.count
-        );
-
-        this._router.get(RegistroRouter.PREFIX + "/deleted",
-            jwtMiddleware.validateToken,
-            registroController.findAllDeleted
-        );
-
-        this._router.get(RegistroRouter.PREFIX + "/ausentes-entrada",
-            jwtMiddleware.validateToken,
-            registroController.findAusentesEntrada
-        );
-
-        this._router.get(RegistroRouter.PREFIX + "/chamada",
-            jwtMiddleware.validateToken,
-            registroController.findChamadaPorTurmaEDia
-        );
-
-        this._router.get(RegistroRouter.PREFIX + "/:idRegistro",
-            jwtMiddleware.validateToken,
-            registroController.findById
-        );
-
-        this._router.put(RegistroRouter.PREFIX + "/:idRegistro",
-            jwtMiddleware.validateToken,
-            registroController.update
-        );
-
-        this._router.delete(RegistroRouter.PREFIX + "/:idRegistro",
-            jwtMiddleware.validateToken,
-            registroController.delete
-        );
+        mainRouter.use(RegistroRouter.PREFIX, subRouter);
+        this._router = mainRouter;
     }
-    public getRouter = (): Router => {
-        return this._router;
-    };
+
+    public getRouter = (): Router => this._router;
 }

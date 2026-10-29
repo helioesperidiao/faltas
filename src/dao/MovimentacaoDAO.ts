@@ -3,7 +3,14 @@ import { Movimentacao } from "../models/Movimentacao";
 import { MongoDatabase } from "../database/MongoDatabase";
 import { Funcionario } from "../models/Funcionario";
 import { Auditoria } from "../models/Auditoria";
+// NOVO: logger (padrão de logs)
+import { createLogger } from "../logging/Logger";
 
+const log = createLogger("MovimentacaoDAO");
+
+/**
+ * Executa operações de persistência e consulta da coleção de movimentações.
+ */
 export class MovimentacaoDAO {
     constructor(private readonly database: MongoDatabase) {}
 
@@ -13,6 +20,11 @@ export class MovimentacaoDAO {
     }
 
     async create(movimentacao: Movimentacao, funcionario: Funcionario): Promise<Movimentacao> {
+        log.debug("create()", {
+            matricula: movimentacao.matricula,
+            tipo: movimentacao.tipo,
+            horario: movimentacao.horario,
+        });
         movimentacao.marcarCriadoPor(funcionario.idFuncionario);
         const doc: OptionalId<Document> = {
             nomeAluno: movimentacao.nomeAluno,
@@ -23,12 +35,21 @@ export class MovimentacaoDAO {
             auditoria: movimentacao.auditoria.toJSON()
         };
         const result = await (await this.getCollection()).insertOne(doc);
-        if (!result.insertedId) throw new Error("Falha ao inserir movimentação.");
+        if (!result.insertedId) {
+            log.error("falha ao inserir movimentação", { matricula: movimentacao.matricula });
+            throw new Error("Falha ao inserir movimentação.");
+        }
         movimentacao.idMovimentacao = result.insertedId.toString();
+        log.info("movimentação inserida", {
+            idMovimentacao: movimentacao.idMovimentacao,
+            matricula: movimentacao.matricula,
+            tipo: movimentacao.tipo,
+        });
         return movimentacao;
     }
 
     async findAll(data?: Date): Promise<Movimentacao[]> {
+        log.debug("findAll()", { data });
         const filter: Filter<Document> = { "auditoria.deletadoEm": null };
         if (data) {
             if (isNaN(data.getTime())) throw new Error("data inválida.");

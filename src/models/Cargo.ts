@@ -25,18 +25,10 @@ export class Cargo {
     private _nomeCargo: string = '';
     private _auditoria: Auditoria = new Auditoria();
 
-    /**
-     * Construtor da classe Cargo.
-     * 
-     * Inicializa uma nova instância de Cargo com valores padrão vazios.
-     * Os valores devem ser definidos posteriormente através dos setters.
-     * 
-     * @example
-     * const cargo = new Cargo();
-     */
-    constructor() {
-        console.log("⬆️  Cargo.constructor()");
-    }
+    // Construtor removido: o TS gera um implícito vazio quando não há
+    // inicialização extra. A única linha que existia era o `console.log`
+    // de depuração, que agora sai pelo logger de `createLogger` se algum
+    // método precisar dele.
 
     /**
      * Obtém o identificador único do cargo.

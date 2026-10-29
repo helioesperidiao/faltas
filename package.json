@@ -3,8 +3,7 @@
   "version": "1.0.0",
   "scripts": {
     "dev": " nodemon",
-   "build": "tsc && tsc-alias && copyfiles -u 1 \"src/public/**/*\" dist",
-
+    "build": "tsc && tsc-alias && copyfiles -u 1 \"src/public/**/*\" dist",
     "start": "node dist/index.js",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -25,6 +24,7 @@
     "mongodb": "^7.3.0",
     "multer": "^2.2.0",
     "uuid": "^14.0.1",
+    "winston": "^3.19.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

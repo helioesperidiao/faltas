@@ -4,18 +4,30 @@ import { Abono } from "@/models/Abono";
 import { StandardResponse } from "@/http/StandardResponse";
 import { Funcionario } from "@/models/Funcionario";
 import { BaseController } from "./BaseController";
+// NOVO: logger (padrão de logs)
+import { createLogger } from "../logging/Logger";
 
+const log = createLogger("AbonoController");
+
+/**
+ * Traduz requisições HTTP de abonos em chamadas ao AbonoService.
+ *
+ * Fluxo:
+ * 1. POST /            — cria o abono (status = "Pendente")
+ * 2. POST /:id/arquivo — anexa o atestado (jpg/pdf)
+ * 3. PUT /:id/aprovar  — converte faltas do período em "Abonada"
+ * 4. PUT /:id/rejeitar — apenas marca como "Rejeitado"
+ */
 export class AbonoController extends BaseController {
     private _abonoService: AbonoService;
 
     constructor(abonoServiceDependency: AbonoService) {
         super();
-        console.log("⬆️  AbonoController.constructor()");
         this._abonoService = abonoServiceDependency;
     }
 
     public create = async (request: Request, response: Response): Promise<void> => {
-        console.log("🔵 AbonoController.create()");
+        log.debug("create()");
 
         const funcionarioLogado: Funcionario = this.getFuncionarioLogado(request);
 
@@ -34,7 +46,7 @@ export class AbonoController extends BaseController {
 
     //uploadArquivo: anexa o atestado (pdf/imagem) ao abono já criado
     public uploadArquivo = async (request: Request, response: Response): Promise<void> => {
-        console.log("🔵 AbonoController.uploadArquivo()");
+        log.debug("uploadArquivo()", { idAbono: request.params.idAbono });
 
         const funcionarioLogado: Funcionario = this.getFuncionarioLogado(request);
 
@@ -60,12 +72,16 @@ export class AbonoController extends BaseController {
                 abonos: [abonoExistente]
             }).send(response);
         } else {
+            log.error("falha ao salvar referência do arquivo do abono", {
+                idAbono,
+                nomeArquivo: request.file.filename,
+            });
             StandardResponse.error("Falha ao salvar referência do arquivo", null, 500).send(response);
         }
     };
 
     public findAll = async (_request: Request, response: Response): Promise<void> => {
-        console.log("🔵 AbonoController.findAll()");
+        log.debug("findAll()");
 
         const arrayAbonos = await this._abonoService.findAll();
 
@@ -75,7 +91,7 @@ export class AbonoController extends BaseController {
     };
 
     public findAllDeleted = async (request: Request, response: Response): Promise<void> => {
-        console.log("🔵 AbonoController.findAllDeleted()");
+        log.debug("findAllDeleted()");
 
         const funcionarioLogado: Funcionario = this.getFuncionarioLogado(request);
 
@@ -86,10 +102,10 @@ export class AbonoController extends BaseController {
         }).send(response);
     };
 
-    public findById = async (_request: Request, response: Response): Promise<void> => {
-        console.log("🔵 AbonoController.findById()");
+    public findById = async (request: Request, response: Response): Promise<void> => {
+        log.debug("findById()", { idAbono: request.params.idAbono });
 
-        const abonoId = _request.params.idAbono.toString();
+        const abonoId = request.params.idAbono.toString();
         const abono = await this._abonoService.findById(abonoId);
 
         StandardResponse.success("Executado com sucesso", {
@@ -98,7 +114,7 @@ export class AbonoController extends BaseController {
     };
 
     public update = async (request: Request, response: Response): Promise<void> => {
-        console.log("🔵 AbonoController.update()");
+        log.debug("update()", { idAbono: request.params.idAbono });
 
         const funcionarioLogado: Funcionario = this.getFuncionarioLogado(request);
 
@@ -128,7 +144,7 @@ export class AbonoController extends BaseController {
 
     //aprovar: converte as faltas do período em Abonada
     public aprovar = async (request: Request, response: Response): Promise<void> => {
-        console.log("🔵 AbonoController.aprovar()");
+        log.debug("aprovar()", { idAbono: request.params.idAbono });
 
         const funcionarioLogado: Funcionario = this.getFuncionarioLogado(request);
         const idAbono = request.params.idAbono.toString();
@@ -142,7 +158,7 @@ export class AbonoController extends BaseController {
 
     //rejeitar
     public rejeitar = async (request: Request, response: Response): Promise<void> => {
-        console.log("🔵 AbonoController.rejeitar()");
+        log.debug("rejeitar()", { idAbono: request.params.idAbono });
 
         const funcionarioLogado: Funcionario = this.getFuncionarioLogado(request);
         const idAbono = request.params.idAbono.toString();
@@ -155,7 +171,7 @@ export class AbonoController extends BaseController {
     };
 
     public delete = async (request: Request, response: Response): Promise<void> => {
-        console.log("🔵 AbonoController.delete()");
+        log.debug("delete()", { idAbono: request.params.idAbono });
 
         const funcionarioLogado: Funcionario = this.getFuncionarioLogado(request);
 
@@ -176,7 +192,7 @@ export class AbonoController extends BaseController {
     };
 
     public count = async (_request: Request, response: Response): Promise<void> => {
-        console.log("🔵 AbonoController.count()");
+        log.debug("count()");
 
         const total = await this._abonoService.count();
 

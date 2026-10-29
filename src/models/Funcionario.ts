@@ -40,7 +40,7 @@ export class Funcionario {
      */
     constructor() {
         this._cargo = new Cargo();
-        console.log("⬆️  Funcionario.constructor()");
+
     }
 
     // ======================== GETTERS E SETTERS ========================

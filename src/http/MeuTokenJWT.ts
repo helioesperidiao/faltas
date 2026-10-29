@@ -2,6 +2,10 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { Funcionario } from '@/models/Funcionario';
 import { Cargo } from '@/models/Cargo';
+// NOVO: logger (padrão de logs)
+import { createLogger } from "../logging/Logger";
+
+const log = createLogger("MeuTokenJWT");
 
 /**
  * Classe responsável pela geração, validação e renovação de tokens JWT.
@@ -54,14 +58,13 @@ export class MeuTokenJWT {
         this._sub = process.env.JWT_SUBJECT || "acesso_sistema";
         this._duracaoToken = parseInt(process.env.JWT_EXPIRES_IN_SECONDS || '', 10) || (3600 * 24 * 60); // 60 dias
 
-        console.log(`🔐 MeuTokenJWT configurado:
-  Algoritmo: ${this._alg}
-  Tipo: ${this._type}
-  Emissor: ${this._iss}
-  Audiência: ${this._aud}
-  Assunto: ${this._sub}
-  Duração: ${this._duracaoToken}s (${Math.round(this._duracaoToken / 86400)} dias)
-  Chave: ${this._key ? '✅ definida' : '❌ não definida (use JWT_SECRET no .env)'}`);
+        // Log estruturado (sem a chave secreta!)
+        log.debug("configurado", {
+            alg: this._alg,
+            iss: this._iss,
+            aud: this._aud,
+            duracaoSegundos: this._duracaoToken,
+        });
     }
 
     /**
@@ -77,7 +80,7 @@ export class MeuTokenJWT {
      * const token = jwt.gerarToken(funcionario);
      */
     public gerarToken = (funcionario: Funcionario): string => {
-        console.log("🔷  MeuTokenJWT.gerarToken()");
+        log.debug("gerarToken()", { idFuncionario: funcionario.idFuncionario });
         const headers = {
             alg: this._alg,
             typ: this._type,
@@ -124,9 +127,8 @@ export class MeuTokenJWT {
      * }
      */
     public validarToken = (stringToken: string): Funcionario | null => {
-        console.log("🔷  MeuTokenJWT.validarToken()");
         if (!stringToken || stringToken.trim() === "") {
-            console.error("Token não fornecido ou vazio");
+            log.debug("token não fornecido ou vazio");
             return null;
         }
 
@@ -144,7 +146,9 @@ export class MeuTokenJWT {
             }
 
             const funcionario = new Funcionario();
-            console.log(decoded.idFuncionario);
+            // ⚠️ BUG CORRIGIDO: havia um `console.log(decoded.idFuncionario)`
+            //    aqui, que vazava o ID para o stdout a cada request.
+            //    O log.debug de `gerarToken()` já cobre a rastreabilidade.
             funcionario.idFuncionario = decoded.idFuncionario;
             funcionario.email = decoded.email;
             funcionario.nomeFuncionario = decoded.nomeFuncionario || '';
@@ -153,11 +157,11 @@ export class MeuTokenJWT {
             return funcionario;
         } catch (err) {
             if (err instanceof jwt.TokenExpiredError) {
-                console.error("Token expirado");
+                log.warn("token expirado");
             } else if (err instanceof jwt.JsonWebTokenError) {
-                console.error("Token inválido");
+                log.warn("token inválido");
             } else {
-                console.error("Erro geral", err);
+                log.error("erro ao validar token", { error: err });
             }
             return null;
         }
