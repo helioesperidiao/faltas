@@ -17,7 +17,7 @@ export class Dispensa {
 
     //construtor
     constructor() {
-        console.log("⬆️  Dispensa.constructor()");
+  
     }
 
     //gets e sets

@@ -3,22 +3,34 @@ import { ConfiguracaoAlertaFaltaService } from "@/services/ConfiguracaoAlertaFal
 import { BaseController } from "./BaseController";
 import { StandardResponse } from "@/http/StandardResponse";
 import { Funcionario } from "@/models/Funcionario";
+// NOVO: logger (padrão de logs)
+import { createLogger } from "../logging/Logger";
 
+const log = createLogger("ConfiguracaoAlertaFaltaController");
+
+/**
+ * Traduz requisições HTTP de configuração de alerta de faltas em chamadas ao service.
+ *
+ * As regras são cadastradas por carga semanal (minutos) e limite de faltas.
+ */
 export class ConfiguracaoAlertaFaltaController extends BaseController {
     constructor(private readonly service: ConfiguracaoAlertaFaltaService) { super(); }
 
     public findAll = async (request: Request, response: Response): Promise<void> => {
+        log.debug("findAll()");
         const configuracoes = await this.service.findAll(this.getFuncionarioLogado(request));
         StandardResponse.success("Configurações de alerta obtidas com sucesso", { configuracoes }).send(response);
     };
 
     public create = async (request: Request, response: Response): Promise<void> => {
+        log.debug("create()");
         const dados = request.body.configuracao || {};
         const configuracao = await this.service.create(Number(dados.cargaHorariaSemanalMinutos), Number(dados.limiteFaltas), this.getFuncionarioLogado(request));
         StandardResponse.created("Configuração de alerta criada com sucesso", { configuracoes: [configuracao] }).send(response);
     };
 
     public update = async (request: Request, response: Response): Promise<void> => {
+        log.debug("update()", { idConfiguracao: request.params.idConfiguracao });
         const dados = request.body.configuracao || {};
         const atualizou = await this.service.update(String(request.params.idConfiguracao), Number(dados.cargaHorariaSemanalMinutos), Number(dados.limiteFaltas), this.getFuncionarioLogado(request));
         if (!atualizou) {
@@ -29,6 +41,7 @@ export class ConfiguracaoAlertaFaltaController extends BaseController {
     };
 
     public delete = async (request: Request, response: Response): Promise<void> => {
+        log.debug("delete()", { idConfiguracao: request.params.idConfiguracao });
         const funcionario: Funcionario = this.getFuncionarioLogado(request);
         const excluiu = await this.service.delete(String(request.params.idConfiguracao), funcionario);
         if (!excluiu) {

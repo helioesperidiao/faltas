@@ -3,12 +3,15 @@ import { Aluno } from "../models/Aluno";
 import { MongoDatabase } from "../database/MongoDatabase";
 import { Funcionario } from "@/models/Funcionario";
 import { Auditoria } from "@/models/Auditoria";
+// NOVO: logger (padrão de logs)
+import { createLogger } from "../logging/Logger";
+
+const log = createLogger("AlunoDAO");
 
 export class AlunoDAO {
     private _database: MongoDatabase;
 
     constructor(dbInstance: MongoDatabase) {
-        console.log("⬆️ AlunoDAO.constructor()");
         this._database = dbInstance;
     }
 
@@ -18,7 +21,7 @@ export class AlunoDAO {
     }
 
     public async create(aluno: Aluno, funcionarioLogado: Funcionario): Promise<Aluno> {
-        console.log("🟢 AlunoDAO.create()");
+        log.debug("create()", { matricula: aluno.matricula, turma: aluno.turma });
         const collection = await this.getCollection();
 
         aluno.marcarCriadoPor(funcionarioLogado.idFuncionario);
@@ -57,15 +60,17 @@ export class AlunoDAO {
 
         const result = await collection.insertOne(doc);
         if (!result.insertedId) {
+            log.error("falha ao inserir aluno", { matricula: aluno.matricula });
             throw new Error("Falha ao inserir aluno");
         }
 
         aluno.idAluno = result.insertedId.toString();
+        log.info("aluno inserido", { idAluno: aluno.idAluno, matricula: aluno.matricula, turma: aluno.turma });
         return aluno;
     }
 
     public async delete(aluno: Aluno, funcionarioLogado: Funcionario): Promise<boolean> {
-        console.log("🟢 AlunoDAO.delete(" + aluno.idAluno + ")");
+        log.debug("delete()", { idAluno: aluno.idAluno });
         const collection = await this.getCollection();
         aluno.marcarDeletadoPor(funcionarioLogado.idFuncionario);
 
@@ -80,11 +85,14 @@ export class AlunoDAO {
             }
         };
         const result = await collection.updateOne(filter, update);
-        return result.modifiedCount > 0;
+        const ok = result.modifiedCount > 0;
+        if (ok) log.info("aluno removido", { idAluno: aluno.idAluno });
+        else log.warn("aluno não encontrado para remoção", { idAluno: aluno.idAluno });
+        return ok;
     }
 
     public async update(aluno: Aluno, funcionarioLogado: Funcionario): Promise<boolean> {
-        console.log("🟢 AlunoDAO.update(" + aluno.idAluno + ")");
+        log.debug("update()", { idAluno: aluno.idAluno });
         const collection = await this.getCollection();
         aluno.marcarAlteradoPor(funcionarioLogado.idFuncionario);
 
@@ -123,7 +131,10 @@ export class AlunoDAO {
             }
         };
         const result = await collection.updateOne(filter, update);
-        return result.modifiedCount > 0;
+        const ok = result.modifiedCount > 0;
+        if (ok) log.info("aluno atualizado", { idAluno: aluno.idAluno });
+        else log.warn("aluno não encontrado para atualização", { idAluno: aluno.idAluno });
+        return ok;
     }
 
     private toAluno(doc: any): Aluno {
@@ -194,7 +205,7 @@ export class AlunoDAO {
     }
 
     public async findById(idAluno: string): Promise<Aluno | null> {
-        console.log("🟢 AlunoDAO.findById()");
+        log.debug("findById()", { idAluno });
         const collection = await this.getCollection();
         const filter: Filter<Document> = {
             _id: new ObjectId(idAluno),
@@ -205,6 +216,7 @@ export class AlunoDAO {
     }
 
     public async findAll(): Promise<Aluno[]> {
+        log.debug("findAll()");
         const collection = await this.getCollection();
         const cursor = collection.find({ "auditoria.deletadoEm": null });
         const docs = await cursor.toArray();
@@ -212,6 +224,7 @@ export class AlunoDAO {
     }
 
     public async findAllDeleted(): Promise<Aluno[]> {
+        log.debug("findAllDeleted()");
         const collection = await this.getCollection();
         const cursor = collection.find({ "auditoria.deletadoEm": { $ne: null } });
         const docs = await cursor.toArray();
@@ -219,7 +232,7 @@ export class AlunoDAO {
     }
 
     public async count(): Promise<number> {
-        console.log("🟢 AlunoDAO.count()");
+        log.debug("count()");
         const collection = await this.getCollection();
         return await collection.countDocuments({ "auditoria.deletadoEm": null });
     }
@@ -229,6 +242,7 @@ export class AlunoDAO {
      * Vínculos encerrados ficam disponíveis por 12 meses após a troca de turma.
      */
     public async findByTurmaNoPeriodo(turma: string, dataInicio: Date, dataFim: Date): Promise<Aluno[]> {
+        log.debug("findByTurmaNoPeriodo()", { turma, dataInicio, dataFim });
         const alunos = await this.findAll();
         const agora = new Date();
         const diaUtc = (data: Date): number => Date.UTC(
@@ -241,9 +255,6 @@ export class AlunoDAO {
         const hoje = diaUtc(agora);
 
         return alunos.filter(aluno => {
-            // A turma começa em um instante do dia, mas a tela consulta uma data sem
-            // horário (00:00). Comparar os instantes fazia o aluno sumir justamente
-            // no dia em que foi cadastrado ou teve a turma atualizada.
             const inicioTurmaAtual = diaUtc(aluno.turmaInicioEm);
             const vinculoAtual = aluno.turma === turma && inicioTurmaAtual <= fimConsulta;
             const vinculoHistorico = aluno.historicoTurmas.some(historico =>
@@ -257,6 +268,7 @@ export class AlunoDAO {
     }
 
     public async atualizarEnturmacaoEmLote(alunos: Aluno[], funcionarioLogado: Funcionario): Promise<number> {
+        log.debug("atualizarEnturmacaoEmLote()", { total: alunos.length });
         if (alunos.length === 0) {
             return 0;
         }
@@ -280,13 +292,18 @@ export class AlunoDAO {
             }
         })));
 
+        log.info("enturmação em lote atualizada", {
+            totalSolicitado: alunos.length,
+            totalModificado: result.modifiedCount,
+        });
         return result.modifiedCount;
     }
 
     public async findByField(field: string, value: any): Promise<Aluno[]> {
-        console.log(`🟢 AlunoDAO.findByField() - Campo: ${field}, Valor: ${value}`);
+        log.debug("findByField()", { field, value });
         const allowedFields = ["_id", "matricula", "turma"];
         if (!allowedFields.includes(field)) {
+            log.warn("campo inválido para busca", { field });
             throw new Error(`Campo inválido para busca: ${field}`);
         }
         const collection = await this.getCollection();

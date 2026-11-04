@@ -3,12 +3,18 @@ import { Abono } from "../models/Abono";
 import { MongoDatabase } from "../database/MongoDatabase";
 import { Funcionario } from "@/models/Funcionario";
 import { Auditoria } from "@/models/Auditoria";
+// NOVO: logger (padrão de logs)
+import { createLogger } from "../logging/Logger";
 
+const log = createLogger("AbonoDAO");
+
+/**
+ * Executa operações de persistência e consulta da coleção de abonos.
+ */
 export class AbonoDAO {
     private _database: MongoDatabase;
 
     constructor(dbInstance: MongoDatabase) {
-        console.log("⬆️ AbonoDAO.constructor()");
         this._database = dbInstance;
     }
 
@@ -18,7 +24,7 @@ export class AbonoDAO {
     }
 
     public async create(abono: Abono, funcionarioLogado: Funcionario): Promise<Abono> {
-        console.log("🟢 AbonoDAO.create()");
+        log.debug("create()", { matricula: abono.matricula });
         const collection = await this.getCollection();
 
         abono.marcarCriadoPor(funcionarioLogado.idFuncionario);
@@ -40,15 +46,21 @@ export class AbonoDAO {
 
         const result = await collection.insertOne(doc);
         if (!result.insertedId) {
+            log.error("falha ao inserir abono", { matricula: abono.matricula });
             throw new Error("Falha ao inserir abono");
         }
 
         abono.idAbono = result.insertedId.toString();
+        log.info("abono inserido", {
+            idAbono: abono.idAbono,
+            matricula: abono.matricula,
+            status: abono.status,
+        });
         return abono;
     }
 
     public async delete(abono: Abono, funcionarioLogado: Funcionario): Promise<boolean> {
-        console.log("🟢 AbonoDAO.delete(" + abono.idAbono + ")");
+        log.debug("delete()", { idAbono: abono.idAbono });
         const collection = await this.getCollection();
         abono.marcarDeletadoPor(funcionarioLogado.idFuncionario);
 
@@ -64,11 +76,14 @@ export class AbonoDAO {
         };
 
         const result = await collection.updateOne(filter, update);
-        return result.modifiedCount > 0;
+        const ok = result.modifiedCount > 0;
+        if (ok) log.info("abono removido", { idAbono: abono.idAbono });
+        else log.warn("abono não encontrado para remoção", { idAbono: abono.idAbono });
+        return ok;
     }
 
     public async update(abono: Abono, funcionarioLogado: Funcionario): Promise<boolean> {
-        console.log("🟢 AbonoDAO.update(" + abono.idAbono + ")");
+        log.debug("update()", { idAbono: abono.idAbono });
         const collection = await this.getCollection();
         abono.marcarAlteradoPor(funcionarioLogado.idFuncionario);
 
@@ -92,7 +107,10 @@ export class AbonoDAO {
         };
 
         const result = await collection.updateOne(filter, update);
-        return result.modifiedCount > 0;
+        const ok = result.modifiedCount > 0;
+        if (ok) log.info("abono atualizado", { idAbono: abono.idAbono, status: abono.status });
+        else log.warn("abono não encontrado para atualização", { idAbono: abono.idAbono });
+        return ok;
     }
 
     private toAbono(doc: any): Abono {
@@ -125,7 +143,7 @@ export class AbonoDAO {
     }
 
     public async findById(idAbono: string): Promise<Abono | null> {
-        console.log("🟢 AbonoDAO.findById()");
+        log.debug("findById()", { idAbono });
         const collection = await this.getCollection();
         const filter: Filter<Document> = {
             _id: new ObjectId(idAbono),
@@ -137,6 +155,7 @@ export class AbonoDAO {
     }
 
     public async findAll(): Promise<Abono[]> {
+        log.debug("findAll()");
         const collection = await this.getCollection();
         const cursor = collection.find({ "auditoria.deletadoEm": null });
         const docs = await cursor.toArray();
@@ -144,6 +163,7 @@ export class AbonoDAO {
     }
 
     public async findAllDeleted(): Promise<Abono[]> {
+        log.debug("findAllDeleted()");
         const collection = await this.getCollection();
         const cursor = collection.find({ "auditoria.deletadoEm": { $ne: null } });
         const docs = await cursor.toArray();
@@ -151,15 +171,16 @@ export class AbonoDAO {
     }
 
     public async count(): Promise<number> {
-        console.log("🟢 AbonoDAO.count()");
+        log.debug("count()");
         const collection = await this.getCollection();
         return await collection.countDocuments({ "auditoria.deletadoEm": null });
     }
 
     public async findByField(field: string, value: any): Promise<Abono[]> {
-        console.log(`🟢 AbonoDAO.findByField() - Campo: ${field}, Valor: ${value}`);
+        log.debug("findByField()", { field, value });
         const allowedFields = ["_id", "matricula", "status"];
         if (!allowedFields.includes(field)) {
+            log.warn("campo inválido para busca", { field });
             throw new Error(`Campo inválido para busca: ${field}`);
         }
 

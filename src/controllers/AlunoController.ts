@@ -4,13 +4,22 @@ import { Aluno } from "@/models/Aluno";
 import { StandardResponse } from "@/http/StandardResponse";
 import { Funcionario } from "@/models/Funcionario";
 import { BaseController } from "./BaseController";
+// NOVO: logger (padrão de logs)
+import { createLogger } from "../logging/Logger";
 
+const log = createLogger("AlunoController");
+
+/**
+ * Traduz requisições HTTP de alunos em chamadas ao AlunoService.
+ *
+ * Cobre CRUD, busca por matrícula/turma, listagem de inativos (soft delete)
+ * e a virada anual de turma (`/transicao-anual`).
+ */
 export class AlunoController extends BaseController {
     private _alunoService: AlunoService;
 
     constructor(alunoServiceDependency: AlunoService) {
         super();
-        console.log("⬆️  AlunoController.constructor()");
         this._alunoService = alunoServiceDependency;
     }
 
@@ -53,7 +62,7 @@ export class AlunoController extends BaseController {
     };
 
     public create = async (request: Request, response: Response): Promise<void> => {
-        console.log("🔵 AlunoController.create()");
+        log.debug("create()");
 
         const funcionarioLogado: Funcionario = this.getFuncionarioLogado(request);
         const dados = request.body.aluno;
@@ -88,7 +97,7 @@ export class AlunoController extends BaseController {
     };
 
     public findAll = async (_request: Request, response: Response): Promise<void> => {
-        console.log("🔵 AlunoController.findAll()");
+        log.debug("findAll()");
 
         const arrayAlunos = await this._alunoService.findAll();
 
@@ -98,7 +107,7 @@ export class AlunoController extends BaseController {
     };
 
     public findAllDeleted = async (request: Request, response: Response): Promise<void> => {
-        console.log("🔵 AlunoController.findAllDeleted()");
+        log.debug("findAllDeleted()");
 
         const funcionarioLogado: Funcionario = this.getFuncionarioLogado(request);
         const alunosDeletados = await this._alunoService.findAllDeleted(funcionarioLogado);
@@ -109,7 +118,7 @@ export class AlunoController extends BaseController {
     };
 
     public findById = async (request: Request, response: Response): Promise<void> => {
-        console.log("🔵 AlunoController.findById()");
+        log.debug("findById()", { idAluno: request.params.idAluno });
 
         const idAluno = request.params.idAluno.toString();
         const aluno = await this._alunoService.findById(idAluno);
@@ -120,7 +129,7 @@ export class AlunoController extends BaseController {
     };
 
     public findByMatricula = async (request: Request, response: Response): Promise<void> => {
-        console.log("🔵 AlunoController.findByMatricula()");
+        log.debug("findByMatricula()", { matricula: request.params.matricula });
 
         const matricula = request.params.matricula.toString();
         const aluno = await this._alunoService.findByMatricula(matricula);
@@ -138,7 +147,7 @@ export class AlunoController extends BaseController {
     };
 
     public findByTurma = async (request: Request, response: Response): Promise<void> => {
-        console.log("🔵 AlunoController.findByTurma()");
+        log.debug("findByTurma()", { turma: request.params.turma });
 
         const turma = request.params.turma.toString();
         const alunos = await this._alunoService.findByTurma(turma);
@@ -149,7 +158,7 @@ export class AlunoController extends BaseController {
     };
 
     public update = async (request: Request, response: Response): Promise<void> => {
-        console.log("🔵 AlunoController.update()");
+        log.debug("update()", { idAluno: request.params.idAluno });
 
         const funcionarioLogado: Funcionario = this.getFuncionarioLogado(request);
 
@@ -195,7 +204,7 @@ export class AlunoController extends BaseController {
     };
 
     public promoverTurma = async (request: Request, response: Response): Promise<void> => {
-        console.log("🔵 AlunoController.promoverTurma()");
+        log.debug("promoverTurma()");
         const funcionarioLogado = this.getFuncionarioLogado(request);
         const turmaOrigem = String(request.body.turmaOrigem || '').trim();
         const turmaDestino = String(request.body.turmaDestino || '').trim();
@@ -223,7 +232,7 @@ export class AlunoController extends BaseController {
     };
 
     public delete = async (request: Request, response: Response): Promise<void> => {
-        console.log("🔵 AlunoController.delete()");
+        log.debug("delete()", { idAluno: request.params.idAluno });
 
         const funcionarioLogado: Funcionario = this.getFuncionarioLogado(request);
 
@@ -242,7 +251,7 @@ export class AlunoController extends BaseController {
     };
 
     public count = async (_request: Request, response: Response): Promise<void> => {
-        console.log("🔵 AlunoController.count()");
+        log.debug("count()");
 
         const total = await this._alunoService.count();
 

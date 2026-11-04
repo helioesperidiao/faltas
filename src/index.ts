@@ -3,37 +3,38 @@
 // PONTO DE ENTRADA DA APLICAÇÃO
 // ============================================================================
 
-// Carrega as variáveis de ambiente do arquivo .env antes de qualquer outro módulo
-import dotenv from 'dotenv';
-dotenv.config(); // Deve ser o primeiro comando para garantir que process.env esteja populado
+// Side-effect import: carrega .env como o PRIMEIRO módulo avaliado.
+// Em ESM, todos os imports são hoisted e executados em ordem antes do corpo
+// do módulo. `import 'dotenv/config'` garante que process.env já esteja
+// populado quando Server.ts (e seus dependentes) forem avaliados.
+// Não troque por `import dotenv from 'dotenv'; dotenv.config();` no corpo:
+// nesse caso o `import { Server }` acima seria hoisted e rodaria ANTES
+// do dotenv.config(), fazendo o log/MongoDatabase lerem envs vazias.
+import 'dotenv/config';
 
-// Importa a classe principal do servidor (depende de process.env)
 import { Server } from "./Server";
+import { createLogger } from "./logging/Logger";
+
+const log = createLogger("Bootstrap");
 
 /**
  * Função assíncrona que inicializa e inicia o servidor.
- * 
+ *
  * Este é o ponto de entrada da aplicação. Ela:
  * 1. Define a porta com base na variável de ambiente PORT ou fallback para 3000.
  * 2. Instancia o servidor com a porta definida.
  * 3. Aguarda a inicialização completa do servidor (conexão com banco, middlewares, rotas).
  * 4. Inicia a escuta HTTP.
- * 
+ *
  * Caso ocorra qualquer erro durante a inicialização, a função captura a exceção,
- * exibe uma mensagem no console e encerra o processo com código de erro (1).
- * 
- * @example
- * // Execução padrão
- * await startServer();
- * 
+ * registra no log e encerra o processo com código de erro (1).
+ *
  * @returns {Promise<void>} Não retorna valor.
- * 
- * @throws {Error} Em caso de falha na inicialização, o processo é encerrado.
  */
 const startServer = async (): Promise<void> => {
     try {
-        // Define a porta: prioriza a variável de ambiente PORT, senão usa 3000
-        // Garante que PORT seja um number (ou fallback para 3000 se inválido)
+        // Define a porta: prioriza a variável de ambiente PORT, senão usa 3000.
+        // Garante que PORT seja um number (ou fallback para 3000 se inválido).
         const rawPort = process.env.PORT;
         const parsedPort = rawPort ? parseInt(rawPort, 10) : NaN;
         const PORT: number = !Number.isNaN(parsedPort) ? parsedPort : 3000;
@@ -47,11 +48,11 @@ const startServer = async (): Promise<void> => {
         // Inicia o servidor HTTP na porta definida
         server.run();
     } catch (error) {
-        // Em caso de erro, exibe mensagem e encerra o processo
-        console.error("❌ Falha ao iniciar o servidor:", error);
+        // Em caso de erro, registra no log estruturado e encerra o processo
+        log.error("falha ao iniciar o servidor", { error });
         process.exit(1); // Código 1 indica erro
     }
 };
 
-// Executa a função de inicialização (top-level await em módulos ES é permitido)
+// Executa a função de inicialização
 startServer();

@@ -9,7 +9,22 @@ import { GradeHorarioDAO } from "../dao/GradeHorarioDAO";
 import { ConfiguracaoAlertaFaltaDAO } from "../dao/ConfiguracaoAlertaFaltaDAO";
 import { AlertaFaltaDAO } from "../dao/AlertaFaltaDAO";
 import { MongoDatabase } from "../database/MongoDatabase";
+// NOVO: logger (padrão de logs)
+import { createLogger } from "../logging/Logger";
+// NOVO: asyncHandler (obrigatório — RelatorioController é async)
+import { asyncHandler } from "../http/asyncHandler";
 
+const log = createLogger("RelatorioRouter");
+
+/**
+ * Router responsável por expor os endpoints de relatório.
+ *
+ * Todos os endpoints são GET (consultas) e recebem parâmetros via querystring
+ * (turma, dia, ano, mes, bimestre, dataInicio, dataFim).
+ *
+ * Recebe a instância de MongoDatabase por injeção para reaproveitar a
+ * conexão singleton já aberta pelo Server.
+ */
 export class RelatorioRouter {
     public static readonly PREFIX = "/api/v1/relatorios";
 
@@ -17,10 +32,14 @@ export class RelatorioRouter {
     private _dataBase: MongoDatabase;
 
     constructor(dataBase: MongoDatabase) {
-        console.log("⬆️ RelatorioRouter.constructor()");
+        log.debug("constructor()");
         this._router = Router();
         this._dataBase = dataBase;
 
+        // Monta a cadeia DAO → Service → Controller com a conexão compartilhada.
+        // O RelatorioService agrega 6 DAOs: ele precisa ler alunos, registros,
+        // movimentações, grade de horários, configurações de alerta e a própria
+        // coleção de alertas sincronizados para montar os relatórios.
         const alunoDAO = new AlunoDAO(this._dataBase);
         const registroDAO = new RegistroDAO(this._dataBase);
         const movimentacaoDAO = new MovimentacaoDAO(this._dataBase);
@@ -36,34 +55,43 @@ export class RelatorioRouter {
         const relatorioController = new RelatorioController(relatorioService);
         const jwtMiddleware = new JwtMiddleware();
 
-        this._router.get(RelatorioRouter.PREFIX + "/frequencia",
+        // ⚠️ Todas as rotas passam por `asyncHandler`. Sem ele, os `throw` dentro
+        // do controller (que é async) NÃO chegam ao `setupErrorMiddleware` do
+        // Server.ts — e o cliente vê timeout ou 500 genérico do Express em vez
+        // de um `StandardResponse` com `message`/`error`.
+        this._router.get(
+            RelatorioRouter.PREFIX + "/frequencia",
             jwtMiddleware.validateToken,
-            relatorioController.frequenciaPorTurma
+            asyncHandler(relatorioController.frequenciaPorTurma)
         );
 
-        this._router.get(RelatorioRouter.PREFIX + "/faltas/periodo",
+        this._router.get(
+            RelatorioRouter.PREFIX + "/faltas/periodo",
             jwtMiddleware.validateToken,
-            relatorioController.faltasPorPeriodo
+            asyncHandler(relatorioController.faltasPorPeriodo)
         );
 
-        this._router.get(RelatorioRouter.PREFIX + "/faltas/semana",
+        this._router.get(
+            RelatorioRouter.PREFIX + "/faltas/semana",
             jwtMiddleware.validateToken,
-            relatorioController.faltasPorSemana
+            asyncHandler(relatorioController.faltasPorSemana)
         );
 
-        this._router.get(RelatorioRouter.PREFIX + "/faltas/mes",
+        this._router.get(
+            RelatorioRouter.PREFIX + "/faltas/mes",
             jwtMiddleware.validateToken,
-            relatorioController.faltasPorMes
+            asyncHandler(relatorioController.faltasPorMes)
         );
 
-        this._router.get(RelatorioRouter.PREFIX + "/alertas-faltas-bimestral",
+        this._router.get(
+            RelatorioRouter.PREFIX + "/alertas-faltas-bimestral",
             jwtMiddleware.validateToken,
-            relatorioController.alertasFaltaBimestral
+            asyncHandler(relatorioController.alertasFaltaBimestral)
         );
 
         this._router.get(RelatorioRouter.PREFIX + "/fechamento-dia",
             jwtMiddleware.validateToken,
-            relatorioController.fechamentoDia
+            asyncHandler(relatorioController.fechamentoDia)
         );
 
     }

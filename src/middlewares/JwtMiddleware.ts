@@ -3,6 +3,10 @@ import { MeuTokenJWT } from '../http/MeuTokenJWT';
 import { ErrorResponse } from '../http/ErrorResponse';
 import { Funcionario } from '@/models/Funcionario';
 import { cargoAceito } from '@/constants/Cargos';
+// NOVO: logger (padrão de logs)
+import { createLogger } from "../logging/Logger";
+
+const log = createLogger("JwtMiddleware");
 
 /**
  * Middleware para validação de tokens JWT em requisições.
@@ -30,10 +34,10 @@ export class JwtMiddleware {
      * 1. Obtém o header `authorization` da requisição.
      * 2. Instancia a classe `MeuTokenJWT`.
      * 3. Valida e decodifica o token usando `MeuTokenJWT.validarToken()`.
-     * 4. Se o token for válido:
+     * 4. Se o token for válido e o cargo for aceito:
      *    - Injeta o objeto `Funcionario` na propriedade `funcionarioLogado` da requisição.
      *    - Chama `next()` para prosseguir ao próximo middleware/controller.
-     * 5. Se o token for inválido ou não fornecido:
+     * 5. Se o token for inválido, ausente ou de cargo não aceito:
      *    - Lança um `ErrorResponse` com status 401 (Unauthorized).
      * 
      * @param {Request} request - Objeto de requisição do Express.
@@ -46,7 +50,7 @@ export class JwtMiddleware {
      * app.get("/perfil", jwtMiddleware.validateToken, perfilController);
      */
     public validateToken = (request: Request, _response: Response, next: NextFunction): void => {
-        console.log("🔷 JwtMiddleware.validateToken()");
+        log.debug("validateToken()");
         const authorization = request.headers.authorization;
 
         const jwt = new MeuTokenJWT();
@@ -55,8 +59,20 @@ export class JwtMiddleware {
         if (funcionario && cargoAceito(funcionario.cargo.nomeCargo)) {
             // Injeta o funcionário decodificado na requisição para uso posterior
             (request as any).funcionarioLogado = funcionario;
+            log.debug("token válido", {
+                idFuncionario: funcionario.idFuncionario,
+                nomeCargo: funcionario.cargo.nomeCargo,
+            });
             next();
         } else {
+            // Loga o motivo exato antes de lançar para diagnóstico
+            if (!funcionario) {
+                log.warn("token inválido ou ausente");
+            } else {
+                log.warn("cargo não autorizado", {
+                    nomeCargo: funcionario.cargo?.nomeCargo,
+                });
+            }
             throw new ErrorResponse(401, "Token inválido");
         }
     };

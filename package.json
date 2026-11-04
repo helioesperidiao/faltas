@@ -2,9 +2,8 @@
   "name": "faltas_cti",
   "version": "1.0.0",
   "scripts": {
-    "dev": "kill-port 3000 && taskkill /IM nginx.exe /F 2>nul & cd nginx && start /B nginx && cd .. && nodemon",
-   "build": "tsc && tsc-alias && copyfiles -u 1 \"src/public/**/*\" dist",
-
+    "dev": "nodemon",
+    "build": "tsc && tsc-alias && copyfiles -u 1 \"src/public/**/*\" dist",
     "start": "node dist/index.js",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -26,6 +25,7 @@
     "multer": "^2.2.0",
     "pdf-parse": "^2.4.5",
     "uuid": "^14.0.1",
+    "winston": "^3.19.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

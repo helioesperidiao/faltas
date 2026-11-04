@@ -1,6 +1,10 @@
 import { Collection, Document } from "mongodb";
 import { MongoDatabase } from "@/database/MongoDatabase";
 import { Funcionario } from "@/models/Funcionario";
+// NOVO: logger (padrão de logs)
+import { createLogger } from "../logging/Logger";
+
+const log = createLogger("AlertaFaltaDAO");
 
 export interface DadosAlertaFalta {
     matricula: string;
@@ -13,6 +17,9 @@ export interface DadosAlertaFalta {
     limiteFaltas: number;
 }
 
+/**
+ * Executa sincronização da coleção de alertas de falta por bimestre.
+ */
 export class AlertaFaltaDAO {
     constructor(private readonly database: MongoDatabase) {}
 
@@ -22,14 +29,21 @@ export class AlertaFaltaDAO {
 
     /** Atualiza a tabela de alertas para refletir a situação calculada do bimestre. */
     public async sincronizar(ano: number, bimestre: number, alertas: DadosAlertaFalta[], funcionario: Funcionario): Promise<void> {
+        log.debug("sincronizar()", { ano, bimestre, total: alertas.length });
         const collection = await this.collection();
-        await collection.updateMany(
+        const desativados = await collection.updateMany(
             { ano, bimestre, ativo: true },
             { $set: { ativo: false, atualizadoEm: new Date(), "auditoria.alteradoPor": funcionario.idFuncionario } }
         );
+        if (desativados.modifiedCount > 0) {
+            log.debug("alertas antigos desativados", { ano, bimestre, total: desativados.modifiedCount });
+        }
 
-        if (alertas.length === 0) return;
-        await collection.bulkWrite(alertas.map(alerta => ({
+        if (alertas.length === 0) {
+            log.info("sincronização concluída sem novos alertas", { ano, bimestre });
+            return;
+        }
+        const resultado = await collection.bulkWrite(alertas.map(alerta => ({
             updateOne: {
                 filter: {
                     ano,
@@ -50,5 +64,11 @@ export class AlertaFaltaDAO {
                 upsert: true
             }
         })));
+        log.info("alertas sincronizados", {
+            ano,
+            bimestre,
+            novos: resultado.upsertedCount,
+            atualizados: resultado.modifiedCount,
+        });
     }
 }

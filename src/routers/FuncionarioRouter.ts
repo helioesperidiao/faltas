@@ -5,115 +5,65 @@ import { FuncionarioService } from "../services/FuncionarioService";
 import { FuncionarioDAO } from "../dao/FuncionarioDAO";
 import { CargoDAO } from "../dao/CargoDAO";
 import { MongoDatabase } from "../database/MongoDatabase";
+import { asyncHandler } from "../http/asyncHandler";
+// NOVO: logger (padrão de logs)
+import { createLogger } from "../logging/Logger";
+
+const log = createLogger("FuncionarioRouter");
 
 /**
- * Roteador para as rotas da entidade Funcionario.
- * 
- * Define os endpoints RESTful para operações CRUD, autenticação (login)
- * e contagens de funcionários. As rotas são prefixadas com `/api/v1/funcionarios`.
- * 
- * Rotas públicas:
- * - POST /login - Autenticação de funcionário (não requer JWT)
- * 
- * Rotas protegidas (requerem token JWT):
- * - POST / - Criar um novo funcionário
- * - GET / - Listar todos os funcionários
- * - GET /count - Total de funcionários
- * - GET /count/:idCargo - Total de funcionários por cargo
- * - GET /:idFuncionario - Buscar funcionário por ID
- * - PUT /:idFuncionario - Atualizar funcionário
- * - DELETE /:idFuncionario - Deletar funcionário
- * 
- * @example
- * // Uso no servidor
- * const funcionarioRouter = new FuncionarioRouter();
- * app.use(funcionarioRouter.getRouter());
+ * Router responsável por expor os endpoints de funcionários.
+ *
+ * Guarda uma referência ao FuncionarioService para que o Server possa
+ * chamar `initializeDefaultAdmin()` no startup (criação do admin padrão).
  */
 export class FuncionarioRouter {
-    /** Prefixo base para todas as rotas de funcionário. */
     public static readonly PREFIX = "/api/v1/funcionarios";
 
     private _router: Router;
+    private _funcionarioService: FuncionarioService;
 
-    /**
-     * Construtor do FuncionarioRouter.
-     * 
-     * Inicializa as dependências (MongoDatabase, DAOs, Service, Controller, JwtMiddleware)
-     * e configura todas as rotas da entidade Funcionario.
-     */
-    constructor(private _dataBase: MongoDatabase) {
-        console.log("⬆️ FuncionarioRouter.constructor()");
+    constructor(dbInstance: MongoDatabase) {
+        log.debug("constructor()");
 
-        // Cria um router principal e um sub-router para aplicar o prefixo
-        this._router = Router();
-        this._dataBase = _dataBase;
+        const mainRouter = Router();
+        const subRouter = Router();
 
-     
-        const funcionarioDAO = new FuncionarioDAO(this._dataBase);
-        const cargoDAO = new CargoDAO(this._dataBase);
-        const funcionarioService = new FuncionarioService(funcionarioDAO, cargoDAO);
-        const funcionarioController = new FuncionarioController(funcionarioService);
+        const funcionarioDAO = new FuncionarioDAO(dbInstance);
+        const cargoDAO = new CargoDAO(dbInstance);
+
+        // FuncionarioService precisa do CargoDAO para validar o cargo
+        // informado na criação/edição de um funcionário.
+        this._funcionarioService = new FuncionarioService(funcionarioDAO, cargoDAO);
+        const funcionarioController = new FuncionarioController(this._funcionarioService);
         const jwtMiddleware = new JwtMiddleware();
 
-        // ======================== ROTAS PÚBLICAS ========================
+        // Login é público — sem validateToken.
+        subRouter.post("/login", asyncHandler(funcionarioController.login));
 
-        // POST /login - Autenticação (não requer JWT)
-        this._router.post(FuncionarioRouter.PREFIX + "/login",
-            funcionarioController.login
-        );
+        // Todas as demais rotas são protegidas por JWT.
+        subRouter.post("/", jwtMiddleware.validateToken, asyncHandler(funcionarioController.create));
+        subRouter.get("/", jwtMiddleware.validateToken, asyncHandler(funcionarioController.findAll));
+        subRouter.get("/count", jwtMiddleware.validateToken, asyncHandler(funcionarioController.count));
+        subRouter.get("/count/:idCargo", jwtMiddleware.validateToken, asyncHandler(funcionarioController.countByCargoId));
+        subRouter.get("/:idFuncionario", jwtMiddleware.validateToken, asyncHandler(funcionarioController.findById));
+        subRouter.put("/:idFuncionario", jwtMiddleware.validateToken, asyncHandler(funcionarioController.update));
+        subRouter.delete("/:idFuncionario", jwtMiddleware.validateToken, asyncHandler(funcionarioController.delete));
 
-        // ======================== ROTAS PROTEGIDAS POR JWT ========================
-
-        // POST / - Criar um novo funcionário
-        this._router.post(FuncionarioRouter.PREFIX + "/",
-            jwtMiddleware.validateToken,
-            funcionarioController.create
-        );
-
-        // GET / - Listar todos os funcionários
-        this._router.get(FuncionarioRouter.PREFIX + "/",
-            jwtMiddleware.validateToken,
-            funcionarioController.findAll
-        );
-
-        // GET /count - Total de funcionários
-        this._router.get(FuncionarioRouter.PREFIX + "/count",
-            jwtMiddleware.validateToken,
-            funcionarioController.count
-        );
-
-        // GET /count/:idCargo - Total de funcionários por cargo
-        this._router.get(FuncionarioRouter.PREFIX + "/count/:idCargo",
-            jwtMiddleware.validateToken,
-            funcionarioController.countByCargoId
-        );
-
-        // GET /:idFuncionario - Buscar funcionário por ID
-        this._router.get(FuncionarioRouter.PREFIX + "/:idFuncionario",
-            jwtMiddleware.validateToken,
-            funcionarioController.findById
-        );
-
-        // PUT /:idFuncionario - Atualizar funcionário
-        this._router.put(FuncionarioRouter.PREFIX + "/:idFuncionario",
-            jwtMiddleware.validateToken,
-            funcionarioController.update
-        );
-
-        // DELETE /:idFuncionario - Deletar funcionário
-        this._router.delete(FuncionarioRouter.PREFIX + "/:idFuncionario",
-            jwtMiddleware.validateToken,
-            funcionarioController.delete
-        );
-
+        mainRouter.use(FuncionarioRouter.PREFIX, subRouter);
+        this._router = mainRouter;
     }
 
-    /**
-     * Retorna o router principal com todas as rotas configuradas.
-     * 
-     * @returns Router do Express com as rotas de funcionário.
-     */
     public getRouter = (): Router => {
         return this._router;
+    };
+
+    /**
+     * Exposto para o Server chamar `initializeDefaultAdmin()` no boot.
+     * ⚠️ Se seu FuncionarioService não tem `initializeDefaultAdmin`,
+     * remova este método e a chamada no Server.ts.
+     */
+    public getService = (): FuncionarioService => {
+        return this._funcionarioService;
     };
 }

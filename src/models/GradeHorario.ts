@@ -14,7 +14,7 @@ export class GradeHorario {
     private _auditoria: Auditoria = new Auditoria();
 
     constructor() {
-        console.log("⬆️  GradeHorario.constructor()");
+      
     }
 
     get idGradeHorario(): string {

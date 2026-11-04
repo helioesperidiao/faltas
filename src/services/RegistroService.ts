@@ -4,6 +4,10 @@ import { ErrorResponse } from "../http/ErrorResponse";
 import { Funcionario } from "@/models/Funcionario";
 import { AlunoDAO } from "../dao/AlunoDAO";
 import { DispensaDAO } from "../dao/DispensaDAO";
+// NOVO: logger (padrão de logs)
+import { createLogger } from "../logging/Logger";
+
+const log = createLogger("RegistroService");
 
 const CARGOS_ACESSO_TOTAL = ["Processo Pedagógico"];
 
@@ -14,7 +18,6 @@ export class RegistroService {
 
     //construtor
     constructor(registroDAODependency: RegistroDAO, alunoDAODependency: AlunoDAO, dispensaDAODependency: DispensaDAO){
-        console.log("⬆️  RegistroService.constructor()");
         this._registroDAO = registroDAODependency;
         this._alunoDAO = alunoDAODependency;
         this._dispensaDAO = dispensaDAODependency;
@@ -22,9 +25,14 @@ export class RegistroService {
 
     //create
     public create = async (registro: Registro, funcionarioLogado: Funcionario): Promise<Registro> => {
-        console.log("🟣 RegistroService.create()");
+        log.debug("create()", { matricula: registro.matricula, codDisciplina: registro.codDisciplina });
+
         const cargosPermitidos = ["Inspetor", "Processo Pedagógico"];
         if (!cargosPermitidos.includes(funcionarioLogado.cargo.nomeCargo)) {
+            log.warn("registro de chamada negado", {
+                motivo: "cargo não autorizado",
+                cargoAtor: funcionarioLogado.cargo.nomeCargo,
+            });
             throw new ErrorResponse(
                 403,
                 "Não autorizado",
@@ -41,24 +49,36 @@ export class RegistroService {
         if (dispensaVigente) {
             registro.falta = false;
             registro.situacao = "Dispensada";
+            log.debug("falta convertida em dispensa", {
+                matricula: registro.matricula,
+                idDispensa: dispensaVigente.idDispensa,
+            });
         }
 
         registro.alunoNome = aluno.alunoNome;
         registro.turma = aluno.turma;
         registro.curso = aluno.curso;
         registro.serie = aluno.serie;
-        return await this._registroDAO.create(registro, funcionarioLogado);
+
+        const criado = await this._registroDAO.create(registro, funcionarioLogado);
+        log.info("registro criado", {
+            idRegistro: criado.idRegistro,
+            matricula: criado.matricula,
+            situacao: criado.situacao,
+            registradoPor: funcionarioLogado.email,
+        });
+        return criado;
     };
 
     //findAll
     public findAll = async (): Promise<Registro[]> => {
-        console.log("🟣 RegistroService.findAll()");
+        log.debug("findAll()");
         return await this._registroDAO.findAll();
     };
 
     //findById
     public findById = async (idRegistro: string): Promise<Registro | null> => {
-        console.log("🟣 RegistroService.findById()");
+        log.debug("findById()", { idRegistro });
         const registro = new Registro();
         registro.idRegistro = idRegistro;
         return await this._registroDAO.findById(registro.idRegistro);
@@ -66,9 +86,13 @@ export class RegistroService {
 
     //findAllDeleted
     public findAllDeleted = async (funcionarioLogado: Funcionario): Promise<Registro[]> => {
-        console.log("🟣 RegistroService.findAllDeleted()");
+        log.debug("findAllDeleted()");
         const cargoFuncionario = funcionarioLogado.cargo.nomeCargo;
         if (!CARGOS_ACESSO_TOTAL.includes(cargoFuncionario)) {
+            log.warn("busca de registros deletados negada", {
+                motivo: "cargo não autorizado",
+                cargoAtor: cargoFuncionario,
+            });
             throw new ErrorResponse(403, "Não autorizado", { message: `Apenas ${CARGOS_ACESSO_TOTAL.join(", ")} podem visualizar registros deletados.` });
         }
         return await this._registroDAO.findAllDeleted();
@@ -76,38 +100,58 @@ export class RegistroService {
 
     //update
     public update = async (registro: Registro, funcionarioLogado: Funcionario): Promise<boolean> => {
-        console.log("🟣 RegistroService.update()");
-        return await this._registroDAO.update(registro, funcionarioLogado);
+        log.debug("update()", { idRegistro: registro.idRegistro });
+        const atualizou = await this._registroDAO.update(registro, funcionarioLogado);
+        if (atualizou) {
+            log.info("registro atualizado", {
+                idRegistro: registro.idRegistro,
+                atualizadoPor: funcionarioLogado.email,
+            });
+        }
+        return atualizou;
     };
 
     //delete
     public delete = async (registro: Registro, funcionarioLogado: Funcionario): Promise<boolean> => {
-        console.log("🟣 RegistroService.delete()");
-        return await this._registroDAO.delete(registro, funcionarioLogado);
+        log.debug("delete()", { idRegistro: registro.idRegistro });
+        const excluiu = await this._registroDAO.delete(registro, funcionarioLogado);
+        if (excluiu) {
+            log.info("registro excluído", {
+                idRegistro: registro.idRegistro,
+                excluidoPor: funcionarioLogado.email,
+            });
+        }
+        return excluiu;
     };
 
     //count
     public count = async (): Promise<number> => {
-        console.log("🟣 RegistroService.count()");
+        log.debug("count()");
         return await this._registroDAO.count();
     };
 
     //findAusentesEntrada: cruza Aluno (por turma) com Registro (por matricula + dia + falta)
     public findAusentesEntrada = async (turma: string, dia: Date): Promise<Registro[]> => {
-        console.log("🟣 RegistroService.findAusentesEntrada()");
+        log.debug("findAusentesEntrada()", { turma, dia });
 
         const alunosDaTurma = await this._alunoDAO.findByField("turma", turma);
         const matriculas = alunosDaTurma.map(aluno => aluno.matricula);
 
         if (matriculas.length === 0) {
+            log.debug("turma sem alunos; retornando lista vazia", { turma });
             return [];
         }
 
-        return await this._registroDAO.findAusentesEntrada(matriculas, dia);
+        const ausentes = await this._registroDAO.findAusentesEntrada(matriculas, dia);
+        log.debug("ausentes encontrados", { turma, dia, total: ausentes.length });
+        return ausentes;
     };
 
     /** Consulta os registros gerais da chamada já concluída para restaurá-la na tela. */
     public findChamadaPorTurmaEDia = async (turma: string, dia: Date): Promise<Registro[]> => {
-        return await this._registroDAO.findChamadaPorTurmaEDia(turma, dia);
+        log.debug("findChamadaPorTurmaEDia()", { turma, dia });
+        const registros = await this._registroDAO.findChamadaPorTurmaEDia(turma, dia);
+        log.debug("chamada consultada", { turma, dia, total: registros.length });
+        return registros;
     };
 }

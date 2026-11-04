@@ -1,173 +1,228 @@
 import { CargoDAO } from "../dao/CargoDAO";
+import { FuncionarioDAO } from "../dao/FuncionarioDAO";
 import { Cargo } from "../models/Cargo";
 import { ErrorResponse } from "../http/ErrorResponse";
-import { Funcionario } from "@/models/Funcionario";
-import { cargoAceito, CARGO_PROCESSO_PEDAGOGICO, nomeCargoCanonico } from "@/constants/Cargos";
+import { Funcionario } from "../models/Funcionario";
+// NOVO: logger (padrão de logs)
+import { createLogger } from "../logging/Logger";
+
+const log = createLogger("CargoService");
 
 /**
- * Classe responsável pela camada de serviço para a entidade Cargo.
- * 
- * Observações sobre injeção de dependência:
- * - O CargoService **recebe uma instância de CargoDAO via construtor**.
- * - Isso segue o padrão de injeção de dependência, tornando o serviço desacoplado
- *   do DAO concreto, facilitando testes unitários e substituição por mocks.
+ * Regras de negócio de Cargo.
+ *
+ * Requer o FuncionarioDAO apenas para validar exclusão (não permite excluir
+ * um cargo que ainda tenha funcionários vinculados).
  */
 export class CargoService {
     private _cargoDAO: CargoDAO;
+    private _funcionarioDAO: FuncionarioDAO;
 
     /**
-     * Construtor da classe CargoService.
-     * @param cargoDAODependency - Instância de CargoDAO injetada.
+     * Recebe os DAOs de Cargo e Funcionario por injeção.
+     *
+     * @param cargoDAODependency - DAO de Cargo.
+     * @param funcionarioDAODependency - DAO de Funcionario (usado no delete para
+     *   verificar se há funcionários vinculados ao cargo).
      */
-    constructor(cargoDAODependency: CargoDAO) {
-        console.log("⬆️  CargoService.constructor()");
+    constructor(cargoDAODependency: CargoDAO, funcionarioDAODependency: FuncionarioDAO) {
         this._cargoDAO = cargoDAODependency;
+        this._funcionarioDAO = funcionarioDAODependency;
     }
 
     /**
-     * Cria um novo cargo.
-     * 
-     * 🔹 Regra de negócio: apenas Processo Pedagógico pode criar os cargos aceitos.
-     * 🔹 Regra de negócio: não pode existir outro cargo com o mesmo nome.
-     * 
-     * @param cargo - Objeto Cargo a ser criado.
-     * @param funcionarioLogado - Funcionário autenticado que está realizando a operação.
-     * @returns O cargo criado com o ID preenchido.
-     * @throws {ErrorResponse} Se o usuário não for Processo Pedagógico ou se o cargo já existir.
+     * Verifica se o funcionário logado tem permissão de administrador.
+     *
+     * ⚠️ Hoje este método checa "Administrador" — mas o middleware JWT só aceita
+     * "Inspetor" ou "Processo Pedagógico" (`CARGOS_ACEITOS` em constants/Cargos.ts).
+     * Ou seja: em runtime, NINGUÉM passa por aqui. Ver nota no fim da resposta.
+     */
+    private isAdmin(funcionario: Funcionario): boolean {
+        return funcionario.cargo?.nomeCargo === "Administrador";
+    }
+
+    /**
+     * Cria um cargo, se o funcionário logado for administrador e o nome não existir.
+     *
+     * @param cargo - Cargo a ser criado.
+     * @param funcionarioLogado - Funcionário autenticado (auditoria + permissão).
+     * @throws {ErrorResponse} 403 se o autor não for admin.
+     * @throws {ErrorResponse} 400 se o nome do cargo já existir.
      */
     public create = async (cargo: Cargo, funcionarioLogado: Funcionario): Promise<Cargo> => {
-        console.log("🟣 CargoService.createCargo()");
+        log.debug("create()", { nomeCargo: cargo.nomeCargo });
 
-        if (funcionarioLogado.cargo.nomeCargo !== CARGO_PROCESSO_PEDAGOGICO) {
-            throw new ErrorResponse(
-                403,
-                "Não autorizado",
-                { message: `O cargo "${funcionarioLogado.cargo.nomeCargo}" não é autorizado a criar cargos.` }
-            );
-        }
-
-        const nomeCanonico = nomeCargoCanonico(cargo.nomeCargo);
-        if (!nomeCanonico || !cargoAceito(cargo.nomeCargo)) {
-            throw new ErrorResponse(400, "Cargo inválido", {
-                message: "Os únicos cargos aceitos são Inspetor e Processo Pedagógico."
+        if (!this.isAdmin(funcionarioLogado)) {
+            log.warn("criação de cargo negada", {
+                motivo: "não é administrador",
+                cargoAtor: funcionarioLogado.cargo?.nomeCargo,
+            });
+            throw new ErrorResponse(403, "Não autorizado", {
+                message: `O cargo "${funcionarioLogado.cargo?.nomeCargo ?? 'desconhecido'}" não é autorizado a criar cargos.`
             });
         }
-        cargo.nomeCargo = nomeCanonico;
 
-        // Verifica se já existe um cargo com o mesmo nome
+        // Evita duplicidade antes de tentar gravar (feedback mais claro ao usuário).
+        // O índice único do Mongo (CargoDAO.ensureIndexes) também protege o caso
+        // de corrida: se dois requests passarem por aqui juntos, o segundo recebe
+        // erro 11000 e é traduzido abaixo.
         const resultado = await this._cargoDAO.findByField("nomeCargo", cargo.nomeCargo);
         if (resultado.length > 0) {
-            throw new ErrorResponse(
-                400,
-                "Cargo já existe",
-                { message: `O cargo "${cargo.nomeCargo}" já existe.` }
-            );
+            throw new ErrorResponse(400, "Cargo já existe", {
+                message: `O cargo "${cargo.nomeCargo}" já existe.`
+            });
         }
 
-        return await this._cargoDAO.create(cargo, funcionarioLogado);
-    };
-
-    /**
-     * Retorna todos os cargos cadastrados.
-     * 
-     * @param _funcionarioLogado - Funcionário autenticado (não utilizado, mas mantido por consistência).
-     * @returns Lista de cargos.
-     */
-    public findAll = async (): Promise<Cargo[]> => {
-        console.log("🟣 CargoService.findAll()");
-        const cargos = await this._cargoDAO.findAll();
-        return cargos.filter(cargo => cargoAceito(cargo.nomeCargo));
-    };
-
-
-    /**
-     * Retorna todos os cargos que foram deletados (soft delete).
-     * 
-     * 🔹 Requer autenticação: apenas Processo Pedagógico pode visualizar registros deletados.
-     * 
-     * @param funcionarioLogado - Funcionário autenticado que está realizando a operação.
-     * @returns Lista de cargos deletados.
-     */
-    public findAllDeleted = async (funcionarioLogado: Funcionario): Promise<Cargo[]> => {
-        console.log("🟣 CargoService.findAllDeleted()");
-
-        // Cargos autorizados a visualizar registros deletados
-        const cargosPermitidos = [CARGO_PROCESSO_PEDAGOGICO];
-        const cargoFuncionario = funcionarioLogado.cargo.nomeCargo;
-
-        if (!cargosPermitidos.includes(cargoFuncionario)) {
-            throw new ErrorResponse(
-                403,
-                "Não autorizado",
-                { message: `Apenas ${cargosPermitidos.join(" ou ")} podem visualizar cargos deletados.` }
-            );
+        try {
+            // ✅ AGORA passa funcionarioLogado — o DAO precisa dele para auditoria.
+            const criado = await this._cargoDAO.create(cargo, funcionarioLogado);
+            log.info("cargo criado", {
+                idCargo: criado.idCargo,
+                nomeCargo: criado.nomeCargo,
+                criadoPor: funcionarioLogado.email,
+            });
+            return criado;
+        } catch (err: any) {
+            if (err?.code === 11000) {
+                throw new ErrorResponse(400, "Cargo já existe", {
+                    message: `O cargo "${cargo.nomeCargo}" já existe.`
+                });
+            }
+            log.error("falha ao criar cargo", { nomeCargo: cargo.nomeCargo, error: err });
+            throw err;
         }
-
-        const cargos = await this._cargoDAO.findAllDeleted();
-        return cargos.filter(cargo => cargoAceito(cargo.nomeCargo));
     };
 
+    /**
+     * Lista todos os cargos ativos.
+     * O parâmetro existe só por simetria com as outras operações (não é usado).
+     */
+    public findAll = async (_funcionarioLogado: Funcionario): Promise<Cargo[]> => {
+        log.debug("findAll()");
+        return await this._cargoDAO.findAll();
+    };
 
     /**
-     * Busca um cargo pelo ID.
-     * 
-     * @param idCargo - ID do cargo (string hexadecimal do MongoDB).
-     * @param _funcionarioLogado - Funcionário autenticado (não utilizado, mantido por consistência).
-     * @returns O cargo encontrado ou null se não existir.
+     * Lista todos os cargos que sofreram soft delete.
+     *
+     * Necessário para o endpoint GET /api/v1/cargos/deleted usado em
+     * Cargos.html (checkbox "Mostrar cargos inativos").
      */
-    public findById = async (idCargo: string,): Promise<Cargo | null> => {
-        console.log("🟣 CargoService.findById()");
+    public findAllDeleted = async (_funcionarioLogado: Funcionario): Promise<Cargo[]> => {
+        log.debug("findAllDeleted()");
+        return await this._cargoDAO.findAllDeleted();
+    };
+
+    /**
+     * Busca um cargo pelo ID; devolve null quando não encontrado.
+     */
+    public findById = async (idCargo: string, _funcionarioLogado: Funcionario): Promise<Cargo | null> => {
+        log.debug("findById()", { idCargo });
         const cargo = new Cargo();
-        cargo.idCargo = idCargo; // validação de formato é feita no setter
+        cargo.idCargo = idCargo;
         return await this._cargoDAO.findById(cargo.idCargo);
     };
 
     /**
-     * Atualiza um cargo existente.
-     * 
-     * @param cargo - Objeto Cargo com o ID e o novo nome.
-     * @param _funcionarioLogado - Funcionário autenticado (não utilizado, mantido por consistência).
-     * @returns true se a atualização foi bem-sucedida, false caso contrário.
+     * Atualiza o nome de um cargo, se o autor for admin e o nome não colidir
+     * com outro cargo já existente.
+     *
+     * @param cargo - Cargo com os dados atualizados (idCargo obrigatório).
+     * @param funcionarioLogado - Funcionário autenticado (auditoria + permissão).
+     * @throws {ErrorResponse} 403 se o autor não for admin.
+     * @throws {ErrorResponse} 400 se o nome já pertencer a outro cargo.
      */
     public update = async (cargo: Cargo, funcionarioLogado: Funcionario): Promise<boolean> => {
-        console.log("🟣 CargoService.updateCargo()");
-        if (funcionarioLogado.cargo.nomeCargo !== CARGO_PROCESSO_PEDAGOGICO) {
-            throw new ErrorResponse(403, "Não autorizado");
-        }
-        const nomeCanonico = nomeCargoCanonico(cargo.nomeCargo);
-        if (!nomeCanonico) {
-            throw new ErrorResponse(400, "Cargo inválido", {
-                message: "Os únicos cargos aceitos são Inspetor e Processo Pedagógico."
+        log.debug("update()", { idCargo: cargo.idCargo });
+
+        if (!this.isAdmin(funcionarioLogado)) {
+            log.warn("atualização de cargo negada", {
+                motivo: "não é administrador",
+                cargoAtor: funcionarioLogado.cargo?.nomeCargo,
+            });
+            throw new ErrorResponse(403, "Não autorizado", {
+                message: `O cargo "${funcionarioLogado.cargo?.nomeCargo ?? 'desconhecido'}" não é autorizado a atualizar cargos.`
             });
         }
-        const cargoExistente = await this._cargoDAO.findById(cargo.idCargo);
-        if (!cargoExistente) {
-            return false;
+
+        const duplicados = await this._cargoDAO.findByField("nomeCargo", cargo.nomeCargo);
+        const duplicadoDeOutro = duplicados.some(c => c.idCargo !== cargo.idCargo);
+        if (duplicadoDeOutro) {
+            throw new ErrorResponse(400, "Cargo já existe", {
+                message: `O cargo "${cargo.nomeCargo}" já existe.`
+            });
         }
-        cargo.nomeCargo = nomeCanonico;
-        return await this._cargoDAO.update(cargo, funcionarioLogado);
+
+        try {
+            // ✅ AGORA passa funcionarioLogado — o DAO precisa dele para auditoria.
+            const atualizou = await this._cargoDAO.update(cargo, funcionarioLogado);
+            if (atualizou) {
+                log.info("cargo atualizado", {
+                    idCargo: cargo.idCargo,
+                    nomeCargo: cargo.nomeCargo,
+                    atualizadoPor: funcionarioLogado.email,
+                });
+            }
+            return atualizou;
+        } catch (err: any) {
+            if (err?.code === 11000) {
+                throw new ErrorResponse(400, "Cargo já existe", {
+                    message: `O cargo "${cargo.nomeCargo}" já existe.`
+                });
+            }
+            throw err;
+        }
     };
 
     /**
-     * Deleta um cargo pelo ID.
-     * 
-     * @param cargo - Objeto Cargo contendo o ID a ser removido.
-     * @param _funcionarioLogado - Funcionário autenticado (não utilizado, mantido por consistência).
-     * @returns true se a exclusão foi bem-sucedida, false caso contrário.
+     * Exclui um cargo, se o autor for admin e não houver funcionários vinculados.
+     *
+     * @param cargo - Cargo a ser excluído (idCargo obrigatório).
+     * @param funcionarioLogado - Funcionário autenticado (auditoria + permissão).
+     * @throws {ErrorResponse} 403 se o autor não for admin.
+     * @throws {ErrorResponse} 400 se houver funcionários vinculados ao cargo.
      */
     public delete = async (cargo: Cargo, funcionarioLogado: Funcionario): Promise<boolean> => {
-        console.log("🟣 CargoService.delete()");
-        return await this._cargoDAO.delete(cargo, funcionarioLogado);
+        log.debug("delete()", { idCargo: cargo.idCargo });
+
+        if (!this.isAdmin(funcionarioLogado)) {
+            log.warn("exclusão de cargo negada", {
+                motivo: "não é administrador",
+                cargoAtor: funcionarioLogado.cargo?.nomeCargo,
+            });
+            throw new ErrorResponse(403, "Não autorizado", {
+                message: `O cargo "${funcionarioLogado.cargo?.nomeCargo ?? 'desconhecido'}" não é autorizado a excluir cargos.`
+            });
+        }
+
+        // Regra de integridade: não permite excluir um cargo "em uso".
+        const total = await this._funcionarioDAO.countByCargoId(cargo.idCargo);
+        if (total > 0) {
+            log.warn("exclusão de cargo bloqueada", {
+                idCargo: cargo.idCargo,
+                funcionariosVinculados: total,
+            });
+            throw new ErrorResponse(400, "Não é possível excluir o cargo", {
+                message: `Existem ${total} funcionário(s) vinculados a este cargo. Reatribua-os antes de excluir.`
+            });
+        }
+
+        // ✅ AGORA passa funcionarioLogado — o DAO precisa dele para auditoria.
+        const excluiu = await this._cargoDAO.delete(cargo, funcionarioLogado);
+        if (excluiu) {
+            log.info("cargo excluído", {
+                idCargo: cargo.idCargo,
+                excluidoPor: funcionarioLogado.email,
+            });
+        }
+        return excluiu;
     };
 
     /**
-     * Retorna a quantidade total de cargos cadastrados.
-     * 
-     * @param _funcionarioLogado - Funcionário autenticado (não utilizado, mantido por consistência).
-     * @returns Número total de cargos.
+     * Conta os cargos ativos (público).
      */
-    public count = async (): Promise<number> => {
-        console.log("🟣 CargoService.countCargos()");
+    public count = async (_funcionarioLogado: Funcionario): Promise<number> => {
+        log.debug("count()");
         return await this._cargoDAO.count();
     };
 }

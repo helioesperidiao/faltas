@@ -5,6 +5,10 @@ import { MongoDatabase } from "../database/MongoDatabase";
 
 import { Auditoria } from "@/models/Auditoria";
 import { Funcionario } from "@/models/Funcionario";
+// NOVO: logger (padrão de logs)
+import { createLogger } from "../logging/Logger";
+
+const log = createLogger("FuncionarioDAO");
 
 /**
  * Data Access Object para a entidade Funcionario.
@@ -30,7 +34,6 @@ export class FuncionarioDAO {
      * @param dbInstance - Instância do MongoDatabase para acesso ao banco.
      */
     constructor(dbInstance: MongoDatabase) {
-        console.log("⬆️ FuncionarioDAO.constructor()");
         this._database = dbInstance;
     }
 
@@ -63,10 +66,11 @@ export class FuncionarioDAO {
      * const criado = await funcionarioDAO.create(funcionario, funcionarioLogado);
      */
     public async create(objFuncionarioModel: Funcionario, funcionarioLogado: Funcionario): Promise<Funcionario> {
-        console.log("🟢 FuncionarioDAO.create()");
+        log.debug("create()", { email: objFuncionarioModel.email });
         const collection = await this.getCollection();
 
         if (!objFuncionarioModel.cargo) {
+            log.error("cargo não informado ao criar funcionário", { email: objFuncionarioModel.email });
             throw new Error("Cargo não informado");
         }
 
@@ -87,10 +91,16 @@ export class FuncionarioDAO {
 
         const result = await collection.insertOne(doc);
         if (!result.insertedId) {
+            log.error("falha ao inserir funcionário", { email: objFuncionarioModel.email });
             throw new Error("Falha ao inserir funcionário");
         }
 
         objFuncionarioModel.idFuncionario = result.insertedId.toHexString();
+        log.info("funcionário inserido", {
+            idFuncionario: objFuncionarioModel.idFuncionario,
+            email: objFuncionarioModel.email,
+            cargoId: objFuncionarioModel.cargo.idCargo,
+        });
         return objFuncionarioModel;
     }
 
@@ -110,7 +120,7 @@ export class FuncionarioDAO {
      * const deletado = await funcionarioDAO.delete(funcionario, funcionarioLogado);
      */
     public async delete(objFuncionarioModel: Funcionario, funcionarioLogado: Funcionario): Promise<boolean> {
-        console.log(`🟢 FuncionarioDAO.delete(${objFuncionarioModel.idFuncionario})`);
+        log.debug("delete()", { idFuncionario: objFuncionarioModel.idFuncionario });
         const collection = await this.getCollection();
 
         // Marca soft delete na auditoria
@@ -129,7 +139,10 @@ export class FuncionarioDAO {
             }
         };
         const result = await collection.updateOne(filter, update);
-        return result.modifiedCount > 0;
+        const ok = result.modifiedCount > 0;
+        if (ok) log.info("funcionário removido", { idFuncionario: objFuncionarioModel.idFuncionario });
+        else log.warn("funcionário não encontrado para remoção", { idFuncionario: objFuncionarioModel.idFuncionario });
+        return ok;
     }
 
     /**
@@ -150,7 +163,7 @@ export class FuncionarioDAO {
      * const atualizado = await funcionarioDAO.update(funcionario, funcionarioLogado);
      */
     public async update(objFuncionarioModel: Funcionario, funcionarioLogado: Funcionario): Promise<boolean> {
-        console.log(`🟢 FuncionarioDAO.update(${objFuncionarioModel.idFuncionario})`);
+        log.debug("update()", { idFuncionario: objFuncionarioModel.idFuncionario });
         const collection = await this.getCollection();
 
         // Registra auditoria: quem alterou
@@ -177,7 +190,10 @@ export class FuncionarioDAO {
 
         const update: UpdateFilter<Document> = { $set: updateData };
         const result = await collection.updateOne(filter, update);
-        return result.modifiedCount > 0;
+        const ok = result.modifiedCount > 0;
+        if (ok) log.info("funcionário atualizado", { idFuncionario: objFuncionarioModel.idFuncionario });
+        else log.warn("funcionário não encontrado para atualização", { idFuncionario: objFuncionarioModel.idFuncionario });
+        return ok;
     }
 
     // ======================== MÉTODOS DE CONSULTA ========================
@@ -193,7 +209,7 @@ export class FuncionarioDAO {
      * console.log(todos[0].cargo.nomeCargo);
      */
     public async findAll(): Promise<Funcionario[]> {
-        console.log("🟢 FuncionarioDAO.findAll()");
+        log.debug("findAll()");
         const collection = await this.getCollection();
 
         const pipeline = [
@@ -245,7 +261,7 @@ export class FuncionarioDAO {
      * const funcionario = await funcionarioDAO.findById("67a1b2c3d4e5f6789a0b1c2d");
      */
     public async findById(idFuncionario: string): Promise<Funcionario | null> {
-        console.log(`🟢 FuncionarioDAO.findById(${idFuncionario})`);
+        log.debug("findById()", { idFuncionario });
         const collection = await this.getCollection();
         const filter: Filter<Document> = { 
             _id: new ObjectId(idFuncionario),
@@ -304,9 +320,10 @@ export class FuncionarioDAO {
      * const admins = await funcionarioDAO.findByField("cargoId", "67a1b2c3d4e5f6789a0b1c2d");
      */
     public async findByField(field: string, value: any): Promise<Funcionario[]> {
-        console.log(`🟢 FuncionarioDAO.findByField() - Campo: ${field}, Valor: ${value}`);
+        log.debug("findByField()", { field, value });
         const allowedFields = ["_id", "nomeFuncionario", "email", "recebeValeTransporte", "cargoId"];
         if (!allowedFields.includes(field)) {
+            log.warn("campo inválido para busca", { field });
             throw new Error(`Campo inválido para busca: ${field}`);
         }
 
@@ -375,7 +392,7 @@ export class FuncionarioDAO {
      * const funcionario = await funcionarioDAO.findByEmail("joao@empresa.com");
      */
     public async findByEmail(email: string): Promise<Funcionario | null> {
-        console.log(`🟢 FuncionarioDAO.findByEmail(${email})`);
+        log.debug("findByEmail()", { email });
         const collection = await this.getCollection();
 
         const pipeline = [
@@ -433,7 +450,7 @@ export class FuncionarioDAO {
      * const total = await funcionarioDAO.count();
      */
     public async count(): Promise<number> {
-        console.log("🟢 FuncionarioDAO.count()");
+        log.debug("count()");
         const collection = await this.getCollection();
         return await collection.countDocuments({ "auditoria.deletadoEm": null });
     }
@@ -451,7 +468,7 @@ export class FuncionarioDAO {
      * const totalAdmin = await funcionarioDAO.countByCargoId("67a1b2c3d4e5f6789a0b1c2d");
      */
     public async countByCargoId(cargoId: string): Promise<number> {
-        console.log(`🟢 FuncionarioDAO.countByCargoId(${cargoId})`);
+        log.debug("countByCargoId()", { cargoId });
         const collection = await this.getCollection();
         return await collection.countDocuments({ 
             cargoId: new ObjectId(cargoId),

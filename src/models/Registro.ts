@@ -23,7 +23,6 @@ export class Registro {
 
     //construtor
     constructor() {
-        console.log("⬆️  Registro.constructor()");
     }
 
     //gets e sets

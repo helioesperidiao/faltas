@@ -35,7 +35,7 @@ export class Aluno {
     private _auditoria: Auditoria = new Auditoria();
 
     constructor() {
-        console.log("⬆️  Aluno.constructor()");
+     
     }
 
     get idAluno(): string {

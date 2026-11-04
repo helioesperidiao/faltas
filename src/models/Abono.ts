@@ -17,7 +17,7 @@ export class Abono {
     private _auditoria: Auditoria = new Auditoria();
 
     constructor() {
-        console.log("⬆️  Abono.constructor()");
+        
     }
 
     get idAbono(): string {

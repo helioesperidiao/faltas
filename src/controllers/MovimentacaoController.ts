@@ -3,7 +3,16 @@ import { MovimentacaoService } from "../services/MovimentacaoService";
 import { Movimentacao } from "../models/Movimentacao";
 import { StandardResponse } from "../http/StandardResponse";
 import { BaseController } from "./BaseController";
+// NOVO: logger (padrão de logs)
+import { createLogger } from "../logging/Logger";
 
+const log = createLogger("MovimentacaoController");
+
+/**
+ * Traduz requisições HTTP de movimentação (entrada/saída) em chamadas ao service.
+ *
+ * GET aceita querystring opcional `data=AAAA-MM-DD` para filtrar por dia.
+ */
 export class MovimentacaoController extends BaseController {
     constructor(private readonly movimentacaoService: MovimentacaoService) { super(); }
 
@@ -19,6 +28,8 @@ export class MovimentacaoController extends BaseController {
     };
 
     create = async (request: Request, response: Response): Promise<void> => {
+        log.debug("create()");
+
         const funcionario = this.getFuncionarioLogado(request);
         const body = request.body.movimentacao;
         const movimentacao = this.montarMovimentacao(body);
@@ -39,6 +50,8 @@ export class MovimentacaoController extends BaseController {
     };
 
     findAll = async (request: Request, response: Response): Promise<void> => {
+        log.debug("findAll()", { data: request.query.data });
+
         const valorData = request.query.data;
         let data: Date | undefined;
         if (valorData !== undefined) {

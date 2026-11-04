@@ -4,20 +4,30 @@ import { Dispensa } from "@/models/Dispensa";
 import { StandardResponse } from "@/http/StandardResponse";
 import { Funcionario } from "@/models/Funcionario";
 import { BaseController } from "./BaseController";
+// NOVO: logger (padrão de logs)
+import { createLogger } from "../logging/Logger";
 
+const log = createLogger("DispensaController");
+
+/**
+ * Traduz requisições HTTP de dispensas em chamadas ao DispensaService.
+ *
+ * Fluxo típico:
+ * 1. POST /                 — cria a dispensa
+ * 2. POST /:id/arquivo      — anexa o atestado (jpg/pdf)
+ */
 export class DispensaController extends BaseController {
     private _dispensaService: DispensaService;
 
     //construtor
     constructor(dispensaServiceDependency: DispensaService) {
         super();
-        console.log("⬆️  DispensaController.constructor()");
         this._dispensaService = dispensaServiceDependency;
     }
 
     //create
     public create = async (request: Request, response: Response): Promise<void> => {
-        console.log("🔵 DispensaController.create()");
+        log.debug("create()");
 
         const funcionarioLogado: Funcionario = this.getFuncionarioLogado(request);
 
@@ -38,6 +48,10 @@ export class DispensaController extends BaseController {
         const resultado = await this._dispensaService.create(novaDispensa, funcionarioLogado);
 
         if (!resultado) {
+            log.error("falha ao cadastrar nova dispensa", {
+                idAluno: novaDispensa.idAluno,
+                turma: novaDispensa.turma,
+            });
             StandardResponse.error("Falha ao cadastrar nova Dispensa", null, 500).send(response);
             return;
         }
@@ -49,7 +63,7 @@ export class DispensaController extends BaseController {
 
     //uploadArquivo
     public uploadArquivo = async (request: Request, response: Response): Promise<void> => {
-        console.log("🔵 DispensaController.uploadArquivo()");
+        log.debug("uploadArquivo()", { idDispensa: request.params.idDispensa });
 
         const funcionarioLogado: Funcionario = this.getFuncionarioLogado(request);
 
@@ -77,13 +91,17 @@ export class DispensaController extends BaseController {
                 dispensas: [dispensaExistente]
             }).send(response);
         } else {
+            log.error("falha ao salvar referência do arquivo da dispensa", {
+                idDispensa,
+                nomeArquivo: request.file.filename,
+            });
             StandardResponse.error("Falha ao salvar referência do arquivo", null, 500).send(response);
         }
     };
 
     //findAll
     public findAll = async (_request: Request, response: Response): Promise<void> => {
-        console.log("🔵 DispensaController.findAll()");
+        log.debug("findAll()");
 
         const arrayDispensas = await this._dispensaService.findAll();
 
@@ -94,7 +112,7 @@ export class DispensaController extends BaseController {
 
     //findAllDeleted
     public findAllDeleted = async (request: Request, response: Response): Promise<void> => {
-        console.log("🔵 DispensaController.findAllDeleted()");
+        log.debug("findAllDeleted()");
 
         const funcionarioLogado: Funcionario = this.getFuncionarioLogado(request);
 
@@ -106,10 +124,10 @@ export class DispensaController extends BaseController {
     };
 
     //findById
-    public findById = async (_request: Request, response: Response): Promise<void> => {
-        console.log("🔵 DispensaController.findById()");
+    public findById = async (request: Request, response: Response): Promise<void> => {
+        log.debug("findById()", { idDispensa: request.params.idDispensa });
 
-        const dispensaId = _request.params.idDispensa.toString();
+        const dispensaId = request.params.idDispensa.toString();
         const dispensa = await this._dispensaService.findById(dispensaId);
 
         StandardResponse.success("Executado com sucesso", {
@@ -119,7 +137,7 @@ export class DispensaController extends BaseController {
 
     //update
     public update = async (request: Request, response: Response): Promise<void> => {
-        console.log("🔵 DispensaController.update()");
+        log.debug("update()", { idDispensa: request.params.idDispensa });
 
         const funcionarioLogado: Funcionario = this.getFuncionarioLogado(request);
 
@@ -152,7 +170,7 @@ export class DispensaController extends BaseController {
 
     //delete
     public delete = async (request: Request, response: Response): Promise<void> => {
-        console.log("🔵 DispensaController.delete()");
+        log.debug("delete()", { idDispensa: request.params.idDispensa });
 
         const funcionarioLogado: Funcionario = this.getFuncionarioLogado(request);
 
@@ -174,7 +192,7 @@ export class DispensaController extends BaseController {
 
     //count
     public count = async (_request: Request, response: Response): Promise<void> => {
-        console.log("🔵 DispensaController.count()");
+        log.debug("count()");
 
         const total = await this._dispensaService.count();
 

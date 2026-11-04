@@ -3,12 +3,21 @@ import { GradeHorario } from "../models/GradeHorario";
 import { MongoDatabase } from "../database/MongoDatabase";
 import { Funcionario } from "@/models/Funcionario";
 import { Auditoria } from "@/models/Auditoria";
+// NOVO: logger (padrão de logs)
+import { createLogger } from "../logging/Logger";
 
+const log = createLogger("GradeHorarioDAO");
+
+/**
+ * Executa operações de persistência e consulta da coleção de grades de horário.
+ *
+ * Recalcula automaticamente a carga semanal de cada disciplina/turma ao
+ * criar, atualizar ou excluir uma aula.
+ */
 export class GradeHorarioDAO {
     private _database: MongoDatabase;
 
     constructor(dbInstance: MongoDatabase) {
-        console.log("⬆️ GradeHorarioDAO.constructor()");
         this._database = dbInstance;
     }
 
@@ -35,7 +44,7 @@ export class GradeHorarioDAO {
     }
 
     public async create(grade: GradeHorario, funcionarioLogado: Funcionario): Promise<GradeHorario> {
-        console.log("🟢 GradeHorarioDAO.create()");
+        log.debug("create()", { turma: grade.turma, cod: grade.cod, dia: grade.dia });
         const collection = await this.getCollection();
 
         grade.marcarCriadoPor(funcionarioLogado.idFuncionario);
@@ -54,6 +63,7 @@ export class GradeHorarioDAO {
 
         const result = await collection.insertOne(doc);
         if (!result.insertedId) {
+            log.error("falha ao inserir grade de horário", { turma: grade.turma, cod: grade.cod });
             throw new Error("Falha ao inserir grade de horário");
         }
 
@@ -61,11 +71,16 @@ export class GradeHorarioDAO {
         const carga = await this.recalcularCargaHorariaSemanal(grade.turma, grade.cod);
         grade.duracaoAulaMinutos = GradeHorario.calcularDuracaoMinutos(grade.horaInicio, grade.horaFim);
         grade.cargaHorariaSemanalMinutos = carga;
+        log.info("grade de horário inserida", {
+            idGradeHorario: grade.idGradeHorario,
+            turma: grade.turma,
+            cod: grade.cod,
+        });
         return grade;
     }
 
     public async delete(grade: GradeHorario, funcionarioLogado: Funcionario): Promise<boolean> {
-        console.log("🟢 GradeHorarioDAO.delete(" + grade.idGradeHorario + ")");
+        log.debug("delete()", { idGradeHorario: grade.idGradeHorario });
         const collection = await this.getCollection();
         grade.marcarDeletadoPor(funcionarioLogado.idFuncionario);
 
@@ -84,11 +99,14 @@ export class GradeHorarioDAO {
         if (result.modifiedCount > 0 && gradeExistente) {
             await this.recalcularCargaHorariaSemanal(gradeExistente.turma, gradeExistente.cod);
         }
-        return result.modifiedCount > 0;
+        const ok = result.modifiedCount > 0;
+        if (ok) log.info("grade de horário removida", { idGradeHorario: grade.idGradeHorario });
+        else log.warn("grade de horário não encontrada para remoção", { idGradeHorario: grade.idGradeHorario });
+        return ok;
     }
 
     public async update(grade: GradeHorario, funcionarioLogado: Funcionario): Promise<boolean> {
-        console.log("🟢 GradeHorarioDAO.update(" + grade.idGradeHorario + ")");
+        log.debug("update()", { idGradeHorario: grade.idGradeHorario });
         const collection = await this.getCollection();
         grade.marcarAlteradoPor(funcionarioLogado.idFuncionario);
 
@@ -109,15 +127,19 @@ export class GradeHorarioDAO {
             }
         };
         const result = await collection.updateOne(filter, update);
-        if (result.modifiedCount > 0) {
+        const ok = result.modifiedCount > 0;
+        if (ok) {
             if (gradeExistente) {
                 await this.recalcularCargaHorariaSemanal(gradeExistente.turma, gradeExistente.cod);
             }
             const carga = await this.recalcularCargaHorariaSemanal(grade.turma, grade.cod);
             grade.duracaoAulaMinutos = duracaoAulaMinutos;
             grade.cargaHorariaSemanalMinutos = carga;
+            log.info("grade de horário atualizada", { idGradeHorario: grade.idGradeHorario });
+        } else {
+            log.warn("grade de horário não encontrada para atualização", { idGradeHorario: grade.idGradeHorario });
         }
-        return result.modifiedCount > 0;
+        return ok;
     }
 
     private toGradeHorario(doc: any): GradeHorario {
@@ -145,7 +167,7 @@ export class GradeHorarioDAO {
     }
 
     public async findById(idGradeHorario: string): Promise<GradeHorario | null> {
-        console.log("🟢 GradeHorarioDAO.findById()");
+        log.debug("findById()", { idGradeHorario });
         const collection = await this.getCollection();
         const filter: Filter<Document> = {
             _id: new ObjectId(idGradeHorario),
@@ -156,6 +178,7 @@ export class GradeHorarioDAO {
     }
 
     public async findAll(): Promise<GradeHorario[]> {
+        log.debug("findAll()");
         const collection = await this.getCollection();
         const cursor = collection.find({ "auditoria.deletadoEm": null });
         const docs = await cursor.toArray();
@@ -163,6 +186,7 @@ export class GradeHorarioDAO {
     }
 
     public async findAllDeleted(): Promise<GradeHorario[]> {
+        log.debug("findAllDeleted()");
         const collection = await this.getCollection();
         const cursor = collection.find({ "auditoria.deletadoEm": { $ne: null } });
         const docs = await cursor.toArray();
@@ -170,15 +194,16 @@ export class GradeHorarioDAO {
     }
 
     public async count(): Promise<number> {
-        console.log("🟢 GradeHorarioDAO.count()");
+        log.debug("count()");
         const collection = await this.getCollection();
         return await collection.countDocuments({ "auditoria.deletadoEm": null });
     }
 
     public async findByField(field: string, value: any): Promise<GradeHorario[]> {
-        console.log(`🟢 GradeHorarioDAO.findByField() - Campo: ${field}, Valor: ${value}`);
+        log.debug("findByField()", { field, value });
         const allowedFields = ["_id", "turma", "cod", "dia"];
         if (!allowedFields.includes(field)) {
+            log.warn("campo inválido para busca", { field });
             throw new Error(`Campo inválido para busca: ${field}`);
         }
         const collection = await this.getCollection();
@@ -201,6 +226,7 @@ export class GradeHorarioDAO {
 
     /** Recalcula e persiste a carga semanal para todas as aulas da mesma disciplina/turma. */
     public async recalcularCargaHorariaSemanal(turma: string, cod: string): Promise<number> {
+        log.debug("recalcularCargaHorariaSemanal()", { turma, cod });
         const collection = await this.getCollection();
         const aulas = await collection.find({ turma, cod, "auditoria.deletadoEm": null }).toArray();
         const cargaHorariaSemanalMinutos = aulas.reduce(
@@ -214,6 +240,7 @@ export class GradeHorarioDAO {
                 { $set: { cargaHorariaSemanalMinutos } }
             );
         }
+        log.debug("recalcularCargaHorariaSemanal() concluído", { turma, cod, cargaHorariaSemanalMinutos });
         return cargaHorariaSemanalMinutos;
     }
 }

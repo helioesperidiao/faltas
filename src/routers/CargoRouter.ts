@@ -3,95 +3,56 @@ import { JwtMiddleware } from "../middlewares/JwtMiddleware";
 import { CargoController } from "../controllers/CargoController";
 import { CargoService } from "../services/CargoService";
 import { CargoDAO } from "../dao/CargoDAO";
+import { FuncionarioDAO } from "../dao/FuncionarioDAO";
 import { MongoDatabase } from "../database/MongoDatabase";
+import { asyncHandler } from "../http/asyncHandler";
+// NOVO: logger (padrão de logs)
+import { createLogger } from "../logging/Logger";
+
+const log = createLogger("CargoRouter");
 
 /**
- * Roteador para as rotas da entidade Cargo.
- * 
- * Define os endpoints RESTful para operações CRUD e contagem de cargos.
- * As rotas são prefixadas com `/api/v1/cargos` e protegidas por autenticação JWT,
- * 
- * @example
- * // Uso no servidor
- * const cargoRouter = new CargoRouter();
- * app.use(cargoRouter.getRouter());
+ * Router responsável por expor os endpoints de cargos.
+ *
+ * Recebe a instância de MongoDatabase por injeção para reaproveitar a
+ * conexão singleton já aberta pelo Server.
  */
 export class CargoRouter {
-    /** Prefixo base para todas as rotas de cargo. */
     public static readonly PREFIX = "/api/v1/cargos";
 
     private _router: Router;
-    private _dataBase: MongoDatabase;
 
-    /**
-     * Construtor do CargoRouter.
-     * 
-     * Inicializa as dependências (MongoDatabase, CargoDAO, CargoService, CargoController, JwtMiddleware)
-     * e configura todas as rotas da entidade Cargo.
-     */
-    constructor(dataBase: MongoDatabase) {
-        console.log("⬆️ CargoRouter.constructor()");
-        this._router = Router();
-        this._dataBase = dataBase;
+    constructor(dbInstance: MongoDatabase) {
+        log.debug("constructor()");
 
-        // Instancia as dependências
-        ///const mongoDB = new MongoDatabase();
-        const cargoDAO = new CargoDAO(this._dataBase);
-        const cargoService = new CargoService(cargoDAO);
+        const mainRouter = Router();
+        const subRouter = Router();
+
+        // Monta a cadeia DAO → Service → Controller com a conexão compartilhada
+        const cargoDAO = new CargoDAO(dbInstance);
+        const funcionarioDAO = new FuncionarioDAO(dbInstance);
+
+        // CargoService precisa do FuncionarioDAO para impedir exclusão de cargos
+        // com funcionários vinculados.
+        const cargoService = new CargoService(cargoDAO, funcionarioDAO);
         const cargoController = new CargoController(cargoService);
         const jwtMiddleware = new JwtMiddleware();
 
-        // ======================== ROTAS ========================
+        // Todas as rotas são protegidas por JWT. O `asyncHandler` garante que
+        // erros lançados nos controllers `async` cheguem ao middleware de erro
+        // global (onde são logados).
+        subRouter.post("/", jwtMiddleware.validateToken, asyncHandler(cargoController.create));
+        subRouter.get("/", jwtMiddleware.validateToken, asyncHandler(cargoController.findAll));
+        subRouter.get("/deleted", jwtMiddleware.validateToken, asyncHandler(cargoController.findAllDeleted));
+        subRouter.get("/count", jwtMiddleware.validateToken, asyncHandler(cargoController.count));
+        subRouter.get("/:idCargo", jwtMiddleware.validateToken, asyncHandler(cargoController.findById));
+        subRouter.put("/:idCargo", jwtMiddleware.validateToken, asyncHandler(cargoController.update));
+        subRouter.delete("/:idCargo", jwtMiddleware.validateToken, asyncHandler(cargoController.delete));
 
-        // POST / - Criar um novo cargo (requer autenticação)
-        this._router.post(CargoRouter.PREFIX + "/",
-            jwtMiddleware.validateToken,
-            cargoController.create
-        );
-
-        // GET / - Listar todos os cargos (requer autenticação)
-        this._router.get(CargoRouter.PREFIX + "/",
-            jwtMiddleware.validateToken,
-            cargoController.findAll
-        );
-
-        // GET /count - Obter total de cargos (público)
-        this._router.get(CargoRouter.PREFIX + "/count",
-            jwtMiddleware.validateToken,
-            cargoController.count
-        );
-
-        this._router.get(CargoRouter.PREFIX + "/deleted",
-            jwtMiddleware.validateToken,
-            cargoController.findAllDeleted
-        );
-
-        // GET /:idCargo - Buscar cargo por ID (requer autenticação)
-        this._router.get(CargoRouter.PREFIX + "/:idCargo",
-            jwtMiddleware.validateToken,
-            cargoController.findById
-        );
-
-        // PUT /:idCargo - Atualizar cargo por ID (requer autenticação)
-        this._router.put(CargoRouter.PREFIX + "/:idCargo",
-            jwtMiddleware.validateToken,
-            cargoController.update
-        );
-
-        // DELETE /:idCargo - Deletar cargo por ID (requer autenticação)
-        this._router.delete(CargoRouter.PREFIX + "/:idCargo",
-            jwtMiddleware.validateToken,
-            cargoController.delete
-        );
-
-
+        mainRouter.use(CargoRouter.PREFIX, subRouter);
+        this._router = mainRouter;
     }
 
-    /**
-     * Retorna o router principal com todas as rotas configuradas.
-     * 
-     * @returns Router do Express com as rotas de cargo.
-     */
     public getRouter = (): Router => {
         return this._router;
     };
