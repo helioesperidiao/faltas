@@ -20,24 +20,6 @@
 
   <h1 class="mb-4">Gerenciamento de Abonos</h1>
 
-  <div class="card mb-3" id="cardFiltro">
-    <div class="card-header">Filtro de Abono</div>
-    <div class="card-body">
-      <div class="row">
-        <div class="col-md-6">
-          <label for="txtFiltroMatricula" class="form-label">Matrícula</label>
-          <input type="text" id="txtFiltroMatricula" class="form-control" placeholder="Digite a matrícula">
-        </div>
-        <div class="col-md-6 d-flex align-items-end">
-          <div class="form-check">
-            <input type="checkbox" class="form-check-input" id="chkMostrarInativos">
-            <label class="form-check-label" for="chkMostrarInativos">Mostrar abonos inativos (deletados)</label>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- Solicitar abono: upload de atestado + definição de período -->
   <div class="card mb-3" id="cardSolicitacao">
     <div class="card-header">Solicitação de Abono</div>
@@ -66,6 +48,7 @@
   <div class="card mt-4" id="cardListagem">
     <div class="card-header">Lista de Abonos</div>
     <div class="card-body">
+      <div class="form-check mb-2"><input type="checkbox" class="form-check-input" id="chkMostrarInativos"><label class="form-check-label" for="chkMostrarInativos">Mostrar abonos inativos (deletados)</label></div>
       <div id="divTabela"></div>
     </div>
   </div>
@@ -103,8 +86,6 @@
     const token = userData.data.token;
     const api = new ApiService(token);
     montarTopbar('abonos');
-    // Mantém a sequência de trabalho: solicitar, filtrar e então consultar a lista.
-    document.getElementById('cardFiltro').before(document.getElementById('cardSolicitacao'));
 
     let API_DATA;
 
@@ -114,7 +95,6 @@
     const txtDataFim = document.getElementById("txtDataFim");
     const txtMotivo = document.getElementById("txtMotivo");
     const fileAtestado = document.getElementById("fileAtestado");
-    const txtFiltroMatricula = document.getElementById("txtFiltroMatricula");
     const chkMostrarInativos = document.getElementById("chkMostrarInativos");
 
     const divBotoes = document.getElementById("divBotoes");
@@ -386,19 +366,8 @@
       montarControlesListagem(divTabela, table, { colunaOrdenacao: 1 });
     }
 
-    txtFiltroMatricula.addEventListener("input", function () {
-      const filtro = this.value.trim().toLowerCase();
-      if (!API_DATA || !API_DATA.abonos) return;
-      const filtrados = {
-        abonos: API_DATA.abonos.filter(a => a.matricula.toLowerCase().includes(filtro))
-      };
-      renderTable(filtrados);
-      txtId.value = "";
-    });
-
     chkMostrarInativos.addEventListener("change", function () {
       listAll();
-      txtFiltroMatricula.value = "";
     });
 
     listAll();

@@ -10,4 +10,4 @@ Uma exclusão lógica não pode ser repetida. Uma nova tentativa para um item j�
 
 ## Telas abrangidas
 
-As telas de Funcionários, Cargos, Alunos, Abonos e regras de Alertas de Faltas atualizam suas listagens após a exclusão. Em Abonos, a sequência de trabalho é Solicitação, Filtro e Listagem.
+As telas de Funcionários, Cargos, Alunos, Abonos e regras de Alertas de Faltas atualizam suas listagens após a exclusão. Em Abonos, a sequência de trabalho é Solicitação e Listagem, com pesquisa na própria lista.

@@ -97,7 +97,8 @@
         <div class="fechamento-acoes">
           <button class="btn" id="baixar-antecipados" type="button">Gerar CSV de antecipados</button>
           <button class="btn secondary" id="baixar-atrasados" type="button">Gerar CSV de atrasados</button>
-          <button class="btn secondary" id="baixar-faltas-gerais" type="button">Gerar CSV de faltas gerais</button>
+          <button class="btn secondary" id="baixar-faltas-gerais" type="button">Gerar CSV de faltas do dia inteiro</button>
+          <button class="btn secondary" id="baixar-geral" type="button">Gerar CSV geral</button>
         </div>
         <div id="mensagem-fechamento" class="message" role="status"></div>
       </div>
@@ -231,9 +232,8 @@
       const texto = String(valor == null ? '' : valor);
       return `"${texto.replace(/"/g, '""')}"`;
     }
-    function baixarCsv(nomeArquivo, titulo, cabecalhos, linhas) {
+    function baixarCsv(nomeArquivo, cabecalhos, linhas) {
       const conteudo = [
-        titulo,
         cabecalhos.map(campoCsv).join(';'),
         ...linhas.map(linha => linha.map(campoCsv).join(';'))
       ].join('\r\n');
@@ -263,7 +263,7 @@
     async function obterFechamento() {
       const data = $('filtro-data').value;
       if (!data) {
-        mostrarMensagemFechamento('Selecione a data dos arquivos de atrasados e antecipados.', 'error');
+        mostrarMensagemFechamento('Selecione a data dos arquivos.', 'error');
         return null;
       }
       const resposta = await api.get(`api/v1/relatorios/fechamento-dia?data=${encodeURIComponent(data)}`);
@@ -274,31 +274,38 @@
       return resposta.data;
     }
     async function gerarArquivos(tipo) {
-      const botoes = ['baixar-antecipados', 'baixar-atrasados', 'baixar-faltas-gerais'];
+      const botoes = ['baixar-antecipados', 'baixar-atrasados', 'baixar-faltas-gerais', 'baixar-geral'];
       botoes.forEach(id => $(id).disabled = true);
       mostrarMensagemFechamento('Gerando os arquivos CSV...', '');
-      const fechamento = await obterFechamento();
-      botoes.forEach(id => $(id).disabled = false);
-      if (!fechamento) return;
-
-      if (tipo === 'antecipados') {
-        const linhas = fechamento.saidasAntecipadas;
-        baixarCsv(`fechamento-${fechamento.data}-antecipados.csv`, 'ALUNOS QUE SAÍRAM ANTECIPADAMENTE', ['Nome', 'Matrícula', 'Turma', 'Data', 'Horário'], linhas.map(item => [item.alunoNome, item.matricula, item.turma, item.data, item.horario || '']));
-        baixarCsvEmails(`fechamento-${fechamento.data}-antecipados-emails-dos-pais.csv`, 'E-MAILS DOS PAIS - ANTECIPADOS', linhas.map(item => item.emailPai));
-      } else if (tipo === 'atrasados') {
-        const linhas = fechamento.atrasados;
-        baixarCsv(`fechamento-${fechamento.data}-atrasados.csv`, 'ALUNOS ATRASADOS', ['Nome', 'Matrícula', 'Turma', 'Data', 'Horário'], linhas.map(item => [item.alunoNome, item.matricula, item.turma, item.data, item.horario || '']));
-        baixarCsvEmails(`fechamento-${fechamento.data}-atrasados-emails-dos-pais.csv`, 'E-MAILS DOS PAIS - ATRASADOS', linhas.map(item => item.emailPai));
-      } else {
-        const linhas = fechamento.faltasHistoricas;
-        baixarCsv('faltas-gerais-escola.csv', 'FALTAS GERAIS DA ESCOLA', ['Nome', 'Matrícula', 'Turma', 'Data', 'Ano', 'Situação'], linhas.map(item => [item.alunoNome, item.matricula, item.turma, item.data, item.ano, item.situacao]));
-        baixarCsvEmails('faltas-gerais-escola-emails-dos-pais.csv', 'E-MAILS DOS PAIS - FALTAS GERAIS', linhas.map(item => item.emailPai));
+      try {
+        const fechamento = await obterFechamento();
+        if (!fechamento) return;
+        if (fechamento.turmasSemGrade?.length) {
+          mostrarMensagemFechamento(`Não foi possível gerar arquivos completos. Confira a grade das turmas: ${fechamento.turmasSemGrade.join(', ')}.`, 'error');
+          return;
+        }
+        const opcoes = {
+          antecipados: [fechamento.aulasAntecipados, 'antecipados'],
+          atrasados: [fechamento.aulasAtrasados, 'atrasados'],
+          'faltas-gerais': [fechamento.aulasFaltasDia, 'faltas-dia-inteiro'],
+          geral: [fechamento.aulasGeral, 'geral']
+        };
+        const [linhas, nome] = opcoes[tipo];
+        const prefixo = `fechamento-${fechamento.data}-${nome}`;
+        baixarCsv(`${prefixo}.csv`, ['Ano', 'Codigo da Disciplina', 'Data', 'Horário início de cada aula', 'Matricula'],
+          linhas.map(item => [item.ano, item.codDisciplina, item.data, item.horarioInicio, item.matricula]));
+        baixarCsvEmails(`${prefixo}-emails-dos-pais.csv`, `E-MAILS DOS PAIS - ${nome.toUpperCase()}`, linhas.map(item => item.emailPai));
+        mostrarMensagemFechamento('Arquivos CSV baixados com sucesso.', 'ok');
+      } catch (erro) {
+        mostrarMensagemFechamento('Não foi possível gerar os arquivos. Tente novamente.', 'error');
+      } finally {
+        botoes.forEach(id => $(id).disabled = false);
       }
-      mostrarMensagemFechamento('Arquivos CSV baixados com sucesso.', 'ok');
     }
     $('baixar-antecipados').addEventListener('click', () => gerarArquivos('antecipados'));
     $('baixar-atrasados').addEventListener('click', () => gerarArquivos('atrasados'));
     $('baixar-faltas-gerais').addEventListener('click', () => gerarArquivos('faltas-gerais'));
+    $('baixar-geral').addEventListener('click', () => gerarArquivos('geral'));
     carregar();
   </script>
 </body>

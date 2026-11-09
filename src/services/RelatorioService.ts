@@ -47,12 +47,26 @@ export interface FaltaHistoricaEscola {
     emailPai: string;
 }
 
+export interface FaltaPorAula {
+    ano: number;
+    codDisciplina: string;
+    data: string;
+    horarioInicio: string;
+    matricula: string;
+    emailPai: string;
+}
+
 export interface FechamentoDia {
     data: string;
     atrasados: LinhaFechamentoDia[];
     saidasAntecipadas: LinhaFechamentoDia[];
     faltasDoDia: LinhaFechamentoDia[];
     faltasHistoricas: FaltaHistoricaEscola[];
+    aulasAntecipados: FaltaPorAula[];
+    aulasAtrasados: FaltaPorAula[];
+    aulasFaltasDia: FaltaPorAula[];
+    aulasGeral: FaltaPorAula[];
+    turmasSemGrade: string[];
 }
 
 export interface AlertaFaltaBimestral {
@@ -303,11 +317,12 @@ export class RelatorioService {
             throw new ErrorResponse(400, "Data inválida para o fechamento do dia.");
         }
 
-        const [alunos, alunosArquivados, registros, movimentacoesDoDia] = await Promise.all([
+        const [alunos, alunosArquivados, registros, movimentacoesDoDia, grades] = await Promise.all([
             this._alunoDAO.findAll(),
             this._alunoDAO.findAllDeleted(),
             this._registroDAO.findAll(),
-            this._movimentacaoDAO.findAll(data)
+            this._movimentacaoDAO.findAll(data),
+            this._gradeHorarioDAO.findAll()
         ]);
         // Registros históricos podem pertencer a alunos arquivados após uma
         // importação. Mantemos seus contatos para montar os CSVs completos.
@@ -371,7 +386,67 @@ export class RelatorioService {
             }))
             .sort((primeira, segunda) => primeira.data.localeCompare(segunda.data) || primeira.alunoNome.localeCompare(segunda.alunoNome, 'pt-BR'));
 
-        return { data: dataFormatada, atrasados, saidasAntecipadas, faltasDoDia, faltasHistoricas };
+        // Uma linha por aula efetivamente perdida, mesmo em aulas consecutivas
+        // da mesma disciplina. O conjunto geral elimina apenas aulas repetidas.
+        const registrosDoDia = registros.filter(registro => this.mesmaData(registro.dia, data));
+        const matriculas = new Set([
+            ...registrosDoDia.filter(r => r.falta).map(r => r.matricula),
+            ...movimentacoesDoDia.map(m => m.matricula)
+        ]);
+        const aulasAntecipados: FaltaPorAula[] = [];
+        const aulasAtrasados: FaltaPorAula[] = [];
+        const aulasFaltasDia: FaltaPorAula[] = [];
+        const turmasSemGrade = new Set<string>();
+        const todasAulasAusentes: FaltaPorAula[] = [];
+        matriculas.forEach(matricula => {
+            const registrosAluno = registrosDoDia.filter(r => r.matricula === matricula);
+            const registroGeral = registrosAluno.find(r => r.codDisciplina.trim().toUpperCase() === 'GERAL');
+            const registro = registroGeral || registrosAluno[0];
+            if (registroGeral && ['Abonada', 'Dispensada'].includes(registroGeral.situacao)) return;
+            const movimentos = movimentacoesDoDia.filter(m => m.matricula === matricula)
+                .sort((a, b) => a.horario.localeCompare(b.horario));
+            const aluno = alunosPorMatricula.get(matricula);
+            const turma = registro?.turma || aluno?.turma || '';
+            const aulas = this.aulasDaTurmaNoDia(turma, this.diaSemanaDaData(data), grades);
+            if (!aulas.length) { turmasSemGrade.add(turma || '(turma não encontrada)'); return; }
+            const resultado = aulas.map(aula => {
+                // Na ausência de chamada, uma entrada implica ausência inicial;
+                // uma saída implica presença inicial, como no controle diário.
+                const registroDaAula = registroGeral || registrosAluno.find(r => r.codDisciplina === aula.cod);
+                if (registroDaAula && ['Abonada', 'Dispensada'].includes(registroDaAula.situacao)) {
+                    return { aula, ausente: false, causa: '' };
+                }
+                let ausente = movimentos[0]?.tipo === 'entrada' || Boolean(registroDaAula?.falta);
+                let causa: string = ausente ? 'chamada' : ''; 
+                movimentos.filter(m => m.horario <= aula.horaInicio).forEach(m => {
+                    ausente = m.tipo === 'saida';
+                    causa = ausente ? 'saida' : '';
+                });
+                if (ausente && causa === 'chamada' && movimentos.some(m => m.tipo === 'entrada' && m.horario > aula.horaInicio)) causa = 'entrada';
+                return { aula, ausente, causa };
+            });
+            const faltouDiaTodo = resultado.every(item => item.ausente);
+            resultado.filter(item => item.ausente).forEach(({ aula, causa }) => {
+                const linha: FaltaPorAula = {
+                    ano: Number(dataFormatada.slice(0, 4)), codDisciplina: aula.cod,
+                    data: dataFormatada, horarioInicio: aula.horaInicio, matricula,
+                    emailPai: aluno?.paiEmail || ''
+                };
+                todasAulasAusentes.push(linha);
+                if (causa === 'entrada') aulasAtrasados.push(linha);
+                if (causa === 'saida') aulasAntecipados.push(linha);
+                if (faltouDiaTodo) aulasFaltasDia.push(linha);
+            });
+        });
+        const ordenar = (a: FaltaPorAula, b: FaltaPorAula) => a.matricula.localeCompare(b.matricula) || a.horarioInicio.localeCompare(b.horarioInicio) || a.codDisciplina.localeCompare(b.codDisciplina);
+        aulasAntecipados.sort(ordenar); aulasAtrasados.sort(ordenar); aulasFaltasDia.sort(ordenar);
+        const unicas = new Map<string, FaltaPorAula>();
+        todasAulasAusentes.forEach(linha => {
+            unicas.set(JSON.stringify([linha.matricula, linha.data, linha.horarioInicio, linha.codDisciplina]), linha);
+        });
+        const aulasGeral = [...unicas.values()].sort(ordenar);
+        return { data: dataFormatada, atrasados, saidasAntecipadas, faltasDoDia, faltasHistoricas,
+            aulasAntecipados, aulasAtrasados, aulasFaltasDia, aulasGeral, turmasSemGrade: [...turmasSemGrade] };
     };
 
     /**

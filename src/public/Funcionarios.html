@@ -28,25 +28,6 @@
 
   <h1 class="mb-4">Gerenciamento de Funcionários</h1>
 
-  <!-- ======================== FILTRO DE FUNCIONÁRIOS ======================== -->
-  <div class="card mb-3" id="cardFiltro">
-    <div class="card-header">Filtro de Funcionário</div>
-    <div class="card-body">
-      <!-- Campo de filtro por nome -->
-      <label for="txtFiltroNome" class="form-label">Nome do funcionário</label>
-      <input type="text" id="txtFiltroNome" class="form-control" placeholder="Digite o nome do funcionário">
-
-      <!-- Filtro por cargo -->
-      <select id="cboCargosFiltro" class="form-select mb-3">
-        <option value="-1">Selecione um cargo</option>
-      </select>
-
-      <!-- Filtro por vale transporte -->
-      <input type="checkbox" id="chkValeTransporteFiltro" class="form-check-input">
-      <label class="form-check-label" for="chkValeTransporteFiltro">Recebe Vale Transporte</label>
-    </div>
-  </div>
-
   <!-- ======================== FORMULÁRIO DE CADASTRO ======================== -->
   <div class="card mb-4" id="cardCadastro">
     <div class="card-header">Cadastro de Funcionário</div>
@@ -136,7 +117,6 @@
     const token = userData.data.token; // Pega o token JWT do usuário autenticado
     const api = new ApiService(token); // Cria um objeto para fazer chamadas autenticadas à API
     montarTopbar('funcionarios');
-    document.getElementById('cardFiltro').before(document.getElementById('cardCadastro'));
 
     let API_DATA; // Variável global que guarda os dados dos funcionários retornados pela API
 
@@ -150,11 +130,6 @@
 
     const divBotoes = document.getElementById("divBotoes");
     const divResposta = document.getElementById("divResposta");
-
-    // Campos do filtro
-    const cboCargosFiltro = document.getElementById("cboCargosFiltro");
-    const txtFiltroNome = document.getElementById("txtFiltroNome");
-    const chkValeTransporteFiltro = document.getElementById("chkValeTransporteFiltro");
 
     // ======================== FUNÇÃO AUXILIAR PARA CRIAR BOTÕES ========================
     function createButton(text, className) {
@@ -318,7 +293,7 @@
       }
 
       API_DATA = resposta;
-      renderTable(filterData());
+      renderTable(API_DATA);
       return true;
     }
 
@@ -468,7 +443,7 @@
     }
 
 
-    // Preenche os dois selects (cadastro e filtro) com os cargos vindos da API
+    // Preenche o select de cadastro com os cargos vindos da API
     function preencherSelectCargos(dados) {
       cboCargos.innerHTML = '<option value="-1">Selecione um cargo</option>';
       dados.data.cargos.forEach(cargo => {
@@ -477,104 +452,11 @@
         option.textContent = cargo.nomeCargo;
         cboCargos.appendChild(option);
       });
-
-      cboCargosFiltro.innerHTML = '<option value="-1">Selecione um cargo</option>';
-      dados.data.cargos.forEach(cargo => {
-        const option = document.createElement("option");
-        option.value = cargo.idCargo;
-        option.textContent = cargo.nomeCargo;
-        cboCargosFiltro.appendChild(option);
-      });
     }
 
     // Busca a lista de cargos na API logo que a página é carregada
     const cargos = await api.get("api/v1/cargos");
     preencherSelectCargos(cargos);
-
-    // ======================== FILTROS EM TEMPO REAL ========================
-    // A cada digitação ou mudança em um campo, a tabela é filtrada
-    [txtFiltroNome, cboCargosFiltro, chkValeTransporteFiltro].forEach(el => {
-      if (el.type === "checkbox") {
-        el.addEventListener("change", () => renderTable(filterData()));
-      } else {
-        el.addEventListener("input", () => renderTable(filterData()));
-      }
-    });
-
-    // -----------------------------------------------------------------------------
-    // Função que aplica os filtros de nome, cargo e vale-transporte aos funcionários
-    // -----------------------------------------------------------------------------
-    function filterData() {
-
-      // Verifica se os dados da API ainda não foram carregados ou estão incompletos.
-      // Se não houver dados válidos, simplesmente retorna o que tiver em API_DATA
-      // (evita erros ao tentar acessar propriedades indefinidas).
-      if (!API_DATA || !API_DATA.data || !API_DATA.data.funcionarios) return API_DATA;
-
-      // ---------------------------------------------------------------------------
-      // Captura os valores digitados ou selecionados nos filtros:
-      // ---------------------------------------------------------------------------
-
-      // Pega o texto do campo de nome, remove espaços extras e converte para minúsculas.
-      // Isso garante que a busca não seja sensível a maiúsculas/minúsculas.
-      const nomeFiltro = txtFiltroNome.value.trim().toLowerCase();
-
-      // IDs do MongoDB são textos alfanuméricos. Convertê-los para número fazia a
-      // comparação falhar mesmo quando havia funcionário no cargo selecionado.
-      const cargoFiltro = cboCargosFiltro.value;
-
-      // Se a caixa de vale-transporte estiver marcada, valeFiltro = 1; caso contrário, 0.
-      // Isso é útil porque o campo na API provavelmente é numérico (1 = sim, 0 = não).
-      const valeFiltro = chkValeTransporteFiltro.checked ? 1 : 0;
-
-      // ValeFiltroAtivo indica se o usuário realmente quer filtrar por vale-transporte.
-      // Ou seja, só aplicaremos esse filtro se a caixa estiver marcada.
-      const valeFiltroAtivo = chkValeTransporteFiltro.checked;
-
-      // ---------------------------------------------------------------------------
-      // Cria uma nova lista com apenas os funcionários que atendem aos filtros:
-      // ---------------------------------------------------------------------------
-
-      const dadosFiltrados = API_DATA.data.funcionarios.filter(f => {
-        // Começamos assumindo que o funcionário será exibido.
-        let match = true;
-
-        // 1️⃣ Filtro por nome:
-        // Se o campo de nome não estiver vazio, verifica se o nome do funcionário contém
-        // o texto digitado (comparação em minúsculas para evitar diferenças de maiúsculas/minúsculas).
-        if (nomeFiltro) {
-          match = match && f.nomeFuncionario.toLowerCase().includes(nomeFiltro);
-        }
-
-        // 2️⃣ Filtro por cargo:
-        // Só aplica o filtro se um cargo específico tiver sido escolhido (diferente de -1).
-        // Compara o id do cargo do funcionário com o cargo selecionado.
-        if (cargoFiltro !== "-1") {
-          match = match && String(f.cargo.idCargo) === cargoFiltro;
-        }
-
-        // 3️⃣ Filtro por vale-transporte:
-        // Só aplica se o usuário tiver marcado a opção "Recebe Vale Transporte".
-        // Assim, apenas funcionários com recebeValeTransporte === 1 serão mostrados.
-        if (valeFiltroAtivo) {
-          match = match && f.recebeValeTransporte === valeFiltro;
-        }
-
-        // Retorna true se o funcionário passou em todos os filtros aplicáveis.
-        return match;
-      });
-
-      // ---------------------------------------------------------------------------
-      // Retorna um novo objeto no mesmo formato do original (API_DATA),
-      // mas substitui a lista completa de funcionários pela lista filtrada.
-      // Isso permite que a função renderTable() use o mesmo formato sempre.
-      // ---------------------------------------------------------------------------
-      return {
-        data: {
-          funcionarios: dadosFiltrados
-        }
-      };
-    }
 
     // Ao carregar a página, faz a primeira listagem
     listAll();

@@ -68,22 +68,6 @@
     </div>
   </div>
 
-  <div class="card mb-3" id="cardFiltroAluno">
-    <div class="card-header">Filtro de Aluno</div>
-    <div class="card-body">
-      <div class="row">
-        <div class="col-md-6">
-          <label for="txtFiltroNome" class="form-label">Nome do Aluno</label>
-          <input type="text" id="txtFiltroNome" class="form-control" placeholder="Digite o nome">
-        </div>
-        <div class="col-md-6">
-          <label for="txtFiltroTurma" class="form-label">Turma</label>
-          <input type="text" id="txtFiltroTurma" class="form-control" placeholder="Digite a turma">
-        </div>
-      </div>
-    </div>
-  </div>
-
   <div class="card mb-3" id="cardViradaAluno">
     <div class="card-header">Virada anual de turma</div>
     <div class="card-body">
@@ -102,7 +86,7 @@
   <div class="card mb-3" id="cardImportacaoAluno">
     <div class="card-header">Importar Alunos via planilha</div>
     <div class="card-body">
-      <p class="text-muted">Use os cabeçalhos ANO_REF, CURSO, TURMA_PREF, SERIE, SIT_ALUNO, ALUNO, NOME_COMPL e os dados de contato dos responsáveis. Também aceitamos PDF com texto selecionável e colunas da tabela preservadas.</p>
+      <p class="text-muted">Aceita arquivos Excel (.xlsx, .xls, .xlsm) e CSV. Use os cabeçalhos ANO_REF, CURSO, TURMA_PREF, SERIE, SIT_ALUNO, ALUNO, NOME_COMPL e os dados de contato dos responsáveis. Também aceitamos PDF com texto selecionável e colunas da tabela preservadas.</p>
       <input type="file" id="fileCsv" class="form-control mb-2" accept=".xlsx,.xls,.xlsm,.csv,.tsv,.txt,.pdf,application/pdf" aria-label="Planilha ou PDF de alunos para importação" />
       <button type="button" id="btnImportar" class="btn btn-primary mb-2">Importar</button>
       <div class="progress mb-2" style="display:none;" id="divProgressoWrap">
@@ -140,12 +124,11 @@
     const token = userData.data.token;
     const api = new ApiService(token);
     montarTopbar('alunos');
-    // Ordem de trabalho da secretaria: cadastro, importação, virada, filtro e lista.
+    // Ordem de trabalho da secretaria: cadastro, importação, virada e lista.
     const cardCadastroAluno = document.getElementById('cardCadastroAluno');
     cardCadastroAluno.after(
       document.getElementById('cardImportacaoAluno'),
-      document.getElementById('cardViradaAluno'),
-      document.getElementById('cardFiltroAluno')
+      document.getElementById('cardViradaAluno')
     );
 
     let API_DATA;
@@ -169,8 +152,6 @@
       finanNome: document.getElementById("txtFinanNome"), finanFone: document.getElementById("txtFinanFone"),
       legalNome: document.getElementById("txtLegalNome"), legalFone: document.getElementById("txtLegalFone")
     };
-    const txtFiltroNome = document.getElementById("txtFiltroNome");
-    const txtFiltroTurma = document.getElementById("txtFiltroTurma");
     const divBotoes = document.getElementById("divBotoes");
     const divResposta = document.getElementById("divResposta");
 
@@ -349,20 +330,6 @@
       divTabela.appendChild(table);
       montarControlesListagem(divTabela, table, { colunaOrdenacao: 1 });
     }
-
-    function filtrar() {
-      if (!API_DATA || !API_DATA.alunos) return;
-      const nome = txtFiltroNome.value.trim().toLowerCase();
-      const turma = txtFiltroTurma.value.trim().toLowerCase();
-      const filtrados = API_DATA.alunos.filter(a =>
-        (!nome || a.alunoNome.toLowerCase().includes(nome)) &&
-        (!turma || a.turma.toLowerCase().includes(turma))
-      );
-      renderTable({ alunos: filtrados });
-    }
-
-    txtFiltroNome.addEventListener("input", filtrar);
-    txtFiltroTurma.addEventListener("input", filtrar);
 
     document.getElementById("txtAno").value = new Date().getFullYear();
     document.getElementById("txtAnoDestino").value = new Date().getFullYear() + 1;

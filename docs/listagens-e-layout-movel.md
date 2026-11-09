@@ -2,7 +2,7 @@
 
 ## Pesquisa e ordenação
 
-As listagens de alunos, funcionários, cargos, abonos, grade de horários, regras e alertas de faltas, entradas e saídas, frequência e relatórios possuem uma caixa de pesquisa com lupa. A lista da chamada também permite pesquisar aluno por nome ou matrícula. A pesquisa é feita no conteúdo já carregado na tela, sem alterar os dados salvos ou os filtros próprios de cada módulo.
+As listagens de alunos, funcionários, cargos, abonos, grade de horários, regras e alertas de faltas, entradas e saídas, frequência e relatórios possuem uma caixa de pesquisa com lupa. A lista da chamada também permite pesquisar aluno por nome ou matrícula. A pesquisa é feita no conteúdo já carregado na tela, sem alterar os dados salvos. Os filtros separados de alunos, funcionários, cargos e abonos foram removidos; cargos e abonos mantêm na listagem a opção de consultar itens inativos. Seletores necessários para escolher turma ou dia de consulta permanecem disponíveis.
 
 Ao lado da pesquisa há os botões `A–Z`, `Z–A` e `Limpar`. Eles organizam a coluna principal de cada listagem (por exemplo, nome do aluno ou do funcionário) e removem a pesquisa e a ordenação quando necessário. Em cargos, o detalhe dos funcionários do cargo acompanha sua linha ao ordenar ou pesquisar.
 
