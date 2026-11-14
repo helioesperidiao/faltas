@@ -127,7 +127,7 @@ No painel de `Processo Pedagógico`, o sistema avisa quando um aluno atinge o li
 
 12. CHAMADA E RELATÓRIOS
 
-A chamada registra presença como padrão e grava a turma completa ao ser concluída. Os relatórios usam a mesma lista de turmas da chamada. Consulte `docs/chamada-e-relatorios.md`.
+A chamada registra presença como padrão e grava a turma completa ao ser concluída. A chamada apresenta as turmas da grade ativa; os relatórios usam as turmas dos alunos ativos. Consulte `docs/chamada-e-relatorios.md`.
 
 13. FECHAMENTO DIÁRIO
 

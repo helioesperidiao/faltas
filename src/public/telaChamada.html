@@ -598,9 +598,10 @@
     <div class="card-body">
       <div class="field">
         <label for="turma-select">Turma que está acessando</label>
-        <select id="turma-select" onchange="selecionarTurma()">
-          <option value="">Selecione uma turma...</option>
+        <select id="turma-select" onchange="selecionarTurma()" disabled>
+          <option value="">Carregando turmas...</option>
         </select>
+        <p id="turma-aviso" role="status"></p>
       </div>
       <div class="field">
         <label for="data-chamada">Data da chamada</label>
@@ -703,6 +704,7 @@
 
 <script type="module">
   import ApiService from './ApiService.js';
+  import { vincularTurmasDaGrade } from './js/TurmasChamada.mjs';
   import { exigirSessao, montarTopbar, escaparHtml } from './js/Topbar.js';
 
   const sessao = exigirSessao();
@@ -732,6 +734,9 @@
   preencherDataDeHoje();
 
   var turmaAtual = "";
+  var turmaDosAlunos = "";
+  var vinculosTurmas = [];
+  var selecaoAtual = 0;
   var alunosDaTurma = []; // { matricula, alunoNome }
   var pesquisaRoster = '';
   var ordemRoster = 0;
@@ -741,72 +746,98 @@
   var chamadaEmSalvamento = false;
 
   document.getElementById('data-chamada').addEventListener('change', async () => {
-    if (!turmaAtual) return;
-    await carregarChamadaSalva();
-    montarLista();
-    mostrarAluno();
+    if (turmaAtual) await selecionarTurma();
   });
 
-  // ---------- CARREGAR TURMAS DISPONÍVEIS (a partir dos alunos cadastrados) ----------
+  // As opções vêm das aulas ativas; o cadastro do aluno fornece o vínculo da chamada.
   async function carregarTurmas() {
-    const resposta = await api.get("api/v1/alunos");
-    if (!resposta.success) return;
-
-    const turmas = [...new Set(resposta.data.alunos.map(a => a.turma))];
     const select = document.getElementById('turma-select');
-    turmas.forEach(turma => {
+    const aviso = document.getElementById('turma-aviso');
+    const [grade, alunos] = await Promise.all([
+      api.get('api/v1/gradehorarios'), api.get('api/v1/alunos')
+    ]);
+    if (!grade.success || !alunos.success) {
+      select.innerHTML = '<option value="">Não foi possível carregar as turmas</option>';
+      aviso.textContent = 'Não foi possível consultar a grade e os alunos. Atualize a página para tentar novamente.';
+      return;
+    }
+    vinculosTurmas = vincularTurmasDaGrade(grade.data.gradeHorarios || [], alunos.data.alunos || []);
+    select.innerHTML = '<option value="">Selecione uma turma...</option>';
+    vinculosTurmas.forEach(({ turma }) => {
       const opcao = document.createElement('option');
       opcao.value = turma;
       opcao.textContent = turma;
       select.appendChild(opcao);
     });
+    select.disabled = false;
+    if (!vinculosTurmas.length) aviso.textContent = 'Não há turmas cadastradas na grade de horários ativa.';
   }
   carregarTurmas();
 
-  // ---------- SELECIONAR TURMA ----------
   async function selecionarTurma() {
-    var select = document.getElementById('turma-select');
-    var valor = select.value;
+    const selecao = ++selecaoAtual;
+    const valor = document.getElementById('turma-select').value;
+    const aviso = document.getElementById('turma-aviso');
+    const botao = document.getElementById('btn-comecar-chamada');
+    botao.style.display = 'none';
+    document.getElementById('turma-summary').style.display = 'none';
+    document.getElementById('empty-card').style.display = 'block';
+    turmaAtual = valor;
+    turmaDosAlunos = '';
+    alunosDaTurma = [];
+    statusAlunos = [];
+    registroIds = [];
+    atualizarResumo();
+    aviso.textContent = '';
+    if (!valor) return;
 
-    if (valor === "") {
-      document.getElementById('empty-card').style.display = 'block';
-      document.getElementById('turma-summary').style.display = 'none';
-      document.getElementById('btn-comecar-chamada').style.display = 'none';
+    const vinculo = vinculosTurmas.find(item => item.turma === valor);
+    if (!vinculo || !vinculo.turmaAlunos) {
+      aviso.textContent = vinculo?.ambiguo
+        ? 'Há mais de uma turma possível para este nome. Confira os nomes na grade e no cadastro de alunos.'
+        : 'Não há alunos ativos vinculados a esta turma no cadastro de alunos.';
       return;
     }
-
-    turmaAtual = valor;
-    const resposta = await api.get(`api/v1/alunos/turma/${encodeURIComponent(turmaAtual)}`);
-    alunosDaTurma = resposta.success ? resposta.data.alunos : [];
+    turmaDosAlunos = vinculo.turmaAlunos;
+    aviso.textContent = 'Carregando alunos e chamada...';
+    const resposta = await api.get(`api/v1/alunos/turma/${encodeURIComponent(turmaDosAlunos)}`);
+    if (selecao !== selecaoAtual) return;
+    if (!resposta.success) {
+      aviso.textContent = 'Não foi possível carregar os alunos. Atualize a página para tentar novamente.';
+      return;
+    }
+    alunosDaTurma = resposta.data.alunos || [];
     alunoAtual = 0;
     pesquisaRoster = '';
     ordemRoster = 0;
     document.getElementById('pesquisa-roster').value = '';
-
-    // A chamada trabalha como um booleano: sem marcação de falta, o aluno está presente.
-    // Se já houver uma chamada nesta data, o estado é substituído pelos dados salvos.
     statusAlunos = alunosDaTurma.map(() => 'present');
     registroIds = alunosDaTurma.map(() => null);
-    await carregarChamadaSalva();
-
+    const dia = document.getElementById('data-chamada').value;
+    if (!dia) {
+      aviso.textContent = 'Selecione a data da chamada.';
+      return;
+    }
+    const carregou = await carregarChamadaSalva(turmaDosAlunos, dia, selecao);
+    if (selecao !== selecaoAtual) return;
+    if (!carregou) {
+      aviso.textContent = 'Não foi possível carregar a chamada salva. Atualize a página para tentar novamente.';
+      return;
+    }
+    aviso.textContent = alunosDaTurma.length ? '' : 'Não há alunos ativos vinculados a esta turma.';
     document.getElementById('empty-card').style.display = 'none';
     document.getElementById('turma-summary').style.display = 'block';
-    document.getElementById('btn-comecar-chamada').style.display = alunosDaTurma.length ? 'block' : 'none';
-
+    botao.style.display = alunosDaTurma.length ? 'block' : 'none';
+    atualizarResumo();
     montarLista();
     mostrarAluno();
   }
 
-  async function carregarChamadaSalva() {
-    const dia = document.getElementById('data-chamada').value;
-    if (!turmaAtual || !dia || alunosDaTurma.length === 0) return;
-
-    const resposta = await api.get(`api/v1/registro/chamada?turma=${encodeURIComponent(turmaAtual)}&dia=${encodeURIComponent(dia)}`);
-    if (!resposta.success) {
-      window.alert(resposta.message || 'Não foi possível carregar a chamada já salva.');
-      return;
-    }
-
+  async function carregarChamadaSalva(turma, dia, selecao) {
+    if (!dia) return false;
+    if (!alunosDaTurma.length) return true;
+    const resposta = await api.get(`api/v1/registro/chamada?turma=${encodeURIComponent(turma)}&dia=${encodeURIComponent(dia)}`);
+    if (selecao !== selecaoAtual || !resposta.success) return false;
     const registrosPorMatricula = new Map((resposta.data.registros || [])
       .map(registro => [registro.matricula, registro]));
     statusAlunos = alunosDaTurma.map(aluno =>
@@ -815,6 +846,7 @@
     registroIds = alunosDaTurma.map(aluno =>
       registrosPorMatricula.get(aluno.matricula)?.idRegistro || null
     );
+    return true;
   }
 
   // ---------- ABRIR/FECHAR O POPUP DA CHAMADA ----------

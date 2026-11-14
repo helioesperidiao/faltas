@@ -16,6 +16,6 @@ Também é possível editar uma pessoa individualmente, criar alunos e fazer a e
 
 Os relatórios consultam o vínculo da turma na data ou intervalo solicitado. Para um período antigo, informe a turma antiga e a respectiva data; os alunos que estavam naquela turma ainda serão encontrados enquanto o vínculo estiver no período de retenção de doze meses.
 
-A tela **Frequência por Turma** apresenta as turmas ativas e, em um grupo separado, as turmas do histórico que ainda podem ser consultadas. A tela de chamada continua mostrando somente turmas ativas, evitando registros novos em uma turma encerrada.
+A tela **Frequência por Turma** apresenta as turmas ativas e, em um grupo separado, as turmas do histórico que ainda podem ser consultadas. A tela de chamada mostra as turmas da grade ativa e permite iniciar a chamada quando há alunos ativos associados a elas.
 
 Na primeira inicialização após esta alteração, o sistema cria índices de consulta e preenche, para os documentos legados, a cópia de turma disponível no cadastro atual. Isso preserva o acervo existente e faz com que os próximos registros já nasçam com o vínculo histórico completo.
