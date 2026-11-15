@@ -68,7 +68,9 @@ export class Server {
         // para abrir o contexto (requestId) antes de qualquer outro processamento.
         this._app.use(httpLogger);
         this._app.use(cors({ origin: "*" }));
-        this._app.use(express.json());
+       
+        this._app.use(express.json({ limit: "10mb" }));
+
         this._app.use("/vendor/xlsx", express.static(path.resolve(__dirname, "../node_modules/xlsx/dist")));
         // Tabelas completas de codificação para planilhas legadas (.xls/CSV),
         // incluindo Windows-1252, usual em arquivos brasileiros.
@@ -94,9 +96,21 @@ export class Server {
 
     private setupErrorMiddleware(): void {
         this._app.use((error: any, _req: Request, res: Response, _next: NextFunction) => {
-            // Erros de negócio (ErrorResponse) viram WARN — não são bugs da aplicação
+            // Payload grande demais (body-parser / raw-body)
+            if (error?.type === "entity.too.large" || error?.name === "PayloadTooLargeError") {
+                log.warn("payload too large", {
+                    limit: error.limit,
+                    length: error.length,
+                });
+                return StandardResponse.error(
+                    "Payload too large",
+                    { message: "O arquivo/envio excede o tamanho m�ximo permitido." },
+                    413
+                ).send(res);
+            }
+
             if (error instanceof ErrorResponse) {
-                log.warn("erro de negócio", {
+                log.warn("erro de neg�cio", {
                     httpCode: error.httpCode,
                     message: error.message,
                     details: error.error,
@@ -104,8 +118,7 @@ export class Server {
                 return StandardResponse.error(error.message, error.error, error.httpCode).send(res);
             }
 
-            // Erros inesperados viram ERROR com stack trace para depuração
-            log.error("erro não tratado", {
+            log.error("erro n�o tratado", {
                 message: error?.message,
                 stack: error?.stack,
             });

@@ -1,4 +1,6 @@
 import { Router } from "express";
+import multer from "multer";
+import path from "path";
 import { JwtMiddleware } from "../middlewares/JwtMiddleware";
 import { GradeHorarioController } from "../controllers/GradeHorarioController";
 import { GradeHorarioService } from "../services/GradeHorarioService";
@@ -9,12 +11,6 @@ import { createLogger } from "../logging/Logger";
 
 const log = createLogger("GradeHorarioRouter");
 
-/**
- * Router responsável por expor os endpoints de grade de horários.
- *
- * Além do CRUD, expõe `/turma/:turma` para montar a grade completa de uma
- * turma em uma única chamada.
- */
 export class GradeHorarioRouter {
     public static readonly PREFIX = "/api/v1/gradehorarios";
 
@@ -31,8 +27,25 @@ export class GradeHorarioRouter {
         const gradeHorarioController = new GradeHorarioController(gradeHorarioService);
         const jwtMiddleware = new JwtMiddleware();
 
+        const uploadImportacao = multer({
+            storage: multer.memoryStorage(),
+            limits: { fileSize: 10 * 1024 * 1024 }, // 10mb
+            fileFilter: (_req, arquivo, callback) => {
+                const ext = path.extname(arquivo.originalname).toLowerCase();
+                const ok = [".xlsx", ".xls", ".csv"].includes(ext);
+                callback(null, ok);
+            }
+        });
+
         subRouter.post("/", jwtMiddleware.validateToken, asyncHandler(gradeHorarioController.create));
-        subRouter.post("/importacao/substituir", jwtMiddleware.validateToken, asyncHandler(gradeHorarioController.substituirImportacao));
+
+        subRouter.post(
+            "/importacao/substituir",
+            jwtMiddleware.validateToken,
+            uploadImportacao.single("arquivo"),
+            asyncHandler(gradeHorarioController.substituirImportacao)
+        );
+
         subRouter.get("/", jwtMiddleware.validateToken, asyncHandler(gradeHorarioController.findAll));
         subRouter.get("/deleted", jwtMiddleware.validateToken, asyncHandler(gradeHorarioController.findAllDeleted));
         subRouter.get("/count", jwtMiddleware.validateToken, asyncHandler(gradeHorarioController.count));
