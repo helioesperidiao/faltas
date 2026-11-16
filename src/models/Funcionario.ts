@@ -1,3 +1,4 @@
+import { ErrorResponse } from "../http/ErrorResponse";
 import { ObjectId } from "mongodb";
 import { Cargo } from "./Cargo";
 import { Auditoria } from "./Auditoria";
@@ -67,10 +68,10 @@ export class Funcionario {
      */
     set idFuncionario(value: string) {
         if (!value) {
-            throw new Error("idFuncionario é obrigatório.");
+            throw new ErrorResponse(400, "idFuncionario é obrigatório.");
         }
         if (!ObjectId.isValid(value)) {
-            throw new Error(`idFuncionario inválido: "${value}". Deve ser um ObjectId de 24 caracteres hexadecimais.`);
+            throw new ErrorResponse(400, `idFuncionario inválido: "${value}". Deve ser um ObjectId de 24 caracteres hexadecimais.`);
         }
         this._idFuncionario = value;
     }
@@ -98,7 +99,7 @@ export class Funcionario {
      */
     set cargo(value: Cargo) {
         if (!(value instanceof Cargo)) {
-            throw new Error("cargo deve ser uma instância válida de Cargo.");
+            throw new ErrorResponse(400, "cargo deve ser uma instância válida de Cargo.");
         }
         this._cargo = value;
     }
@@ -125,11 +126,11 @@ export class Funcionario {
      */
     set nomeFuncionario(value: string) {
         if (typeof value !== "string") {
-            throw new Error("nomeFuncionario deve ser uma string.");
+            throw new ErrorResponse(400, "nomeFuncionario deve ser uma string.");
         }
         const nome = value.trim();
         if (nome.length < 3) {
-            throw new Error("nomeFuncionario deve ter pelo menos 3 caracteres.");
+            throw new ErrorResponse(400, "nomeFuncionario deve ter pelo menos 3 caracteres.");
         }
         this._nomeFuncionario = nome;
     }
@@ -156,15 +157,15 @@ export class Funcionario {
      */
     set email(value: string) {
         if (typeof value !== "string") {
-            throw new Error("email deve ser uma string.");
+            throw new ErrorResponse(400, "email deve ser uma string.");
         }
         const emailTrimmed = value.trim();
         if (emailTrimmed === "") {
-            throw new Error("email não pode ser vazio.");
+            throw new ErrorResponse(400, "email não pode ser vazio.");
         }
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(emailTrimmed)) {
-            throw new Error("email em formato inválido.");
+            throw new ErrorResponse(400, "email em formato inválido.");
         }
         this._email = emailTrimmed;
     }
@@ -218,7 +219,7 @@ export class Funcionario {
      */
     set recebeValeTransporte(value: number) {
         if (![0, 1].includes(value)) {
-            throw new Error("recebeValeTransporte deve ser 0 ou 1.");
+            throw new ErrorResponse(400, "recebeValeTransporte deve ser 0 ou 1.");
         }
         this._recebeValeTransporte = value;
     }

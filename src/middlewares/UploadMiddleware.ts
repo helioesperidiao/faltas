@@ -2,6 +2,8 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { Request } from "express";
+import { ObjectId } from "mongodb";
+import { ErrorResponse } from "../http/ErrorResponse";
 // NOVO: logger (padrão de logs)
 import { createLogger } from "../logging/Logger";
 
@@ -19,7 +21,7 @@ const storage = multer.diskStorage({
     filename: (request: Request, file, callback) => {
         const idDispensa = request.params.idDispensa;
         const extensao = path.extname(file.originalname);
-        const nomeFinal = `${idDispensa}${extensao}`;
+        const nomeFinal = path.basename(`${idDispensa}${extensao}`);
         log.info("dispensa: nome do arquivo gerado", {
             idDispensa,
             nomeFinal,
@@ -30,7 +32,14 @@ const storage = multer.diskStorage({
     }
 });
 
-const fileFilter = (_request: Request, file: Express.Multer.File, callback: multer.FileFilterCallback) => {
+const fileFilter = (request: Request, file: Express.Multer.File, callback: multer.FileFilterCallback) => {
+    // O id da rota vira o nome do arquivo: só um ObjectId válido pode chegar ao disco.
+    const idRegistro = String(request.params.idAbono ?? request.params.idDispensa ?? "");
+    if (!ObjectId.isValid(idRegistro) || !/^[0-9a-f]{24}$/i.test(idRegistro)) {
+        log.warn("upload rejeitado", { motivo: "identificador inválido", idRegistro });
+        callback(new ErrorResponse(400, "Identificador inválido para anexar o arquivo."));
+        return;
+    }
     const tiposPermitidos = [".jpg", ".jpeg", ".pdf"];
     const extensao = path.extname(file.originalname).toLowerCase();
     if (tiposPermitidos.includes(extensao)) {
@@ -47,11 +56,14 @@ const fileFilter = (_request: Request, file: Express.Multer.File, callback: mult
             extensao,
             tiposPermitidos,
         });
-        callback(new Error("Tipo de arquivo não permitido. Use jpg ou pdf."));
+        callback(new ErrorResponse(400, "Tipo de arquivo não permitido. Use jpg ou pdf."));
     }
 };
 
-export const uploadDispensaMiddleware = multer({ storage, fileFilter });
+// Mesmo limite de 10 MB usado nas importações.
+const limits = { fileSize: 10 * 1024 * 1024 };
+
+export const uploadDispensaMiddleware = multer({ storage, fileFilter, limits });
 
 const uploadDirAbono = path.resolve(__dirname, "../../uploads/abono");
 if (!fs.existsSync(uploadDirAbono)) {
@@ -65,7 +77,7 @@ const storageAbono = multer.diskStorage({
     filename: (request: Request, file, callback) => {
         const idAbono = request.params.idAbono;
         const extensao = path.extname(file.originalname);
-        const nomeFinal = `${idAbono}${extensao}`;
+        const nomeFinal = path.basename(`${idAbono}${extensao}`);
         log.info("abono: nome do arquivo gerado", {
             idAbono,
             nomeFinal,
@@ -76,7 +88,7 @@ const storageAbono = multer.diskStorage({
     }
 });
 
-export const uploadAbonoMiddleware = multer({ storage: storageAbono, fileFilter });
+export const uploadAbonoMiddleware = multer({ storage: storageAbono, fileFilter, limits });
 
 log.debug("configurado", {
     uploadDir,

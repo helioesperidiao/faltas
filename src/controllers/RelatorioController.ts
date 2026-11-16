@@ -35,14 +35,32 @@ export class RelatorioController extends BaseController {
         return data;
     };
 
+    /** Datas de consulta chegam como AAAA-MM-DD e são comparadas à meia-noite UTC, como os registros. */
+    private lerDataConsulta = (valor: unknown, nome: string): Date => {
+        const texto = typeof valor === 'string' ? valor : '';
+        const data = new Date(texto);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(texto) || isNaN(data.getTime()) || data.toISOString().slice(0, 10) !== texto) {
+            throw new ErrorResponse(400, `Informe ${nome} no formato AAAA-MM-DD.`);
+        }
+        return data;
+    };
+
+    private lerTurma = (valor: unknown): string => {
+        const turma = typeof valor === 'string' ? valor.trim() : '';
+        if (!turma) {
+            throw new ErrorResponse(400, "Selecione a turma.");
+        }
+        return turma;
+    };
+
     public frequenciaPorTurma = async (request: Request, response: Response): Promise<void> => {
         log.debug("frequenciaPorTurma()", {
             turma: request.query.turma,
             dia: request.query.dia,
         });
 
-        const turma = request.query.turma?.toString() || '';
-        const dia = new Date(request.query.dia?.toString() || '');
+        const turma = this.lerTurma(request.query.turma);
+        const dia = this.lerDataConsulta(request.query.dia, "o dia");
 
         const resultado = await this._relatorioService.frequenciaPorTurma(turma, dia);
 
@@ -56,9 +74,14 @@ export class RelatorioController extends BaseController {
             dataFim: request.query.dataFim,
         });
 
-        const turma = request.query.turma?.toString() || '';
-        const dataInicio = new Date(request.query.dataInicio?.toString() || '');
-        const dataFim = new Date(request.query.dataFim?.toString() || '');
+        const turma = this.lerTurma(request.query.turma);
+        const dataInicio = this.lerDataConsulta(request.query.dataInicio, "a data inicial");
+        const dataFim = this.lerDataConsulta(request.query.dataFim, "a data final");
+        if (dataFim < dataInicio) {
+            throw new ErrorResponse(400, "A data final deve ser igual ou posterior à data inicial.");
+        }
+        // Inclui o dia final inteiro.
+        dataFim.setUTCHours(23, 59, 59, 999);
 
         const resultado = await this._relatorioService.faltasPorTurmaEPeriodo(turma, dataInicio, dataFim);
 
@@ -71,8 +94,8 @@ export class RelatorioController extends BaseController {
             data: request.query.data,
         });
 
-        const turma = request.query.turma?.toString() || '';
-        const data = new Date(request.query.data?.toString() || '');
+        const turma = this.lerTurma(request.query.turma);
+        const data = this.lerDataConsulta(request.query.data, "a data");
 
         const resultado = await this._relatorioService.faltasPorTurmaSemana(turma, data);
 
@@ -86,9 +109,12 @@ export class RelatorioController extends BaseController {
             mes: request.query.mes,
         });
 
-        const turma = request.query.turma?.toString() || '';
+        const turma = this.lerTurma(request.query.turma);
         const ano = Number(request.query.ano);
         const mes = Number(request.query.mes);
+        if (!Number.isInteger(ano) || ano < 2000 || ano > 2100 || !Number.isInteger(mes) || mes < 1 || mes > 12) {
+            throw new ErrorResponse(400, "Ano ou mês inválido.");
+        }
 
         const resultado = await this._relatorioService.faltasPorTurmaMes(turma, ano, mes);
 

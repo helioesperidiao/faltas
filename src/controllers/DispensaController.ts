@@ -36,7 +36,7 @@ export class DispensaController extends BaseController {
         novaDispensa.turma = request.body.dispensa.turma;
         novaDispensa.horaInicio = request.body.dispensa.horaInicio;
         novaDispensa.horaFim = request.body.dispensa.horaFim;
-        novaDispensa.dia = new Date(request.body.dispensa.dia);;
+        novaDispensa.dia = new Date(request.body.dispensa.dia);
         novaDispensa.dataFim = request.body.dispensa.dataFim ? new Date(request.body.dispensa.dataFim) : novaDispensa.dia;
         novaDispensa.cod = request.body.dispensa.cod;
         novaDispensa.disciplina = request.body.dispensa.disciplina;
@@ -148,7 +148,7 @@ export class DispensaController extends BaseController {
         dispensa.turma = request.body.dispensa.turma;
         dispensa.horaInicio = request.body.dispensa.horaInicio;
         dispensa.horaFim = request.body.dispensa.horaFim;
-        dispensa.dia = request.body.dispensa.dia;
+        dispensa.dia = new Date(request.body.dispensa.dia);
         dispensa.dataFim = request.body.dispensa.dataFim ? new Date(request.body.dispensa.dataFim) : new Date(request.body.dispensa.dia);
         dispensa.cod = request.body.dispensa.cod;
         dispensa.disciplina = request.body.dispensa.disciplina;

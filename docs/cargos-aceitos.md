@@ -14,4 +14,4 @@ Mantém as permissões que já possuía, inclusive criar e corrigir solicitaçõ
 
 ### `Processo Pedagógico`
 
-Mantém o acesso total já existente no menu da aplicação, inclusive os módulos restritos. Também assume as operações administrativas que antes dependiam dos cargos removidos, como gestão de alunos, grade, virada anual e análise de abonos. A alteração padroniza o nome do cargo no singular.
+Mantém o acesso total já existente no menu da aplicação, inclusive os módulos restritos. Também assume as operações administrativas que antes dependiam dos cargos removidos, inclusive criar, alterar e excluir cargos, e a gestão de alunos, grade, virada anual e análise de abonos. A alteração padroniza o nome do cargo no singular.

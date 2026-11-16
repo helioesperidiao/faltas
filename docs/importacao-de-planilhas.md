@@ -12,7 +12,7 @@ Um texto que já tenha sido salvo com o símbolo `�` não pode ter o acento or
 
 Para alunos, a importação reconhece o layout com `ANO_REF`, `CURSO`, `TURMA_PREF`, `SERIE`, `SIT_ALUNO`, `ALUNO`, `NOME_COMPL`, dados de nascimento, RG, contato do aluno e contatos de pai, mãe, financeiro e responsável legal. No layout, `ALUNO` é salvo como matrícula e `NOME_COMPL` como nome completo. Todos esses cabeçalhos são verificados antes da importação.
 
-Uma importação de alunos é tratada como a lista oficial vigente. O sistema cria matrículas novas, atualiza quem já existe e arquiva logicamente os alunos que não vieram no arquivo. Eles deixam de aparecer nas turmas, chamadas e listagens ativas, eliminando turmas de teste ou repetidas, mas o cadastro antigo, os históricos, faltas e demais registros continuam guardados no banco.
+Uma importação de alunos é tratada como a lista oficial vigente. O sistema cria matrículas novas, atualiza quem já existe e arquiva logicamente os alunos que não vieram no arquivo. Uma matrícula arquivada que volta numa importação posterior é reativada, com o mesmo cadastro, histórico e registros, em vez de virar um segundo aluno; a resposta informa quantos foram reativados. Antes de enviar, a tela pede confirmação com o número de alunos (ou de aulas, na grade), porque quem não estiver na planilha será arquivado. Eles deixam de aparecer nas turmas, chamadas e listagens ativas, eliminando turmas de teste ou repetidas, mas o cadastro antigo, os históricos, faltas e demais registros continuam guardados no banco.
 
 Para a grade, os cabeçalhos são `TURMA`, `DISCIPLINA`, `NOME_DESCIPLINA`, `SEMANA_EXTENSO` e `HORAINICIALFINAL`. `DISCIPLINA` é o código da disciplina e `NOME_DESCIPLINA` é o nome exibido. O valor de `SEMANA_EXTENSO`, como `quarta-feira`, é reduzido para o dia da semana, e `HORAINICIALFINAL`, como `10:50-11:40`, é separado em início e fim.
 
@@ -21,3 +21,13 @@ Ao importar novamente uma grade, uma aula já existente com a mesma turma, horá
 ## Horários de aula
 
 A grade preserva horários com minutos e aceita formatos como `7`, `07:00`, `07h30`, `10:50-11:40` e valores de horário do Excel. Todos são guardados no formato `HH:MM`, evitando que uma formatação diferente da planilha cause erro ou descarte os minutos.
+
+Intervalos como `07h30-08h20`, `7-8` e `07h - 08h` também são separados em início e fim já na tela.
+
+## Como os cabeçalhos são reconhecidos
+
+Primeiro valem os nomes exatos de cada campo. Só depois, e apenas entre as colunas que ainda não foram usadas, é aceito um cabeçalho que contenha o nome esperado como palavras inteiras (por exemplo, `TURMA PREF.`). Cabeçalhos vazios são ignorados e um cabeçalho curto não é lido como um campo mais longo: sem a coluna `ALUNO`, a matrícula é informada como cabeçalho não identificado, em vez de ser lida da coluna `ALUNO_DT_NASC`. Um arquivo sem linhas de dados mostra "Planilha vazia ou inválida".
+
+## Datas e horas do Excel
+
+Em `.xlsx` e `.xls`, datas e horas são números seriais. A leitura usa o código de data do próprio Excel, sem aplicar o fuso do computador: uma data de nascimento sai como `14/03/2005` e uma hora como `07:30`. Antes, a conversão pelo fuso de Brasília entregava o dia anterior e horas como `1/0/00`. A biblioteca `xlsx.full.min.js` (0.18.5) já embute as páginas de código, inclusive Windows-1252.

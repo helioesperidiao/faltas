@@ -91,6 +91,26 @@ export class AlunoDAO {
         return ok;
     }
 
+    /** Desfaz a exclusão lógica de um aluno arquivado, preservando histórico e registros. */
+    public async reativar(idAluno: string, funcionarioLogado: Funcionario): Promise<boolean> {
+        log.debug("reativar()", { idAluno });
+        const collection = await this.getCollection();
+        const result = await collection.updateOne(
+            { _id: new ObjectId(idAluno), "auditoria.deletadoEm": { $ne: null } },
+            {
+                $set: {
+                    "auditoria.deletadoEm": null,
+                    "auditoria.deletadoPor": "",
+                    "auditoria.alteradoPor": funcionarioLogado.idFuncionario,
+                    "auditoria.alteradoEm": new Date()
+                }
+            }
+        );
+        const ok = result.modifiedCount > 0;
+        if (ok) log.info("aluno reativado", { idAluno });
+        return ok;
+    }
+
     public async update(aluno: Aluno, funcionarioLogado: Funcionario): Promise<boolean> {
         log.debug("update()", { idAluno: aluno.idAluno });
         const collection = await this.getCollection();

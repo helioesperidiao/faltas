@@ -197,7 +197,7 @@
         divResposta.className = "alert alert-success";
         listAll(); // Atualiza a tabela
       } else {
-        divResposta.textContent = resposta.error.message;
+        divResposta.textContent = resposta?.error?.message || resposta?.message || "Não foi possível criar o funcionário.";
         divResposta.className = "alert alert-danger d-inline-block p-2";
       }
     };
@@ -228,7 +228,7 @@
       // Chama a API com método PUT
       const resposta = await api.put("api/v1/funcionarios", id, objetoAtualizar);
       if (!resposta.success) {
-        divResposta.textContent = resposta.error.message;
+        divResposta.textContent = resposta?.error?.message || resposta?.message || "Não foi possível atualizar o funcionário.";
         divResposta.className = "alert alert-danger";
       } else limparFormulario();
       listAll(); // Atualiza tabela
@@ -446,7 +446,8 @@
     // Preenche o select de cadastro com os cargos vindos da API
     function preencherSelectCargos(dados) {
       cboCargos.innerHTML = '<option value="-1">Selecione um cargo</option>';
-      dados.data.cargos.forEach(cargo => {
+      // Falha ao carregar os cargos não pode impedir a listagem de funcionários.
+      (dados?.data?.cargos || []).forEach(cargo => {
         const option = document.createElement("option");
         option.value = cargo.idCargo;
         option.textContent = cargo.nomeCargo;

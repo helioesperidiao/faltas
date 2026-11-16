@@ -60,9 +60,11 @@
 
   <script src="vendor/xlsx/xlsx.full.min.js"></script>
   <script src="vendor/codepage/cpexcel.full.js"></script>
-  <script>if (window.XLSX && window.cptable) window.XLSX.set_cptable(window.cptable);</script>
+  <!-- O xlsx.full 0.18.5 já embute as páginas de código e não tem set_cptable;
+       a chamada fica só para versões que exigem registrar a tabela. -->
+  <script>if (window.XLSX && window.cptable && typeof window.XLSX.set_cptable === "function") window.XLSX.set_cptable(window.cptable);</script>
   <script type="module">
-    import { montarTopbar } from './js/Topbar.js';
+    import { montarTopbar, escaparHtml } from './js/Topbar.js';
     import ApiService from './ApiService.js';
     import { ESQUEMAS_IMPORTACAO, lerArquivoPlanilha, normalizarLinhaGradeHorario, prepararImportacao } from './js/ImportadorCsv.js';
     import { montarControlesListagem } from './js/ControlesListagem.js';
@@ -304,6 +306,11 @@
         return;
       }
 
+      // A planilha passa a ser a grade oficial: aulas que não estiverem nela são arquivadas.
+      if (!window.confirm(`A planilha tem ${gradesParaImportar.length} aula(s) e passará a ser a grade oficial. As aulas ativas que não estiverem nela serão arquivadas. Continuar?`)) {
+        return;
+      }
+
       divProgressoWrap.style.display = "block";
       barraProgresso.style.width = "50%";
       barraProgresso.textContent = "50%";
@@ -313,12 +320,12 @@
       barraProgresso.style.width = "100%";
       barraProgresso.textContent = "100%";
       if (!resposta?.success) {
-        divFalhas.innerHTML = `<div class="alert alert-danger">${resposta?.message || "Não foi possível importar a grade oficial."}</div>`;
+        divFalhas.innerHTML = `<div class="alert alert-danger">${escaparHtml(resposta?.message || "Não foi possível importar a grade oficial.")}</div>`;
         return;
       }
 
       const cabecalhos = Object.entries(importacao.mapeamento).map(([campo, indice]) =>
-        `${campo} ← ${importacao.cabecalhos[indice]}`).join(" · ");
+        `${campo} ← ${escaparHtml(importacao.cabecalhos[indice])}`).join(" · ");
       divFalhas.innerHTML = `<div class="alert alert-success">Importação concluída: ${resposta.data.criadas} criada(s), ${resposta.data.atualizadas} atualizada(s) e ${resposta.data.arquivadas} aula(s) antiga(s) removida(s) da grade ativa.${avisoIgnoradas}<br><small>As aulas antigas continuam preservadas no banco. Cabeçalhos identificados: ${cabecalhos}</small></div>`;
 
       fileCsv.value = "";

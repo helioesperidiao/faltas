@@ -11,3 +11,15 @@ Ao concluir, o sistema grava tanto as faltas marcadas quanto as presenças resta
 O seletor da chamada apresenta as turmas distintas que possuem ao menos uma aula ativa na grade de horários. As opções são agrupadas pelo nome, com os números em ordem crescente dentro de cada grupo (por exemplo, `1adm`, `2adm`, `3adm`, `1quim`, `2quim`). Turmas que existem apenas no cadastro de alunos não aparecem; ao remover todas as aulas de uma turma da grade, ela também deixa de aparecer. Uma turma da grade sem alunos ativos continua visível, com aviso e sem permitir iniciar a chamada.
 
 Ao selecionar uma turma, o sistema procura os alunos ativos pelo nome da turma, ignorando diferenças de maiúsculas, acentos e pontuação. Se não houver correspondência, aceita as siglas legadas `ETec` e `ECon` quando houver uma única associação possível entre grade e alunos. Nomes ambíguos exigem correção nos cadastros antes de iniciar a chamada. Os registros continuam usando a turma do cadastro do aluno, inclusive para recuperar chamadas anteriores e para consultas nos relatórios. Se a grade, os alunos ou a chamada salva não puderem ser carregados, a tela não permite iniciar a chamada.
+
+## Gravação e correção da chamada
+
+A chamada geral é uma por aluno e por dia. A tela grava um aluno de cada vez: um segundo clique em `Faltou` enquanto a gravação anterior ainda está em andamento é ignorado, e o envio seguinte do mesmo aluno espera o primeiro terminar para corrigir o registro já criado. No servidor, um novo envio da chamada geral para um aluno e dia que já têm registro corrige esse registro em vez de criar outro, de modo que alertas e relatórios nunca contam a mesma falta duas vezes.
+
+Corrigir a chamada altera apenas presença, atraso e acompanhante. A situação `Abonada` ou `Dispensada` pertence aos fluxos de abono e dispensa e é mantida na correção.
+
+## Consultas dos relatórios
+
+Os relatórios exigem a turma e datas no formato `AAAA-MM-DD`; consulta sem turma, com data inválida, com período invertido ou com ano e mês fora do intervalo responde `400` com a mensagem do campo, em vez de devolver uma lista vazia. Os dias são comparados à meia-noite UTC, como são gravados pela chamada: o mês de março vai de `01/03` a `31/03` inteiros, sem puxar o dia 1º do mês seguinte quando o servidor roda no fuso de Brasília.
+
+O total de faltas por semana, mês ou período desconta as faltas abonadas e dispensadas, como já faziam os alertas e o fechamento. As entradas e saídas do intervalo consultado são lidas por completo; a listagem de movimentações continua limitada às 200 mais recentes apenas na tela.

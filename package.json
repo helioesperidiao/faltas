@@ -5,9 +5,10 @@
     "dev": "nodemon",
     "build": "tsc && tsc-alias && copyfiles -u 1 \"src/public/**/*\" dist",
     "start": "node dist/index.js",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
+    "test": "node --test \"tests/**/*.test.mjs\"",
+    "test:watch": "node --test --watch \"tests/**/*.test.mjs\"",
+    "test:coverage": "node --test --experimental-test-coverage \"tests/**/*.test.mjs\"",
+    "test:e2e": "node tests/e2e-api.mjs .",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix"
   },

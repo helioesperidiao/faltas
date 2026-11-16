@@ -89,13 +89,14 @@ export class RegistroDAO {
         log.debug("update()", { idRegistro: registro.idRegistro });
         const collection = await this.getCollection();
         registro.marcarAlteradoPor(funcionarioLogado.idFuncionario);
-        const filter: Filter<Document> = { _id: new ObjectId(registro.idRegistro) };
+        // A situação (Abonada/Dispensada) é mantida pelos fluxos de abono e dispensa;
+        // corrigir a chamada não pode apagá-la.
+        const filter: Filter<Document> = { _id: new ObjectId(registro.idRegistro), "auditoria.deletadoEm": null };
         const update: UpdateFilter<Document> = {
             $set: {
                 falta: registro.falta,
                 atrasado: registro.atrasado,
                 nomeAcompanhante: registro.nomeAcompanhante,
-                situacao: registro.situacao,
                 "auditoria.alteradoPor": registro.auditoria.alteradoPor,
                 "auditoria.alteradoEm": registro.auditoria.alteradoEm
             }
@@ -107,7 +108,7 @@ export class RegistroDAO {
         return ok;
     }
 
-    public async updateSituacaoPorMatriculaEPeriodo(matricula: string, dataInicio: Date, dataFim: Date, situacao: string, funcionarioLogado: Funcionario): Promise<number> {
+    public async updateSituacaoPorMatriculaEPeriodo(matricula: string, dataInicio: Date, dataFim: Date, situacao: string, funcionarioLogado: Funcionario, somenteSituacao?: string): Promise<number> {
         log.debug("updateSituacaoPorMatriculaEPeriodo()", {
             matricula,
             dataInicio,
@@ -119,7 +120,8 @@ export class RegistroDAO {
             matricula,
             dia: { $gte: dataInicio, $lte: dataFim },
             falta: true,
-            "auditoria.deletadoEm": null
+            "auditoria.deletadoEm": null,
+            ...(somenteSituacao ? { situacao: somenteSituacao } : {})
         };
         const update: UpdateFilter<Document> = {
             $set: {
@@ -242,10 +244,7 @@ export class RegistroDAO {
         log.debug("findAusentesEntrada()", { totalMatriculas: matriculas.length, dia });
         const collection = await this.getCollection();
 
-        const inicioDia = new Date(dia);
-        inicioDia.setHours(0, 0, 0, 0);
-        const fimDia = new Date(dia);
-        fimDia.setHours(23, 59, 59, 999);
+        const { inicioDia, fimDia } = RegistroDAO.limitesDoDiaUtc(dia);
 
         const filter: Filter<Document> = {
             matricula: { $in: matriculas },
@@ -263,8 +262,7 @@ export class RegistroDAO {
     public async findChamadaPorTurmaEDia(turma: string, dia: Date): Promise<Registro[]> {
         log.debug("findChamadaPorTurmaEDia()", { turma, dia });
         const collection = await this.getCollection();
-        const inicioDia = new Date(Date.UTC(dia.getUTCFullYear(), dia.getUTCMonth(), dia.getUTCDate(), 0, 0, 0, 0));
-        const fimDia = new Date(Date.UTC(dia.getUTCFullYear(), dia.getUTCMonth(), dia.getUTCDate(), 23, 59, 59, 999));
+        const { inicioDia, fimDia } = RegistroDAO.limitesDoDiaUtc(dia);
         const docs = await collection.find({
             turma,
             codDisciplina: "GERAL",
@@ -272,5 +270,28 @@ export class RegistroDAO {
             "auditoria.deletadoEm": null
         }).toArray();
         return docs.map(doc => this.toRegistro(doc));
+    }
+
+    /** Registro geral (chamada do dia) já gravado para o aluno, se houver. */
+    public async findGeralDoAlunoNoDia(matricula: string, dia: Date): Promise<Registro | null> {
+        log.debug("findGeralDoAlunoNoDia()", { matricula, dia });
+        const collection = await this.getCollection();
+        const { inicioDia, fimDia } = RegistroDAO.limitesDoDiaUtc(dia);
+        const doc = await collection.findOne({
+            matricula,
+            codDisciplina: "GERAL",
+            dia: { $gte: inicioDia, $lte: fimDia },
+            "auditoria.deletadoEm": null
+        });
+        return doc ? this.toRegistro(doc) : null;
+    }
+
+    /** Os dias são gravados à meia-noite UTC; a consulta usa o mesmo dia do calendário em UTC. */
+    private static limitesDoDiaUtc(dia: Date): { inicioDia: Date; fimDia: Date } {
+        const ano = dia.getUTCFullYear(), mes = dia.getUTCMonth(), data = dia.getUTCDate();
+        return {
+            inicioDia: new Date(Date.UTC(ano, mes, data, 0, 0, 0, 0)),
+            fimDia: new Date(Date.UTC(ano, mes, data, 23, 59, 59, 999))
+        };
     }
 }
