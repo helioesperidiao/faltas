@@ -1,3 +1,4 @@
+import { ErrorResponse } from "../http/ErrorResponse";
 import { ObjectId } from "mongodb";
 import { Auditoria } from "./Auditoria";
 
@@ -28,10 +29,10 @@ export class Dispensa {
     }
     set idDispensa(value: string){
         if (!value) {
-            throw new Error("idDispensa é obrigatório.");
+            throw new ErrorResponse(400, "idDispensa é obrigatório.");
         }
         if (!ObjectId.isValid(value)) {
-            throw new Error(`idDispensa inválido: "${value}". Deve ser um ObjectId de 24 caracteres hexadecimais.`);
+            throw new ErrorResponse(400, `idDispensa inválido: "${value}". Deve ser um ObjectId de 24 caracteres hexadecimais.`);
         }
         this._idDispensa = value;
     }
@@ -42,10 +43,11 @@ export class Dispensa {
     }
     set idAluno(value: string){
         if (!value) {
-            throw new Error("idAluno é obrigatório.");
+            throw new ErrorResponse(400, "idAluno é obrigatório.");
         }
-        if (value.length > 20) {
-            throw new Error(`idAluno pode ter no máximo 20 caracteres.`);
+        // Guarda o ObjectId do aluno (24 caracteres hexadecimais).
+        if (value.length > 24) {
+            throw new ErrorResponse(400, `idAluno pode ter no máximo 24 caracteres.`);
         }
         this._idAluno = value;
     }
@@ -81,10 +83,10 @@ export class Dispensa {
     }
     set turma(value: string){
         if (!value) {
-            throw new Error("Turma é obrigatório.");
+            throw new ErrorResponse(400, "Turma é obrigatório.");
         }
         if (value.length > 20) {
-            throw new Error(`Turma pode ter no máximo 20 caracteres.`);
+            throw new ErrorResponse(400, `Turma pode ter no máximo 20 caracteres.`);
         }
         this._turma = value;
     }
@@ -95,10 +97,10 @@ export class Dispensa {
     }
     set horaInicio(value: number) {
         if (value === undefined || value === null) {
-            throw new Error("Horário de início é obrigatório.");
+            throw new ErrorResponse(400, "Horário de início é obrigatório.");
         }
         if (typeof value !== "number" || value < 0 || value > 23) {
-            throw new Error(`Horário de início inválido: "${value}". Deve ser entre 0 e 23.`);
+            throw new ErrorResponse(400, `Horário de início inválido: "${value}". Deve ser entre 0 e 23.`);
         }
         this._horaInicio = value;
     }
@@ -109,10 +111,10 @@ export class Dispensa {
     }
     set horaFim(value: number) {
         if (value === undefined || value === null) {
-            throw new Error("Horário final é obrigatório.");
+            throw new ErrorResponse(400, "Horário final é obrigatório.");
         }
         if (typeof value !== "number" || value < 0 || value > 23) {
-            throw new Error(`Horário final inválido: "${value}". Deve ser entre 0 e 23.`);
+            throw new ErrorResponse(400, `Horário final inválido: "${value}". Deve ser entre 0 e 23.`);
         }
         this._horaFim = value;
     }
@@ -123,10 +125,10 @@ export class Dispensa {
     }
     set dia(value: Date) {
         if (!(value instanceof Date)) {
-            throw new Error("dia deve ser um objeto Date.");
+            throw new ErrorResponse(400, "dia deve ser um objeto Date.");
         }
         if (isNaN(value.getTime())) {
-            throw new Error(`dia inválido: "${value}".`);
+            throw new ErrorResponse(400, `dia inválido: "${value}".`);
         }
         this._dia = value;
     }
@@ -137,10 +139,10 @@ export class Dispensa {
     }
     set dataFim(value: Date) {
         if (!(value instanceof Date)) {
-            throw new Error("dataFim deve ser um objeto Date.");
+            throw new ErrorResponse(400, "dataFim deve ser um objeto Date.");
         }
         if (isNaN(value.getTime())) {
-            throw new Error(`dataFim inválido: "${value}".`);
+            throw new ErrorResponse(400, `dataFim inválido: "${value}".`);
         }
         this._dataFim = value;
     }
@@ -151,10 +153,10 @@ export class Dispensa {
     }
     set cod (value: string){
         if (!value) {
-            throw new Error("Código é obrigatório.");
+            throw new ErrorResponse(400, "Código é obrigatório.");
         }
         if (value.length > 20) {
-            throw new Error(`Código pode ter no máximo 20 caracteres.`);
+            throw new ErrorResponse(400, `Código pode ter no máximo 20 caracteres.`);
         }
         this._cod = value;
     }
@@ -165,10 +167,10 @@ export class Dispensa {
     }
     set disciplina(value: string){
         if (!value) {
-            throw new Error("Disciplina é obrigatório.");
+            throw new ErrorResponse(400, "Disciplina é obrigatório.");
         }
         if (value.length > 100) {
-            throw new Error(`Disciplina pode ter no máximo 100 caracteres.`);
+            throw new ErrorResponse(400, `Disciplina pode ter no máximo 100 caracteres.`);
         }
         this._disciplina = value;
     }
@@ -179,10 +181,10 @@ export class Dispensa {
     }
     set motivo(value: string){
         if (!value) {
-            throw new Error("Motivo é obrigatório.");
+            throw new ErrorResponse(400, "Motivo é obrigatório.");
         }
         if(value.length > 512){
-            throw new Error(`Motivo pode ter no máximo 512 caracteres.`);
+            throw new ErrorResponse(400, `Motivo pode ter no máximo 512 caracteres.`);
         }
         this._motivo = value;
     }
@@ -193,10 +195,10 @@ export class Dispensa {
     }
     set nomeArquivo(value: string){
         if (typeof value !== "string") {
-            throw new Error("nomeArquivo deve ser uma string.");
+            throw new ErrorResponse(400, "nomeArquivo deve ser uma string.");
         }
         if (value.trim().length > 50) {
-            throw new Error("nomeArquivo deve ter no máximo 50 caracteres.");
+            throw new ErrorResponse(400, "nomeArquivo deve ter no máximo 50 caracteres.");
         }
         this._nomeArquivo = value.trim();
     }

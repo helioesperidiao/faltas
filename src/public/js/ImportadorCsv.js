@@ -52,18 +52,40 @@ function pontuacaoCodificacao(texto) {
   return (texto.match(/[\uFFFDÃÂ]/g) || []).length;
 }
 
+/**
+ * Datas e horas do Excel chegam como número serial. A conversão usa o código de
+ * data do próprio Excel, sem fuso: `38425` → `14/03/2005` e `0,3125` → `07:30`.
+ * (Com `cellDates`, o navegador aplicava o fuso e devolvia o dia anterior.)
+ */
+function converterDatasDaAba(aba) {
+  const SSF = window.XLSX.SSF;
+  const doisDigitos = numero => String(numero).padStart(2, "0");
+  Object.keys(aba).forEach(endereco => {
+    const celula = aba[endereco];
+    if (endereco[0] === "!" || !celula || celula.t !== "n" || !celula.z || !SSF.is_date(celula.z)) return;
+    const partes = SSF.parse_date_code(celula.v);
+    if (!partes) return;
+    const texto = celula.v < 1
+      ? `${doisDigitos(partes.H)}:${doisDigitos(partes.M)}`
+      : `${doisDigitos(partes.d)}/${doisDigitos(partes.m)}/${partes.y}`;
+    aba[endereco] = { t: "s", v: texto, w: texto };
+  });
+}
+
 function exportarPrimeiraAbaComoCsv(dados, codigoPagina) {
   const workbook = window.XLSX.read(dados, {
     type: "array",
     // Usa o valor original da célula, sem uma formatação intermediária que
     // poderia trocar caracteres acentuados por símbolos.
     cellText: false,
-    cellDates: true,
+    cellDates: false,
+    cellNF: true,
     raw: true,
     codepage: codigoPagina
   });
   const primeiraAba = workbook.SheetNames[0];
   if (!primeiraAba) return null;
+  converterDatasDaAba(workbook.Sheets[primeiraAba]);
 
   return window.XLSX.utils.sheet_to_csv(workbook.Sheets[primeiraAba], {
     FS: ";",
@@ -129,15 +151,32 @@ function lerLinha(linha, separador) {
   return valores;
 }
 
-function encontrarIndice(cabecalhos, apelidos) {
-  const normalizados = apelidos.map(normalizarTexto);
-  const exato = cabecalhos.findIndex(cabecalho => normalizados.includes(normalizarTexto(cabecalho)));
-  if (exato >= 0) return exato;
-
-  return cabecalhos.findIndex(cabecalho => {
-    const normalizado = normalizarTexto(cabecalho);
-    return normalizados.some(apelido => normalizado.includes(apelido) || apelido.includes(normalizado));
+/**
+ * Associa cada campo a uma coluna. Primeiro valem os nomes exatos; depois, só entre
+ * as colunas ainda livres, um cabeçalho que contenha o apelido como palavras inteiras
+ * (ex.: "TURMA PREF." para "turma pref").
+ * O inverso — um cabeçalho curto como "ALUNO" contido no apelido "aluno fone" — não
+ * vale, para uma coluna não ser lida como outro campo; cabeçalhos vazios são ignorados.
+ */
+function mapearCabecalhos(cabecalhos, esquema) {
+  const normalizados = cabecalhos.map(normalizarTexto);
+  const campos = Object.entries(esquema).map(([campo, apelidos]) => [campo, apelidos.map(normalizarTexto)]);
+  const mapeamento = {};
+  campos.forEach(([campo, apelidos]) => {
+    const indice = normalizados.findIndex(cabecalho => cabecalho && apelidos.includes(cabecalho));
+    if (indice >= 0) mapeamento[campo] = indice;
   });
+  const usados = new Set(Object.values(mapeamento));
+  campos.forEach(([campo, apelidos]) => {
+    if (campo in mapeamento) return;
+    const indice = normalizados.findIndex((cabecalho, posicao) =>
+      cabecalho && !usados.has(posicao) && apelidos.some(apelido => ` ${cabecalho} `.includes(` ${apelido} `)));
+    if (indice >= 0) {
+      mapeamento[campo] = indice;
+      usados.add(indice);
+    }
+  });
+  return mapeamento;
 }
 
 /**
@@ -150,14 +189,13 @@ export function prepararImportacao(texto, esquema, obrigatorios, transformarLinh
   }
   const linhas = String(texto || "").split(/\r?\n/).filter(linha => linha.trim());
   if (linhas.length < 2) {
-    return { linhas: [], cabecalhos: [], mapeamento: {}, ausentes: obrigatorios };
+    // Sem linhas de dados não há cabeçalho a reclamar: a tela avisa "planilha vazia".
+    return { linhas: [], cabecalhos: [], mapeamento: {}, ausentes: [] };
   }
 
   const separador = descobrirSeparador(linhas[0]);
   const cabecalhos = lerLinha(linhas[0], separador);
-  const mapeamento = Object.fromEntries(Object.entries(esquema)
-    .map(([campo, apelidos]) => [campo, encontrarIndice(cabecalhos, apelidos)])
-    .filter(([, indice]) => indice >= 0));
+  const mapeamento = mapearCabecalhos(cabecalhos, esquema);
   const ausentes = obrigatorios.filter(campo => !(campo in mapeamento));
 
   const dados = linhas.slice(1).map((linha, indice) => {
@@ -172,13 +210,19 @@ export function prepararImportacao(texto, esquema, obrigatorios, transformarLinh
   return { linhas: dados, cabecalhos, mapeamento, ausentes };
 }
 
-/** Converte `10:50-11:40` em horários separados e simplifica `quarta-feira`. */
+/** `7`, `7h`, `07h30` ou `07:30` → `07:30`. */
+function horarioHHMM(texto) {
+  const partes = String(texto).trim().match(/^(\d{1,2})(?:\s*[:h]\s*(\d{2}))?\s*h?$/i);
+  return partes ? `${partes[1].padStart(2, '0')}:${partes[2] || '00'}` : String(texto).trim();
+}
+
+/** Converte `10:50-11:40` ou `07h30-08h20` em horários separados e simplifica `quarta-feira`. */
 export function normalizarLinhaGradeHorario(linha) {
   const horario = String(linha.horaInicio || linha.horaFim || '').trim();
-  const partesHorario = horario.match(/^(\d{1,2}:\d{2})\s*[-–]\s*(\d{1,2}:\d{2})$/);
+  const partesHorario = horario.match(/^(\d{1,2}(?:\s*[:h]\s*\d{2})?\s*h?)\s*[-–]\s*(\d{1,2}(?:\s*[:h]\s*\d{2})?\s*h?)$/i);
   if (partesHorario) {
-    linha.horaInicio = partesHorario[1];
-    linha.horaFim = partesHorario[2];
+    linha.horaInicio = horarioHHMM(partesHorario[1]);
+    linha.horaFim = horarioHHMM(partesHorario[2]);
   }
 
   const semanaExtenso = String(linha.dia || '').trim();

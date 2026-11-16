@@ -1,3 +1,4 @@
+import { ErrorResponse } from "../http/ErrorResponse";
 import { ObjectId } from "mongodb";
 import { Auditoria } from "./Auditoria";
 
@@ -26,10 +27,10 @@ export class Abono {
 
     set idAbono(value: string) {
         if (!value) {
-            throw new Error("idAbono é obrigatório.");
+            throw new ErrorResponse(400, "idAbono é obrigatório.");
         }
         if (!ObjectId.isValid(value)) {
-            throw new Error(`idAbono inválido: "${value}".`);
+            throw new ErrorResponse(400, `idAbono inválido: "${value}".`);
         }
         this._idAbono = value;
     }
@@ -40,10 +41,10 @@ export class Abono {
 
     set matricula(value: string) {
         if (typeof value !== "string" || value.trim().length === 0) {
-            throw new Error("matricula é obrigatória.");
+            throw new ErrorResponse(400, "matricula é obrigatória.");
         }
         if (value.trim().length > 8) {
-            throw new Error("matricula pode ter no máximo 8 caracteres.");
+            throw new ErrorResponse(400, "matricula pode ter no máximo 8 caracteres.");
         }
         this._matricula = value.trim();
     }
@@ -66,7 +67,7 @@ export class Abono {
 
     set dataInicio(value: Date) {
         if (!(value instanceof Date) || isNaN(value.getTime())) {
-            throw new Error(`dataInicio inválida: "${value}".`);
+            throw new ErrorResponse(400, `dataInicio inválida: "${value}".`);
         }
         this._dataInicio = value;
     }
@@ -77,7 +78,7 @@ export class Abono {
 
     set dataFim(value: Date) {
         if (!(value instanceof Date) || isNaN(value.getTime())) {
-            throw new Error(`dataFim inválida: "${value}".`);
+            throw new ErrorResponse(400, `dataFim inválida: "${value}".`);
         }
         this._dataFim = value;
     }
@@ -88,10 +89,10 @@ export class Abono {
 
     set motivo(value: string) {
         if (typeof value !== "string" || value.trim().length === 0) {
-            throw new Error("motivo é obrigatório.");
+            throw new ErrorResponse(400, "motivo é obrigatório.");
         }
         if (value.trim().length > 512) {
-            throw new Error("motivo pode ter no máximo 512 caracteres.");
+            throw new ErrorResponse(400, "motivo pode ter no máximo 512 caracteres.");
         }
         this._motivo = value.trim();
     }
@@ -102,10 +103,10 @@ export class Abono {
 
     set nomeArquivo(value: string) {
         if (typeof value !== "string") {
-            throw new Error("nomeArquivo deve ser uma string.");
+            throw new ErrorResponse(400, "nomeArquivo deve ser uma string.");
         }
         if (value.trim().length > 255) {
-            throw new Error("nomeArquivo deve ter no máximo 255 caracteres.");
+            throw new ErrorResponse(400, "nomeArquivo deve ter no máximo 255 caracteres.");
         }
         this._nomeArquivo = value.trim();
     }
@@ -117,7 +118,7 @@ export class Abono {
     set status(value: string) {
         const permitidos = ["Pendente", "Aprovado", "Rejeitado"];
         if (!permitidos.includes(value)) {
-            throw new Error(`status inválido: "${value}". Deve ser uma de: ${permitidos.join(", ")}.`);
+            throw new ErrorResponse(400, `status inválido: "${value}". Deve ser uma de: ${permitidos.join(", ")}.`);
         }
         this._status = value;
     }

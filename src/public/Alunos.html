@@ -107,9 +107,11 @@
 
   <script src="vendor/xlsx/xlsx.full.min.js"></script>
   <script src="vendor/codepage/cpexcel.full.js"></script>
-  <script>if (window.XLSX && window.cptable) window.XLSX.set_cptable(window.cptable);</script>
+  <!-- O xlsx.full 0.18.5 já embute as páginas de código e não tem set_cptable;
+       a chamada fica só para versões que exigem registrar a tabela. -->
+  <script>if (window.XLSX && window.cptable && typeof window.XLSX.set_cptable === "function") window.XLSX.set_cptable(window.cptable);</script>
   <script type="module">
-    import { montarTopbar } from './js/Topbar.js';
+    import { montarTopbar, escaparHtml } from './js/Topbar.js';
     import ApiService from './ApiService.js';
     import { ESQUEMAS_IMPORTACAO, lerArquivoPlanilha, prepararImportacao } from './js/ImportadorCsv.js';
     import { montarControlesListagem } from './js/ControlesListagem.js';
@@ -497,8 +499,13 @@
       }
 
       if (falhas.length > 0) {
-        const lista = falhas.map(f => `<li>Linha ${f.linha}: ${f.motivo}</li>`).join("");
+        const lista = falhas.map(f => `<li>Linha ${f.linha}: ${escaparHtml(f.motivo)}</li>`).join("");
         divFalhas.innerHTML = `<div class="alert alert-danger"><strong>Falhas na importação:</strong><ul>${lista}</ul></div>`;
+        return;
+      }
+
+      // A planilha passa a ser a lista oficial: quem não estiver nela é arquivado.
+      if (!window.confirm(`A planilha tem ${alunosParaImportar.length} aluno(s) e passará a ser a lista oficial. Os alunos ativos que não estiverem nela serão arquivados (histórico e registros são preservados). Continuar?`)) {
         return;
       }
 
@@ -511,12 +518,12 @@
       barraProgresso.style.width = "100%";
       barraProgresso.textContent = "100%";
       if (!resposta?.success) {
-        divFalhas.innerHTML = `<div class="alert alert-danger">${resposta?.message || "Não foi possível importar a lista oficial."}</div>`;
+        divFalhas.innerHTML = `<div class="alert alert-danger">${escaparHtml(resposta?.message || "Não foi possível importar a lista oficial.")}</div>`;
         return;
       }
 
       const cabecalhos = Object.entries(importacao.mapeamento).map(([campo, indice]) =>
-        `${campo} ← ${importacao.cabecalhos[indice]}`).join(" · ");
+        `${campo} ← ${escaparHtml(importacao.cabecalhos[indice])}`).join(" · ");
       divFalhas.innerHTML = `<div class="alert alert-success">Importação concluída: ${resposta.data.criados} criado(s), ${resposta.data.atualizados} atualizado(s) e ${resposta.data.arquivados} cadastro(s) antigo(s) removido(s) da lista ativa.<br><small>Histórico e registros anteriores foram preservados. Cabeçalhos identificados: ${cabecalhos}</small></div>`;
 
       fileCsv.value = "";

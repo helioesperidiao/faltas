@@ -2,6 +2,7 @@ import { CargoDAO } from "../dao/CargoDAO";
 import { FuncionarioDAO } from "../dao/FuncionarioDAO";
 import { Cargo } from "../models/Cargo";
 import { ErrorResponse } from "../http/ErrorResponse";
+import { CARGO_PROCESSO_PEDAGOGICO } from "../constants/Cargos";
 import { Funcionario } from "../models/Funcionario";
 // NOVO: logger (padrão de logs)
 import { createLogger } from "../logging/Logger";
@@ -31,14 +32,13 @@ export class CargoService {
     }
 
     /**
-     * Verifica se o funcionário logado tem permissão de administrador.
+     * Verifica se o funcionário logado tem permissão administrativa.
      *
-     * ⚠️ Hoje este método checa "Administrador" — mas o middleware JWT só aceita
-     * "Inspetor" ou "Processo Pedagógico" (`CARGOS_ACEITOS` em constants/Cargos.ts).
-     * Ou seja: em runtime, NINGUÉM passa por aqui. Ver nota no fim da resposta.
+     * O cargo "Administrador" deixou de existir (ver docs/cargos-aceitos.md);
+     * suas operações administrativas passaram para "Processo Pedagógico".
      */
     private isAdmin(funcionario: Funcionario): boolean {
-        return funcionario.cargo?.nomeCargo === "Administrador";
+        return funcionario.cargo?.nomeCargo === CARGO_PROCESSO_PEDAGOGICO;
     }
 
     /**

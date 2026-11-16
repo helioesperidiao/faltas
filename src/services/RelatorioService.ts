@@ -1,3 +1,5 @@
+import { DispensaDAO } from "../dao/DispensaDAO";
+import { Dispensa } from "../models/Dispensa";
 import { AlunoDAO } from "../dao/AlunoDAO";
 import { RegistroDAO } from "../dao/RegistroDAO";
 import { Registro } from "../models/Registro";
@@ -95,6 +97,7 @@ export class RelatorioService {
     private _gradeHorarioDAO: GradeHorarioDAO;
     private _configuracaoAlertaFaltaDAO: ConfiguracaoAlertaFaltaDAO;
     private _alertaFaltaDAO: AlertaFaltaDAO;
+    private _dispensaDAO: DispensaDAO;
 
     constructor(
         alunoDAODependency: AlunoDAO,
@@ -102,7 +105,8 @@ export class RelatorioService {
         movimentacaoDAODependency: MovimentacaoDAO,
         gradeHorarioDAODependency: GradeHorarioDAO,
         configuracaoAlertaFaltaDAODependency: ConfiguracaoAlertaFaltaDAO,
-        alertaFaltaDAODependency: AlertaFaltaDAO
+        alertaFaltaDAODependency: AlertaFaltaDAO,
+        dispensaDAODependency: DispensaDAO
     ) {
         this._alunoDAO = alunoDAODependency;
         this._registroDAO = registroDAODependency;
@@ -110,6 +114,26 @@ export class RelatorioService {
         this._gradeHorarioDAO = gradeHorarioDAODependency;
         this._configuracaoAlertaFaltaDAO = configuracaoAlertaFaltaDAODependency;
         this._alertaFaltaDAO = alertaFaltaDAODependency;
+        this._dispensaDAO = dispensaDAODependency;
+    }
+
+    /** Indica, pela data do calendário, se o aluno tem dispensa vigente na disciplina. */
+    private criarConsultaDeDispensas(dispensas: Dispensa[]): (idAluno: string | undefined, cod: string, dia: Date) => boolean {
+        const porAluno = new Map<string, Dispensa[]>();
+        dispensas.forEach(dispensa => {
+            const lista = porAluno.get(dispensa.idAluno) || [];
+            lista.push(dispensa);
+            porAluno.set(dispensa.idAluno, lista);
+        });
+        return (idAluno, cod, dia) => {
+            if (!idAluno) return false;
+            const chaveDia = this.chaveData(dia);
+            return (porAluno.get(idAluno) || []).some(dispensa =>
+                dispensa.cod === cod &&
+                this.chaveData(dispensa.dia) <= chaveDia &&
+                this.chaveData(dispensa.dataFim) >= chaveDia
+            );
+        };
     }
 
     private mesmaData(primeira: Date, segunda: Date): boolean {
@@ -233,7 +257,7 @@ export class RelatorioService {
         const alunosDaTurma = await this._alunoDAO.findByTurmaNoPeriodo(turma, dia, dia);
         const [todosRegistros, movimentacoes, grades] = await Promise.all([
             this._registroDAO.findAll(),
-            this._movimentacaoDAO.findAll(),
+            this._movimentacaoDAO.findNoPeriodo(dia, dia),
             this._gradeHorarioDAO.findAll()
         ]);
 
@@ -260,7 +284,7 @@ export class RelatorioService {
                 matricula: aluno.matricula,
                 alunoNome: aluno.alunoNome,
                 situacao,
-                movimentacao: this.ultimaMovimentacao(aluno.matricula, movimentacoes, dia, new Date(dia.getFullYear(), dia.getMonth(), dia.getDate(), 23, 59, 59))
+                movimentacao: this.ultimaMovimentacao(aluno.matricula, movimentacoes, dia, dia)
             };
         });
     };
@@ -272,13 +296,16 @@ export class RelatorioService {
         const alunosDaTurma = await this._alunoDAO.findByTurmaNoPeriodo(turma, dataInicio, dataFim);
         const [todosRegistros, movimentacoes, grades] = await Promise.all([
             this._registroDAO.findAll(),
-            this._movimentacaoDAO.findAll(),
+            this._movimentacaoDAO.findNoPeriodo(dataInicio, dataFim),
             this._gradeHorarioDAO.findAll()
         ]);
 
+        // Faltas abonadas ou dispensadas não contam no total, como nos alertas e no fechamento.
         const registrosNoPeriodo = todosRegistros.filter((registro: Registro) =>
             registro.turma === turma &&
-            registro.dia >= dataInicio && registro.dia <= dataFim && this.possuiFaltaNaGradeDoDia(registro, movimentacoes, grades)
+            registro.dia >= dataInicio && registro.dia <= dataFim &&
+            !["Abonada", "Dispensada"].includes(registro.situacao) &&
+            this.possuiFaltaNaGradeDoDia(registro, movimentacoes, grades)
         );
 
         return alunosDaTurma.map(aluno => {
@@ -296,15 +323,17 @@ export class RelatorioService {
     public faltasPorTurmaSemana = async (turma: string, data: Date): Promise<FaltasPorAluno[]> => {
         log.debug("faltasPorTurmaSemana()", { turma, data });
         const dataFim = new Date(data);
-        dataFim.setDate(dataFim.getDate() + 6);
+        dataFim.setUTCDate(dataFim.getUTCDate() + 6);
+        dataFim.setUTCHours(23, 59, 59, 999);
         return await this.faltasPorTurmaEPeriodo(turma, data, dataFim);
     };
 
     //faltas por turma/mês: considera o mês inteiro da data informada
     public faltasPorTurmaMes = async (turma: string, ano: number, mes: number): Promise<FaltasPorAluno[]> => {
         log.debug("faltasPorTurmaMes()", { turma, ano, mes });
-        const dataInicio = new Date(ano, mes - 1, 1);
-        const dataFim = new Date(ano, mes, 0, 23, 59, 59);
+        // Os dias da chamada são gravados à meia-noite UTC: o mês também é recortado em UTC.
+        const dataInicio = new Date(Date.UTC(ano, mes - 1, 1));
+        const dataFim = new Date(Date.UTC(ano, mes, 0, 23, 59, 59, 999));
         return await this.faltasPorTurmaEPeriodo(turma, dataInicio, dataFim);
     };
 
@@ -317,13 +346,15 @@ export class RelatorioService {
             throw new ErrorResponse(400, "Data inválida para o fechamento do dia.");
         }
 
-        const [alunos, alunosArquivados, registros, movimentacoesDoDia, grades] = await Promise.all([
+        const [alunos, alunosArquivados, registros, movimentacoesDoDia, grades, dispensas] = await Promise.all([
             this._alunoDAO.findAll(),
             this._alunoDAO.findAllDeleted(),
             this._registroDAO.findAll(),
             this._movimentacaoDAO.findAll(data),
-            this._gradeHorarioDAO.findAll()
+            this._gradeHorarioDAO.findAll(),
+            this._dispensaDAO.findAll()
         ]);
+        const estaDispensado = this.criarConsultaDeDispensas(dispensas);
         // Registros históricos podem pertencer a alunos arquivados após uma
         // importação. Mantemos seus contatos para montar os CSVs completos.
         const alunosPorMatricula = new Map([
@@ -416,6 +447,9 @@ export class RelatorioService {
                 if (registroDaAula && ['Abonada', 'Dispensada'].includes(registroDaAula.situacao)) {
                     return { aula, ausente: false, causa: '' };
                 }
+                if (aluno && estaDispensado(aluno.idAluno, aula.cod, data)) {
+                    return { aula, ausente: false, causa: '' };
+                }
                 let ausente = movimentos[0]?.tipo === 'entrada' || Boolean(registroDaAula?.falta);
                 let causa: string = ausente ? 'chamada' : ''; 
                 movimentos.filter(m => m.horario <= aula.horaInicio).forEach(m => {
@@ -482,16 +516,24 @@ export class RelatorioService {
             { inicio: 9, fim: 10 }
         ];
         const periodo = periodos[bimestre - 1];
-        const dataInicio = new Date(ano, periodo.inicio, 1);
-        const dataFim = new Date(ano, periodo.fim + 1, 0, 23, 59, 59, 999);
-        const [todosRegistros, grades, configuracoes, movimentacoes] = await Promise.all([
+        // Os dias da chamada são gravados à meia-noite UTC: o período também é recortado em UTC,
+        // para o fuso do servidor não puxar o dia 1º do bimestre seguinte nem perder o primeiro.
+        const dataInicio = new Date(Date.UTC(ano, periodo.inicio, 1));
+        const dataFim = new Date(Date.UTC(ano, periodo.fim + 1, 0, 23, 59, 59, 999));
+        const [todosRegistros, grades, configuracoes, movimentacoes, alunosAtivos, dispensas] = await Promise.all([
             this._registroDAO.findAll(),
             this._gradeHorarioDAO.findAll(),
             this._configuracaoAlertaFaltaDAO.findAll(),
-            this._movimentacaoDAO.findAll()
+            this._movimentacaoDAO.findNoPeriodo(dataInicio, dataFim),
+            this._alunoDAO.findAll(),
+            this._dispensaDAO.findAll()
         ]);
+        // Alunos arquivados pela importação da lista oficial não geram alertas.
+        const alunosPorMatricula = new Map(alunosAtivos.map(aluno => [aluno.matricula, aluno]));
+        const estaDispensado = this.criarConsultaDeDispensas(dispensas);
         const registros = todosRegistros.filter(registro =>
             registro.dia >= dataInicio && registro.dia <= dataFim &&
+            alunosPorMatricula.has(registro.matricula) &&
             !["Abonada", "Dispensada"].includes(registro.situacao)
         );
         const limitesPorCarga = new Map(configuracoes.map(configuracao => [
@@ -510,6 +552,8 @@ export class RelatorioService {
             totalFaltas: number;
         }>();
         const registrarFaltaDaDisciplina = (registro: Registro, grade: typeof grades[number]): void => {
+            // Uma dispensa vigente da disciplina tira a aula da contagem.
+            if (estaDispensado(alunosPorMatricula.get(registro.matricula)?.idAluno, grade.cod, registro.dia)) return;
             const chave = `${registro.matricula}\u0000${registro.turma}\u0000${grade.turma}\u0000${grade.cod}`;
             const falta = faltasPorAlunoEDisciplina.get(chave) || {
                 registro,

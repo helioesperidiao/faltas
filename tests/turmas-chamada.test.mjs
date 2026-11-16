@@ -32,7 +32,7 @@ test('não associa siglas ou nomes ambíguos e prefere uma correspondência exat
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 
-async function iniciarTela(falharChamada = false) {
+async function iniciarTela(falharChamada = false, registrosSalvos = null) {
   const elementos = new Map();
   const elemento = () => ({
     value: '', style: {}, textContent: '', innerHTML: '', children: [],
@@ -51,11 +51,16 @@ async function iniciarTela(falharChamada = false) {
       if (url === 'api/v1/gradehorarios') return { success: true, data: { gradeHorarios: itens('EConInf-3PMA', 'Outra') } };
       if (url === 'api/v1/alunos') return { success: true, data: { alunos: itens('ETecInf-3PMA', 'ForaDaGrade') } };
       if (url.startsWith('api/v1/alunos/turma/')) return { success: true, data: { alunos: [{ matricula: '123', alunoNome: 'Ana' }] } };
-      if (url.startsWith('api/v1/registro/chamada?')) return falharChamada ? { success: false } : { success: true, data: { registros: [{ matricula: '123', falta: true, idRegistro: 'existente' }] } };
+      if (url.startsWith('api/v1/registros/chamada?')) return falharChamada ? { success: false } : { success: true, data: { registros: registrosSalvos ?? [{ matricula: '123', falta: true, idRegistro: 'existente' }] } };
       throw Error(url);
     }
     async put(url, id, objeto) { chamadas.push({ url, id, objeto }); return { success: true }; }
-    async post() { throw Error('Não deve criar chamada duplicada'); }
+    async post(url, objeto) {
+      if (!registrosSalvos) throw Error('Não deve criar chamada duplicada');
+      chamadas.push({ url, objeto, metodo: 'POST' });
+      await new Promise(resolve => setImmediate(resolve));
+      return { success: true, data: { registros: [{ idRegistro: 'novo' }] } };
+    }
   }
   const html = readFileSync(new URL('../src/public/telaChamada.html', import.meta.url), 'utf8');
   const script = html.match(/<script type="module">([\s\S]*?)<\/script>/)[1].replace(/^\s*import .*;\s*$/gm, '');
@@ -72,10 +77,12 @@ test('a chamada usa a turma da grade, recupera e atualiza o registro da turma le
   select.value = 'EConInf-3PMA';
   await window.selecionarTurma();
   assert.ok(chamadas.includes('api/v1/alunos/turma/ETecInf-3PMA'));
-  assert.ok(chamadas.some(url => typeof url === 'string' && url.startsWith('api/v1/registro/chamada?turma=ETecInf-3PMA&')));
+  assert.ok(chamadas.some(url => typeof url === 'string' && url.startsWith('api/v1/registros/chamada?turma=ETecInf-3PMA&')));
   assert.equal(document.getElementById('sum-absent').innerHTML, 1);
   await window.salvarChamada();
-  assert.equal(chamadas.find(item => typeof item === 'object').id, 'existente');
+  const atualizacao = chamadas.find(item => typeof item === 'object');
+  assert.equal(atualizacao.id, 'existente');
+  assert.equal(atualizacao.url, 'api/v1/registros');
 });
 
 test('a chamada não pode começar se a consulta dos registros falhar', async () => {
@@ -84,4 +91,18 @@ test('a chamada não pode começar se a consulta dos registros falhar', async ()
   await window.selecionarTurma();
   assert.equal(document.getElementById('btn-comecar-chamada').style.display, 'none');
   assert.match(document.getElementById('turma-aviso').textContent, /Não foi possível carregar a chamada/);
+});
+
+test('clique duplo em Faltou cria um único registro e corrige o mesmo via PUT', async () => {
+  const { document, window, chamadas } = await iniciarTela(false, []);
+  document.getElementById('turma-select').value = 'EConInf-3PMA';
+  document.getElementById('data-chamada').value = '2026-03-02';
+  await window.selecionarTurma();
+  await Promise.all([window.marcarFalta(), window.marcarFalta()]);
+  await window.salvarChamada();
+  const posts = chamadas.filter(item => item?.metodo === 'POST');
+  assert.equal(posts.length, 1);
+  assert.equal(posts[0].url, 'api/v1/registros');
+  assert.equal(posts[0].objeto.registro.falta, true);
+  assert.equal(chamadas.find(item => typeof item === 'object' && !item.metodo).id, 'novo');
 });

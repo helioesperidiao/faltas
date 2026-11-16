@@ -17,3 +17,9 @@ Cada registro da grade agora guarda a duração da aula em minutos e a carga sem
 Os alertas calculados são gravados na coleção `alertasFaltas`, com o aluno, turma, disciplina, bimestre, faltas e regra que gerou o aviso. As regras ficam na coleção `configuracoesAlertasFaltas`, iniciada com 50 minutos semanais para 3 faltas e 100 minutos semanais para 5 faltas.
 
 Na aba **Alertas de Faltas**, o cargo `Processo Pedagógico` pode alterar esses limites, cadastrar outras cargas semanais ou remover regras que não devem gerar alertas. A regra usada em cada alerta fica registrada, mesmo se a configuração for ajustada depois.
+
+## O que fica fora da contagem
+
+Além das faltas abonadas, dispensadas ou excluídas, ficam fora dos alertas os alunos arquivados pela importação da lista oficial e as aulas cobertas por uma dispensa vigente. Como a chamada é geral, a dispensa é aplicada por disciplina: uma falta em um dia em que o aluno está dispensado de `HIS` continua contando nas outras disciplinas do dia, mas não em `HIS`. A mesma regra vale para os arquivos CSV do fechamento diário.
+
+O bimestre é recortado em UTC, igual aos dias da chamada: o 1º bimestre vai de `01/01 00:00` a `31/03 23:59:59` UTC, e uma falta de `01/04` pertence somente ao 2º bimestre. As entradas e saídas do período são lidas por completo, sem o limite de 200 registros da listagem.

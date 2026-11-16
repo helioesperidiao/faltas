@@ -1,3 +1,4 @@
+import { ErrorResponse } from "../http/ErrorResponse";
 import { ObjectId } from "mongodb";
 import { Auditoria } from "./Auditoria";
 
@@ -22,10 +23,10 @@ export class GradeHorario {
     }
     set idGradeHorario(value: string) {
         if (!value) {
-            throw new Error("idGradeHorario é obrigatório.");
+            throw new ErrorResponse(400, "idGradeHorario é obrigatório.");
         }
         if (!ObjectId.isValid(value)) {
-            throw new Error(`idGradeHorario inválido: "${value}".`);
+            throw new ErrorResponse(400, `idGradeHorario inválido: "${value}".`);
         }
         this._idGradeHorario = value;
     }
@@ -35,10 +36,10 @@ export class GradeHorario {
     }
     set turma(value: string) {
         if (typeof value !== "string" || value.trim().length === 0) {
-            throw new Error("turma é obrigatória.");
+            throw new ErrorResponse(400, "turma é obrigatória.");
         }
         if (value.trim().length > 20) {
-            throw new Error("turma pode ter no máximo 20 caracteres.");
+            throw new ErrorResponse(400, "turma pode ter no máximo 20 caracteres.");
         }
         this._turma = value.trim();
     }
@@ -63,7 +64,7 @@ export class GradeHorario {
     }
     set duracaoAulaMinutos(value: number) {
         if (!Number.isInteger(value) || value <= 0 || value > 24 * 60) {
-            throw new Error("duracaoAulaMinutos deve ser um número inteiro positivo.");
+            throw new ErrorResponse(400, "duracaoAulaMinutos deve ser um número inteiro positivo.");
         }
         this._duracaoAulaMinutos = value;
     }
@@ -74,7 +75,7 @@ export class GradeHorario {
     }
     set cargaHorariaSemanalMinutos(value: number) {
         if (!Number.isInteger(value) || value <= 0 || value > 7 * 24 * 60) {
-            throw new Error("cargaHorariaSemanalMinutos deve ser um número inteiro positivo.");
+            throw new ErrorResponse(400, "cargaHorariaSemanalMinutos deve ser um número inteiro positivo.");
         }
         this._cargaHorariaSemanalMinutos = value;
     }
@@ -85,7 +86,7 @@ export class GradeHorario {
         const fim = GradeHorario.horarioParaMinutos(horaFim);
         const duracao = fim - inicio;
         if (duracao <= 0) {
-            throw new Error("horaFim deve ser posterior a horaInicio.");
+            throw new ErrorResponse(400, "horaFim deve ser posterior a horaInicio.");
         }
         return duracao;
     }
@@ -93,18 +94,18 @@ export class GradeHorario {
     public static horarioParaMinutos(value: string | number): number {
         if (typeof value === "number") {
             if (!Number.isFinite(value) || value < 0) {
-                throw new Error(`horário inválido: "${value}".`);
+                throw new ErrorResponse(400, `horário inválido: "${value}".`);
             }
             if (Number.isInteger(value) && value > 23) {
                 const hora = Math.floor(value / 100);
                 const minuto = value % 100;
                 if (value > 2359 || minuto >= 60) {
-                    throw new Error(`horário inválido: "${value}".`);
+                    throw new ErrorResponse(400, `horário inválido: "${value}".`);
                 }
                 return hora * 60 + minuto;
             }
             if (value >= 24) {
-                throw new Error(`horário inválido: "${value}".`);
+                throw new ErrorResponse(400, `horário inválido: "${value}".`);
             }
             return value > 0 && value < 1 ? Math.round(value * 24 * 60) : Math.round(value * 60);
         }
@@ -112,12 +113,12 @@ export class GradeHorario {
         const texto = String(value || '').trim().toLowerCase().replace('h', ':');
         const correspondencia = texto.match(/^(\d{1,2})(?::(\d{1,2})(?::\d{1,2})?)?$/);
         if (!correspondencia) {
-            throw new Error(`horário inválido: "${value}".`);
+            throw new ErrorResponse(400, `horário inválido: "${value}".`);
         }
         const hora = Number(correspondencia[1]);
         const minuto = Number(correspondencia[2] || 0);
         if (hora >= 24 || minuto >= 60) {
-            throw new Error(`horário inválido: "${value}".`);
+            throw new ErrorResponse(400, `horário inválido: "${value}".`);
         }
         return hora * 60 + minuto;
     }
@@ -125,16 +126,16 @@ export class GradeHorario {
     private normalizarHorario(value: string | number, campo: string): string {
         if (typeof value === "number") {
             if (!Number.isFinite(value) || value < 0) {
-                throw new Error(`${campo} inválido: "${value}".`);
+                throw new ErrorResponse(400, `${campo} inválido: "${value}".`);
             }
             if (Number.isInteger(value) && value > 23) {
                 if (value > 2359 || value % 100 >= 60) {
-                    throw new Error(`${campo} inválido: "${value}".`);
+                    throw new ErrorResponse(400, `${campo} inválido: "${value}".`);
                 }
                 return this.formatarMinutos(Math.floor(value / 100) * 60 + value % 100, campo);
             }
             if (value >= 24) {
-                throw new Error(`${campo} inválido: "${value}".`);
+                throw new ErrorResponse(400, `${campo} inválido: "${value}".`);
             }
             const minutos = value > 0 && value < 1 ? Math.round(value * 24 * 60) : Math.round(value * 60);
             return this.formatarMinutos(minutos, campo);
@@ -143,19 +144,19 @@ export class GradeHorario {
         const texto = String(value || '').trim().toLowerCase().replace('h', ':');
         const correspondencia = texto.match(/^(\d{1,2})(?::(\d{1,2})(?::\d{1,2})?)?$/);
         if (!correspondencia) {
-            throw new Error(`${campo} inválido: "${value}". Use formatos como 7, 07:00 ou 07h30.`);
+            throw new ErrorResponse(400, `${campo} inválido: "${value}". Use formatos como 7, 07:00 ou 07h30.`);
         }
         const hora = Number(correspondencia[1]);
         const minuto = Number(correspondencia[2] || 0);
         if (minuto >= 60) {
-            throw new Error(`${campo} inválido: "${value}".`);
+            throw new ErrorResponse(400, `${campo} inválido: "${value}".`);
         }
         return this.formatarMinutos(hora * 60 + minuto, campo);
     }
 
     private formatarMinutos(minutos: number, campo: string): string {
         if (minutos < 0 || minutos >= 24 * 60) {
-            throw new Error(`${campo} inválido.`);
+            throw new ErrorResponse(400, `${campo} inválido.`);
         }
         const hora = Math.floor(minutos / 60);
         const minuto = minutos % 60;
@@ -176,10 +177,10 @@ export class GradeHorario {
     }
     set dia(value: string) {
         if (typeof value !== "string" || value.trim().length === 0) {
-            throw new Error("dia é obrigatório.");
+            throw new ErrorResponse(400, "dia é obrigatório.");
         }
         if (value.trim().length > 20) {
-            throw new Error("dia pode ter no máximo 20 caracteres.");
+            throw new ErrorResponse(400, "dia pode ter no máximo 20 caracteres.");
         }
         this._dia = value.trim();
     }
@@ -189,10 +190,10 @@ export class GradeHorario {
     }
     set cod(value: string) {
         if (typeof value !== "string" || value.trim().length === 0) {
-            throw new Error("cod é obrigatório.");
+            throw new ErrorResponse(400, "cod é obrigatório.");
         }
         if (value.trim().length > 20) {
-            throw new Error("cod pode ter no máximo 20 caracteres.");
+            throw new ErrorResponse(400, "cod pode ter no máximo 20 caracteres.");
         }
         this._cod = value.trim();
     }
@@ -202,10 +203,10 @@ export class GradeHorario {
     }
     set disciplina(value: string) {
         if (typeof value !== "string" || value.trim().length === 0) {
-            throw new Error("disciplina é obrigatória.");
+            throw new ErrorResponse(400, "disciplina é obrigatória.");
         }
         if (value.trim().length > 100) {
-            throw new Error("disciplina pode ter no máximo 100 caracteres.");
+            throw new ErrorResponse(400, "disciplina pode ter no máximo 100 caracteres.");
         }
         this._disciplina = value.trim();
     }

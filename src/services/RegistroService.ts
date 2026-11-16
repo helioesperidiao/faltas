@@ -40,6 +40,22 @@ export class RegistroService {
             );
         }
 
+        // A chamada geral é uma por aluno e dia: um reenvio corrige o registro existente.
+        if (registro.codDisciplina === "GERAL") {
+            const existente = await this._registroDAO.findGeralDoAlunoNoDia(registro.matricula, registro.dia);
+            if (existente) {
+                existente.falta = registro.falta;
+                existente.atrasado = registro.atrasado;
+                existente.nomeAcompanhante = registro.nomeAcompanhante;
+                await this._registroDAO.update(existente, funcionarioLogado);
+                log.info("chamada geral já existia; registro corrigido", {
+                    idRegistro: existente.idRegistro,
+                    matricula: existente.matricula,
+                });
+                return existente;
+            }
+        }
+
         const alunos = await this._alunoDAO.findByField("matricula", registro.matricula);
         if (alunos.length === 0) {
             throw new ErrorResponse(404, "Aluno não encontrado", { matricula: registro.matricula });

@@ -85,6 +85,21 @@ export class MovimentacaoDAO {
         return docs.map(doc => this.toMovimentacao(doc));
     }
 
+    /**
+     * Movimentações de um intervalo, sem o limite da listagem. A margem de um dia
+     * cobre a diferença entre as datas locais das movimentações e as datas UTC dos
+     * registros; quem chama compara o dia exato.
+     */
+    async findNoPeriodo(dataInicio: Date, dataFim: Date): Promise<Movimentacao[]> {
+        log.debug("findNoPeriodo()", { dataInicio, dataFim });
+        const umDia = 24 * 60 * 60 * 1000;
+        const docs = await (await this.getCollection()).find({
+            "auditoria.deletadoEm": null,
+            data: { $gte: new Date(dataInicio.getTime() - umDia), $lte: new Date(dataFim.getTime() + umDia) }
+        }).toArray();
+        return docs.map(doc => this.toMovimentacao(doc));
+    }
+
     private toMovimentacao(doc: any): Movimentacao {
         const movimentacao = new Movimentacao();
         movimentacao.idMovimentacao = doc._id.toHexString();

@@ -1,3 +1,4 @@
+import { ErrorResponse } from "../http/ErrorResponse";
 import { ObjectId } from "mongodb";
 import { Auditoria } from "./Auditoria";
 
@@ -33,10 +34,10 @@ export class Registro {
     }
     set idRegistro(value: string) {
         if (!value) {
-            throw new Error("idRegistro é obrigatório.");
+            throw new ErrorResponse(400, "idRegistro é obrigatório.");
         }
         if (!ObjectId.isValid(value)) {
-            throw new Error(`idRegistro inválido: "${value}".`);
+            throw new ErrorResponse(400, `idRegistro inválido: "${value}".`);
         }
         this._idRegistro = value;
     }
@@ -47,10 +48,10 @@ export class Registro {
     }
     set ano(value: number) {
         if (typeof value !== "number" || isNaN(value)) {
-            throw new Error("ano deve ser um número.");
+            throw new ErrorResponse(400, "ano deve ser um número.");
         }
         if (value < 2000 || value > 2100) {
-            throw new Error(`ano inválido: "${value}".`);
+            throw new ErrorResponse(400, `ano inválido: "${value}".`);
         }
         this._ano = value;
     }
@@ -61,7 +62,7 @@ export class Registro {
     }
     set codDisciplina(value: string) {
         if (typeof value !== "string" || value.trim().length === 0) {
-            throw new Error("codDisciplina é obrigatório.");
+            throw new ErrorResponse(400, "codDisciplina é obrigatório.");
         }
         this._codDisciplina = value.trim();
     }
@@ -72,7 +73,7 @@ export class Registro {
     }
     set horaInicio(value: number) {
         if (typeof value !== "number" || value < 0 || value > 23) {
-            throw new Error(`horaInicio inválido: "${value}". Deve ser entre 0 e 23.`);
+            throw new ErrorResponse(400, `horaInicio inválido: "${value}". Deve ser entre 0 e 23.`);
         }
         this._horaInicio = value;
     }
@@ -83,7 +84,7 @@ export class Registro {
     }
     set horaFim(value: number) {
         if (typeof value !== "number" || value < 0 || value > 23) {
-            throw new Error(`horaFim inválido: "${value}". Deve ser entre 0 e 23.`);
+            throw new ErrorResponse(400, `horaFim inválido: "${value}". Deve ser entre 0 e 23.`);
         }
         this._horaFim = value;
     }
@@ -94,7 +95,7 @@ export class Registro {
     }
     set matricula(value: string) {
         if (typeof value !== "string" || value.trim().length === 0) {
-            throw new Error("matricula é obrigatória.");
+            throw new ErrorResponse(400, "matricula é obrigatória.");
         }
         this._matricula = value.trim();
     }
@@ -117,7 +118,7 @@ export class Registro {
     }
     set falta(value: boolean) {
         if (typeof value !== "boolean") {
-            throw new Error("falta deve ser um valor booleano (true/false).");
+            throw new ErrorResponse(400, "falta deve ser um valor booleano (true/false).");
         }
         this._falta = value;
     }
@@ -128,10 +129,10 @@ export class Registro {
     }
     set dia(value: Date) {
         if (!(value instanceof Date)) {
-            throw new Error("dia deve ser um objeto Date.");
+            throw new ErrorResponse(400, "dia deve ser um objeto Date.");
         }
         if (isNaN(value.getTime())) {
-            throw new Error(`dia inválido: "${value}".`);
+            throw new ErrorResponse(400, `dia inválido: "${value}".`);
         }
         this._dia = value;
     }
@@ -142,7 +143,7 @@ export class Registro {
     }
     set atrasado(value: string) {
         if (value !== "Sim" && value !== "Não") {
-            throw new Error(`atrasado inválido: "${value}". Deve ser "Sim" ou "Não".`);
+            throw new ErrorResponse(400, `atrasado inválido: "${value}". Deve ser "Sim" ou "Não".`);
         }
         this._atrasado = value;
     }
@@ -153,7 +154,7 @@ export class Registro {
     }
     set nomeAcompanhante(value: string) {
         if (typeof value !== "string") {
-            throw new Error("nomeAcompanhante deve ser uma string.");
+            throw new ErrorResponse(400, "nomeAcompanhante deve ser uma string.");
         }
         this._nomeAcompanhante = value.trim();
     }
@@ -165,7 +166,7 @@ export class Registro {
     set situacao(value: string) {
         const permitidos = ["Normal", "Abonada", "Dispensada"];
         if (!permitidos.includes(value)) {
-            throw new Error(`situacao inválida: "${value}". Deve ser uma de: ${permitidos.join(", ")}.`);
+            throw new ErrorResponse(400, `situacao inválida: "${value}". Deve ser uma de: ${permitidos.join(", ")}.`);
         }
         this._situacao = value;
     }

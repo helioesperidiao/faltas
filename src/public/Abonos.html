@@ -148,16 +148,12 @@
       return true;
     }
 
-    // envia o atestado via multipart/form-data diretamente (fora do ApiService, que só trabalha com JSON)
+    // envia o atestado via multipart/form-data; o ApiService.upload devolve
+    // { success, message } também em falha de rede ou resposta sem JSON.
     async function enviarAtestado(idAbono, arquivo) {
       const formData = new FormData();
       formData.append("arquivo", arquivo);
-      const response = await fetch(`api/v1/abonos/${idAbono}/arquivo`, {
-        method: "POST",
-        headers: { "Authorization": `Bearer ${token}` },
-        body: formData
-      });
-      return await response.json();
+      return await api.upload(`api/v1/abonos/${idAbono}/arquivo`, formData);
     }
 
     const btnListar = createButton("Listar", "btn-primary");
@@ -174,7 +170,13 @@
       if (resposta?.success) {
         const idAbono = resposta.data.abonos[0].idAbono;
         if (fileAtestado.files.length > 0) {
-          await enviarAtestado(idAbono, fileAtestado.files[0]);
+          const envio = await enviarAtestado(idAbono, fileAtestado.files[0]);
+          if (!envio?.success) {
+            mostrarMensagem(`Abono solicitado, mas o atestado não foi anexado: ${envio?.message || "erro no envio"}. Selecione o abono e anexe de novo.`, "warning");
+            limparFormulario();
+            listAll();
+            return;
+          }
         }
         mostrarMensagem(resposta.message || "Abono solicitado com sucesso", "success");
         limparFormulario();
@@ -197,9 +199,15 @@
       }
 
       const resposta = await api.put("api/v1/abonos", id, montarObjeto());
-      if (resposta.success) {
+      if (resposta?.success) {
         if (fileAtestado.files.length > 0) {
-          await enviarAtestado(id, fileAtestado.files[0]);
+          const envio = await enviarAtestado(id, fileAtestado.files[0]);
+          if (!envio?.success) {
+            mostrarMensagem(`Abono atualizado, mas o atestado não foi anexado: ${envio?.message || "erro no envio"}.`, "warning");
+            limparFormulario();
+            listAll();
+            return;
+          }
         }
         mostrarMensagem(resposta.message || "Abono atualizado com sucesso", "success");
         limparFormulario();
@@ -310,11 +318,11 @@
         tr.appendChild(tdMatricula);
 
         const tdInicio = document.createElement("td");
-        tdInicio.textContent = new Date(abono.dataInicio).toLocaleDateString("pt-BR");
+        tdInicio.textContent = new Date(abono.dataInicio).toLocaleDateString("pt-BR", { timeZone: "UTC" });
         tr.appendChild(tdInicio);
 
         const tdFim = document.createElement("td");
-        tdFim.textContent = new Date(abono.dataFim).toLocaleDateString("pt-BR");
+        tdFim.textContent = new Date(abono.dataFim).toLocaleDateString("pt-BR", { timeZone: "UTC" });
         tr.appendChild(tdFim);
 
         const tdMotivo = document.createElement("td");

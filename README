@@ -136,3 +136,7 @@ Em Entradas e Saídas, a matrícula adiciona o aluno à prévia de atrasos ou sa
 14. PESQUISA E CELULAR
 
 As listagens possuem pesquisa com lupa e ordenação alfabética. As telas se adaptam ao celular, inclusive as ações de abono do inspetor. Consulte `docs/listagens-e-layout-movel.md`.
+
+15. TESTES
+
+`npm test` roda os testes da tela de chamada. `npm run test:e2e` sobe o servidor num banco descartável (`faltas_teste_claude`) e percorre todos os fluxos pela API; requer o MongoDB em execução. Consulte `docs/testes.md`, os bugs corrigidos em `docs/BUG_AUDIT.md` e os itens em aberto em `docs/PENDENCIAS.md`.
