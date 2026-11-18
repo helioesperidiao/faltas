@@ -259,6 +259,21 @@ export class AlunoDAO {
     }
 
     /**
+     * Alunos ativos da turma atual, para a chamada. A turma é comparada já corrigida
+     * por toAluno, como nos relatórios: um aluno gravado com acento corrompido
+     * ("AdministraÃ§Ã£o-1A") entra na turma que o seletor mostra ("Administração-1A").
+     */
+    public async findAtivosPorTurma(turma: string): Promise<Aluno[]> {
+        log.debug("findAtivosPorTurma()", { turma });
+        const collection = await this.getCollection();
+        const docs = await collection.find({
+            "auditoria.deletadoEm": null,
+            $or: [{ turma }, { turma: { $regex: "[ÃÂ\uFFFD]" } }]
+        }).sort({ _id: 1 }).toArray();
+        return docs.map(doc => this.toAluno(doc)).filter(aluno => aluno.turma === turma);
+    }
+
+    /**
      * Retorna alunos que estiveram na turma em qualquer parte do período.
      * Vínculos encerrados ficam disponíveis por 12 meses após a troca de turma.
      */

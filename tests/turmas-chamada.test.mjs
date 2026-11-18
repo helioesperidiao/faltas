@@ -1,38 +1,28 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { vincularTurmasDaGrade } from '../src/public/js/TurmasChamada.mjs';
+import { turmasDosAlunos } from '../src/public/js/TurmasChamada.mjs';
 
 const itens = (...nomes) => nomes.map(turma => ({ turma }));
 
-test('as opções vêm apenas da grade, incluindo turmas sem alunos e sem duplicar aulas', () => {
-  assert.deepEqual(vincularTurmasDaGrade(itens('B', 'A', 'A'), itens('A', 'C')), [
-    { turma: 'A', turmaAlunos: 'A' }, { turma: 'B', turmaAlunos: null, ambiguo: false }
-  ]);
+test('turmas dos alunos: uma opção por turma, sem vazias e sem espaços em volta', () => {
+  assert.deepEqual(turmasDosAlunos([...itens('2A', ' 2A ', '2C', '', '   ', '2C'), {}, { turma: null }]), ['2A', '2C']);
+  assert.deepEqual(turmasDosAlunos([]), []);
 });
 
 test('agrupa turmas pelo nome e ordena os anos numericamente', () => {
-  const resultado = vincularTurmasDaGrade(itens('2quim', '3adm', '1quim', '2adm', '1adm', '10adm'), []);
-  assert.deepEqual(resultado.map(item => item.turma), ['1adm', '2adm', '3adm', '10adm', '1quim', '2quim']);
+  const resultado = turmasDosAlunos(itens('2quim', '3adm', '1quim', '2adm', '1adm', '10adm'));
+  assert.deepEqual(resultado, ['1adm', '2adm', '3adm', '10adm', '1quim', '2quim']);
 });
 
-test('correspondência normalizada e siglas legadas únicas preservam o nome cadastrado no aluno', () => {
-  assert.deepEqual(vincularTurmasDaGrade(itens('EConInf-3PMA', '1-A'), itens('ETecInf-3PMA', '1 a')), [
-    { turma: '1-A', turmaAlunos: '1 a' }, { turma: 'EConInf-3PMA', turmaAlunos: 'ETecInf-3PMA' }
-  ]);
-});
-
-test('não associa siglas ou nomes ambíguos e prefere uma correspondência exata', () => {
-  assert.deepEqual(vincularTurmasDaGrade(itens('EConInf-3PMA', 'ETecInf-3PMA'), itens('ETecInf-3PMA')), [
-    { turma: 'EConInf-3PMA', turmaAlunos: null, ambiguo: true },
-    { turma: 'ETecInf-3PMA', turmaAlunos: 'ETecInf-3PMA' }
-  ]);
-  assert.equal(vincularTurmasDaGrade(itens('1-A'), itens('1 A', '1A'))[0].ambiguo, true);
-  assert.ok(vincularTurmasDaGrade(itens('1-A', '1 A'), itens('1-A')).every(item => item.ambiguo));
+test('nomes diferentes na planilha continuam turmas diferentes (a busca dos alunos é pelo nome exato)', () => {
+  assert.deepEqual(turmasDosAlunos(itens('EConInf-3PMA', 'ETecInf-3PMA', '1 A', '1A')), ['1 A', '1A', 'EConInf-3PMA', 'ETecInf-3PMA']);
 });
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 
-async function iniciarTela(falharChamada = false, registrosSalvos = null, alunosDaTurma = null) {
+const ANA = { matricula: '123', alunoNome: 'Ana', turma: 'ETecInf-3PMA' };
+
+async function iniciarTela(falharChamada = false, registrosSalvos = null, alunosDaTurma = null, alunosDaEscola = [ANA, { matricula: '999', alunoNome: 'Zé', turma: 'ForaDaGrade' }]) {
   const elementos = new Map();
   const elemento = () => ({
     value: '', style: {}, textContent: '', innerHTML: '', children: [],
@@ -48,9 +38,11 @@ async function iniciarTela(falharChamada = false, registrosSalvos = null, alunos
   class ApiService {
     async get(url) {
       chamadas.push(url);
-      if (url === 'api/v1/gradehorarios') return { success: true, data: { gradeHorarios: itens('EConInf-3PMA', 'Outra') } };
-      if (url === 'api/v1/alunos') return { success: true, data: { alunos: itens('ETecInf-3PMA', 'ForaDaGrade') } };
-      if (url.startsWith('api/v1/alunos/turma/')) return { success: true, data: { alunos: alunosDaTurma ?? [{ matricula: '123', alunoNome: 'Ana' }] } };
+      if (url === 'api/v1/alunos') return { success: true, data: { alunos: alunosDaEscola } };
+      if (url.startsWith('api/v1/alunos/turma/')) {
+        const turma = decodeURIComponent(url.slice('api/v1/alunos/turma/'.length));
+        return { success: true, data: { alunos: alunosDaTurma ?? alunosDaEscola.filter(aluno => aluno.turma === turma) } };
+      }
       if (url.startsWith('api/v1/registros/chamada?')) return falharChamada ? { success: false } : { success: true, data: { registros: registrosSalvos ?? [{ matricula: '123', falta: true, idRegistro: 'existente' }] } };
       throw Error(url);
     }
@@ -65,16 +57,46 @@ async function iniciarTela(falharChamada = false, registrosSalvos = null, alunos
   const html = readFileSync(new URL('../src/public/telaChamada.html', import.meta.url), 'utf8');
   const script = html.match(/<script type="module">([\s\S]*?)<\/script>/)[1].replace(/^\s*import .*;\s*$/gm, '');
   const window = { alert() {}, confirm: () => true };
-  runInNewContext(script, { document, window, ApiService, vincularTurmasDaGrade, exigirSessao: () => ({ token: 'teste' }), montarTopbar() {}, escaparHtml: x => x, setTimeout() {}, console });
+  runInNewContext(script, { document, window, ApiService, turmasDosAlunos, exigirSessao: () => ({ token: 'teste' }), montarTopbar() {}, escaparHtml: x => x, setTimeout() {}, console });
   await new Promise(resolve => setImmediate(resolve));
   return { document, window, chamadas };
 }
 
-test('a chamada usa a turma da grade, recupera e atualiza o registro da turma legada', async () => {
+// Planilha com 20 alunos do 2A e 10 do 2C (alguns com espaços em volta do nome da turma).
+const planilha = [
+  ...Array.from({ length: 20 }, (_, i) => ({ matricula: `A${i}`, alunoNome: `Aluno A${i}`, turma: i % 5 === 0 ? ' 2A ' : '2A' })),
+  ...Array.from({ length: 10 }, (_, i) => ({ matricula: `C${i}`, alunoNome: `Aluno C${i}`, turma: '2C' }))
+];
+
+test('o seletor lista as turmas da planilha de alunos, sem repetir, e cada turma abre só os seus alunos', async () => {
+  const alunos = planilha.map(aluno => ({ ...aluno, turma: aluno.turma.trim() }));
+  const { document, window, chamadas } = await iniciarTela(false, [], null, alunos);
+  const select = document.getElementById('turma-select');
+  assert.deepEqual(select.children.map(opcao => opcao.value), ['2A', '2C']);
+  assert.ok(!chamadas.includes('api/v1/gradehorarios'), 'a grade não define as turmas da chamada');
+  document.getElementById('data-chamada').value = '2026-03-02';
+  select.value = '2A';
+  await window.selecionarTurma();
+  assert.equal(document.getElementById('sum-total').innerHTML, 20);
+  assert.ok(chamadas.some(url => typeof url === 'string' && url.startsWith('api/v1/registros/chamada?turma=2A&')));
+  select.value = '2C';
+  await window.selecionarTurma();
+  assert.equal(document.getElementById('sum-total').innerHTML, 10);
+  await window.marcarFalta();
+  const falta = chamadas.find(item => item?.metodo === 'POST');
+  assert.ok(falta.objeto.registro.matricula.startsWith('C'), 'a falta é do aluno da turma selecionada');
+});
+
+test('turma que só existe na planilha de alunos aparece; a grade não é consultada', async () => {
+  const { document } = await iniciarTela();
+  const opcoes = document.getElementById('turma-select').children.map(opcao => opcao.value);
+  assert.deepEqual(opcoes, ['ETecInf-3PMA', 'ForaDaGrade']);
+});
+
+test('a chamada recupera e atualiza o registro já salvo da turma escolhida', async () => {
   const { document, window, chamadas } = await iniciarTela();
   const select = document.getElementById('turma-select');
-  assert.deepEqual(select.children.map(opcao => opcao.value), ['EConInf-3PMA', 'Outra']);
-  select.value = 'EConInf-3PMA';
+  select.value = 'ETecInf-3PMA';
   await window.selecionarTurma();
   assert.ok(chamadas.includes('api/v1/alunos/turma/ETecInf-3PMA'));
   assert.ok(chamadas.some(url => typeof url === 'string' && url.startsWith('api/v1/registros/chamada?turma=ETecInf-3PMA&')));
@@ -87,7 +109,7 @@ test('a chamada usa a turma da grade, recupera e atualiza o registro da turma le
 
 test('a chamada não pode começar se a consulta dos registros falhar', async () => {
   const { document, window } = await iniciarTela(true);
-  document.getElementById('turma-select').value = 'EConInf-3PMA';
+  document.getElementById('turma-select').value = 'ETecInf-3PMA';
   await window.selecionarTurma();
   assert.equal(document.getElementById('btn-comecar-chamada').style.display, 'none');
   assert.match(document.getElementById('turma-aviso').textContent, /Não foi possível carregar a chamada/);
@@ -95,7 +117,7 @@ test('a chamada não pode começar se a consulta dos registros falhar', async ()
 
 test('clique duplo em Faltou cria um único registro e corrige o mesmo via PUT', async () => {
   const { document, window, chamadas } = await iniciarTela(false, []);
-  document.getElementById('turma-select').value = 'EConInf-3PMA';
+  document.getElementById('turma-select').value = 'ETecInf-3PMA';
   document.getElementById('data-chamada').value = '2026-03-02';
   await window.selecionarTurma();
   await Promise.all([window.marcarFalta(), window.marcarFalta()]);
@@ -109,7 +131,7 @@ test('clique duplo em Faltou cria um único registro e corrige o mesmo via PUT',
 
 test('limpar a chamada devolve para presença, no banco, a falta já salva', async () => {
   const { document, window, chamadas } = await iniciarTela();
-  document.getElementById('turma-select').value = 'EConInf-3PMA';
+  document.getElementById('turma-select').value = 'ETecInf-3PMA';
   document.getElementById('data-chamada').value = '2026-03-02';
   await window.selecionarTurma();
   assert.equal(document.getElementById('sum-absent').innerHTML, 1);
@@ -125,7 +147,7 @@ test('a chamada não lista aluno que entrou na turma depois da data escolhida', 
     // Cadastrada às 22h de 05/03 em Brasília (já 06/03 em UTC): entra no dia 05/03.
     { matricula: '456', alunoNome: 'Bia', turmaInicioEm: '2026-03-06T01:00:00.000Z' }
   ]);
-  document.getElementById('turma-select').value = 'EConInf-3PMA';
+  document.getElementById('turma-select').value = 'ETecInf-3PMA';
   document.getElementById('data-chamada').value = '2026-03-04';
   await window.selecionarTurma();
   assert.equal(document.getElementById('sum-total').innerHTML, 1);
@@ -138,7 +160,7 @@ test('a chamada não lista aluno que entrou na turma depois da data escolhida', 
 test('navegar durante a gravação da falta não avança nem desfaz o aluno errado', async () => {
   const alunos = ['123', '456', '789', '012'].map((matricula, i) => ({ matricula, alunoNome: 'Aluno ' + i }));
   const { document, window, chamadas } = await iniciarTela(false, [], alunos);
-  document.getElementById('turma-select').value = 'EConInf-3PMA';
+  document.getElementById('turma-select').value = 'ETecInf-3PMA';
   document.getElementById('data-chamada').value = '2026-03-02';
   await window.selecionarTurma();
   const gravando = window.marcarFalta();           // falta do aluno 1 (índice 0)
@@ -153,7 +175,7 @@ test('trocar a data durante o Limpar não grava na chamada nova', async () => {
   const { document, window, chamadas } = await iniciarTela(false, [
     { matricula: '123', falta: true, idRegistro: 'existente' }
   ]);
-  document.getElementById('turma-select').value = 'EConInf-3PMA';
+  document.getElementById('turma-select').value = 'ETecInf-3PMA';
   document.getElementById('data-chamada').value = '2026-03-02';
   await window.selecionarTurma();
   const limpando = window.limparChamada();

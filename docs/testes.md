@@ -6,7 +6,7 @@
 npm test
 ```
 
-Roda `tests/*.test.mjs` com o executor nativo do Node (`node --test`), sem banco nem servidor. Verifica a associação de turmas da chamada e a leitura de planilhas CSV e Excel (inclusive células com quebra de linha e linhas vazias, em `tests/importador-csv.test.mjs`), além de "Limpar chamada" no banco, a chamada sem alunos que entraram depois da data, a gravação que não muda de aluno nem de chamada quando o professor navega, e o CSV com aspa sem par. Cobre o seletor de turmas da chamada, a correspondência de siglas legadas, a recuperação da chamada salva pela rota `api/v1/registros` e o clique duplo em `Faltou`, que deve gerar um único registro. Esses testes não precisam de banco de dados.
+Roda `tests/*.test.mjs` com o executor nativo do Node (`node --test`), sem banco nem servidor. Verifica a associação de turmas da chamada e a leitura de planilhas CSV e Excel (inclusive células com quebra de linha e linhas vazias, em `tests/importador-csv.test.mjs`), além de "Limpar chamada" no banco, a chamada sem alunos que entraram depois da data, a gravação que não muda de aluno nem de chamada quando o professor navega, e o CSV com aspa sem par. Cobre o seletor de turmas da chamada (as turmas vêm dos alunos, sem repetir, e cada turma abre só os seus alunos: 20 do `2A` e 10 do `2C`), a recuperação da chamada salva pela rota `api/v1/registros` e o clique duplo em `Faltou`, que deve gerar um único registro. Esses testes não precisam de banco de dados.
 
 ## Integração com o servidor compilado
 
@@ -32,7 +32,7 @@ npm run test:e2e
 
 Requer o MongoDB de `MONGO_URI` em execução e as variáveis `DEFAULT_ADMIN_*` do `.env`. Os anexos enviados pelo teste são apagados ao final.
 
-Em 16/11/2026 o roteiro tinha 82 verificações: o código anterior às correções passava em 52 e o atual passa em todas. Em 18/11/2026 passou a ter 97, com a gravação dos alertas só quando mudam e as regressões da revisão final (cargos com nome fixo, anexo em abono aprovado, reversão de abono, e-mail recadastrado, turma com acento corrompido); em 17/11/2026 tinha 89, incluindo o boot sem `JWT_SECRET`, o token de funcionário excluído, a chamada antes da entrada na turma, abonos sobrepostos e o cadastro manual de matrícula arquivada.
+Em 16/11/2026 o roteiro tinha 82 verificações: o código anterior às correções passava em 52 e o atual passa em todas. Em 18/11/2026 passou a ter 99, com as turmas da chamada vindas da planilha (cada turma uma vez e com exatamente os seus alunos, inclusive turma gravada com acento corrompido); antes disso tinha 97, com a gravação dos alertas só quando mudam e as regressões da revisão final (cargos com nome fixo, anexo em abono aprovado, reversão de abono, e-mail recadastrado, turma com acento corrompido); em 17/11/2026 tinha 89, incluindo o boot sem `JWT_SECRET`, o token de funcionário excluído, a chamada antes da entrada na turma, abonos sobrepostos e o cadastro manual de matrícula arquivada.
 
 Na integração (`npm run test:integracao`), o aluno do roteiro passa a entrar na turma no início do ano letivo, porque as datas do roteiro são fixas (16 e 17/11/2026) e o aluno só conta a partir da entrada. Com isso, os 17 cenários passam em qualquer dia.
 

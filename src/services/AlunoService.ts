@@ -153,7 +153,7 @@ export class AlunoService {
 
     public findByTurma = async (turma: string): Promise<Aluno[]> => {
         log.debug("findByTurma()", { turma });
-        return await this._alunoDAO.findByField("turma", turma);
+        return await this._alunoDAO.findAtivosPorTurma(turma);
     };
 
     public findAllDeleted = async (funcionarioLogado: Funcionario): Promise<Aluno[]> => {

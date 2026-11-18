@@ -130,7 +130,7 @@ test('simulação HTTP com banco isolado', async t => {
   await t.test('tela de chamada conectada às rotas reais', async () => {
     const { runInNewContext } = require('node:vm');
     const { pathToFileURL } = require('node:url');
-    const { vincularTurmasDaGrade } = await import(pathToFileURL(path.join(root, 'src/public/js/TurmasChamada.mjs')));
+    const { turmasDosAlunos } = await import(pathToFileURL(path.join(root, 'src/public/js/TurmasChamada.mjs')));
     const elementos = new Map();
     const elemento = () => ({ value: '', style: {}, textContent: '', innerHTML: '', children: [],
       classList: {add() {}, remove() {}}, appendChild(filho) {this.children.push(filho);},
@@ -145,7 +145,7 @@ test('simulação HTTP com banco isolado', async t => {
     let script = html.match(/<script type="module">([\s\S]*?)<\/script>/)[1].replace(/^\s*import .*;\s*$/gm, '');
     script = script.replace('  carregarTurmas();', '  globalThis.inicializacaoTurmas = carregarTurmas();');
     const window = {alert: mensagem => {throw new Error(mensagem);}, confirm: () => true};
-    const contexto = {document, window, ApiService: ApiTela, vincularTurmasDaGrade, exigirSessao: () => ({token}), montarTopbar() {}, escaparHtml: x => x, setTimeout() {}, console};
+    const contexto = {document, window, ApiService: ApiTela, turmasDosAlunos, exigirSessao: () => ({token}), montarTopbar() {}, escaparHtml: x => x, setTimeout() {}, console};
     runInNewContext(script, contexto);
     await contexto.inicializacaoTurmas;
     document.getElementById('data-chamada').value = '2026-11-16';

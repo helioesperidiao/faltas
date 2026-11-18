@@ -134,6 +134,21 @@ async function main() {
     const aluno = porTurma[TURMA][0];
     const colegas = ativos.filter(a => a.turma === TURMA);
 
+    // ---------- turmas da chamada (mesma função da tela) ----------
+    {
+      const { turmasDosAlunos } = await import(pathToFileURL(path.join(RAIZ, 'src/public/js/TurmasChamada.mjs')).href);
+      const turmasPlanilha = [...new Set(alunos.map(a => a.turma.trim()).filter(Boolean))].sort();
+      const opcoes = turmasDosAlunos(ativos);
+      ok('chamada: o seletor tem cada turma da planilha uma única vez', JSON.stringify([...opcoes].sort()) === JSON.stringify(turmasPlanilha) && new Set(opcoes).size === opcoes.length, `${opcoes.length} opções / ${turmasPlanilha.length} turmas`);
+      const divergentes = [];
+      for (const turma of opcoes) {
+        const daTurma = (await req('GET', `/api/v1/alunos/turma/${encodeURIComponent(turma)}`, undefined, TK)).json?.data?.alunos || [];
+        const esperadas = alunos.filter(a => a.turma.trim() === turma).map(a => a.matricula).sort();
+        if (JSON.stringify(daTurma.map(a => a.matricula).sort()) !== JSON.stringify(esperadas)) divergentes.push(`${turma}: ${daTurma.length}/${esperadas.length}`);
+      }
+      ok('chamada: cada turma abre exatamente os alunos dela na planilha', divergentes.length === 0, divergentes.join('; '));
+    }
+
     // ---------- grade (importação + substituição) ----------
     const grade = [];
     for (const dia of ['segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira']) {
@@ -315,6 +330,8 @@ async function main() {
       await c.close();
       const rf = await req('GET', `/api/v1/relatorios/frequencia?turma=${encodeURIComponent('Administração-1A')}&dia=${SEG[1]}`, undefined, TK);
       ok('turma gravada com acento corrompido aparece na frequência', (rf.json?.data?.frequencia || []).some(a => a.matricula === '99999999'), JSON.stringify(rf.json?.data?.frequencia));
+      const rt = await req('GET', `/api/v1/alunos/turma/${encodeURIComponent('Administração-1A')}`, undefined, TK);
+      ok('turma gravada com acento corrompido abre os alunos na chamada', (rt.json?.data?.alunos || []).some(a => a.matricula === '99999999' && a.turma === 'Administração-1A'), JSON.stringify(rt.json?.data?.alunos));
     }
     ok('frequência mostra atrasado', JSON.stringify(freq).includes('Atrasado'), JSON.stringify(freq).slice(0, 200));
     r = await req('GET', `/api/v1/relatorios/faltas/mes?turma=${encodeURIComponent(TURMA)}&ano=2026&mes=3`, undefined, TK);
