@@ -150,7 +150,7 @@
         mostrarMensagem("Selecione uma grade para atualizar", "warning");
         return;
       }
-      const resposta = await api.put("api/v1/gradehorarios/", id, montarObjeto());
+      const resposta = await api.put("api/v1/gradehorarios", id, montarObjeto());
       if (resposta.success) {
         mostrarMensagem(resposta.message || "Grade atualizada com sucesso", "success");
         limparFormulario();

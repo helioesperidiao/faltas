@@ -141,6 +141,11 @@ async function main() {
       const resp = await req('GET', '/' + rota.replace(/^\//, ''), undefined, TK);
       ok(`tela da chamada usa rota existente: ${rota}`, resp.status !== 404, resp.status);
     }
+    // Telas que passam um recurso com barra final ao PUT/DELETE geram `recurso//id` (404 em HTML).
+    const paginas = ['Abonos', 'AlertasFaltas', 'Alunos', 'Cargos', 'Funcionarios', 'GradeHorarios', 'telaChamada'];
+    const comBarraDupla = paginas.flatMap(pagina => [...readFileSync(path.join(RAIZ, `src/public/${pagina}.html`), 'utf8')
+      .matchAll(/api\.(put|delete|getById)\(\s*["'`]([^"'`]+\/)["'`]/g)].map(m => `${pagina}: api.${m[1]}("${m[2]}")`));
+    ok('telas não montam URL com barra dupla no PUT/DELETE', comBarraDupla.length === 0, comBarraDupla.join('; '));
     const registrarFalta = async (matricula, dia, falta = true) => req('POST', '/api/v1/registros', { registro: { ano: 2026, codDisciplina: 'GERAL', horaInicio: 0, horaFim: 0, matricula, falta, dia, atrasado: 'Não' } }, TK);
     const ids = {};
     for (const dia of SEG) {
