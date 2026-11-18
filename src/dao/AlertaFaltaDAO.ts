@@ -27,23 +27,56 @@ export class AlertaFaltaDAO {
         return (await this.database.getDb()).collection("alertasFaltas");
     }
 
-    /** Atualiza a tabela de alertas para refletir a situação calculada do bimestre. */
+    /**
+     * Deixa a tabela de alertas igual à situação calculada do bimestre, gravando só o que
+     * mudou: alerta novo ou com dados diferentes é gravado; alerta que deixou de existir
+     * fica inativo; alerta igual ao já gravado não é tocado. Assim `atualizadoEm` marca a
+     * última mudança do alerta, e abrir o painel não regrava milhares de documentos.
+     */
     public async sincronizar(ano: number, bimestre: number, alertas: DadosAlertaFalta[], funcionario: Funcionario): Promise<void> {
         log.debug("sincronizar()", { ano, bimestre, total: alertas.length });
         const collection = await this.collection();
-        const desativados = await collection.updateMany(
-            { ano, bimestre, ativo: true },
-            { $set: { ativo: false, atualizadoEm: new Date(), "auditoria.alteradoPor": funcionario.idFuncionario } }
-        );
-        if (desativados.modifiedCount > 0) {
-            log.debug("alertas antigos desativados", { ano, bimestre, total: desativados.modifiedCount });
-        }
+        const chave = (alerta: Document | DadosAlertaFalta): string =>
+            `${alerta.matricula}\u0000${alerta.turma}\u0000${alerta.codDisciplina}`;
 
-        if (alertas.length === 0) {
-            log.info("sincronização concluída sem novos alertas", { ano, bimestre });
+        // O primeiro documento de cada chave é o que o updateOne abaixo atualiza; cópias
+        // antigas da mesma chave (de consultas simultâneas) só ficam inativas.
+        const gravados = new Map<string, Document>();
+        const desativar: unknown[] = [];
+        for (const doc of await collection.find({ ano, bimestre }).toArray()) {
+            const k = chave(doc);
+            if (gravados.has(k)) {
+                if (doc.ativo) desativar.push(doc._id);
+            } else {
+                gravados.set(k, doc);
+            }
+        }
+        const calculados = new Set(alertas.map(chave));
+        gravados.forEach((doc, k) => {
+            if (doc.ativo && !calculados.has(k)) desativar.push(doc._id);
+        });
+        const camposComparados: (keyof DadosAlertaFalta)[] = ["alunoNome", "disciplina", "totalFaltas", "cargaHorariaSemanalMinutos", "limiteFaltas"];
+        const mudaram = alertas.filter(alerta => {
+            const doc = gravados.get(chave(alerta));
+            return !doc || doc.ativo !== true || camposComparados.some(campo => doc[campo] !== alerta[campo]);
+        });
+
+        if (desativar.length === 0 && mudaram.length === 0) {
+            log.debug("alertas já sincronizados", { ano, bimestre, total: alertas.length });
             return;
         }
-        const resultado = await collection.bulkWrite(alertas.map(alerta => ({
+        if (desativar.length > 0) {
+            await collection.updateMany(
+                { _id: { $in: desativar as never[] } },
+                { $set: { ativo: false, atualizadoEm: new Date(), "auditoria.alteradoPor": funcionario.idFuncionario } }
+            );
+            log.debug("alertas antigos desativados", { ano, bimestre, total: desativar.length });
+        }
+        if (mudaram.length === 0) {
+            log.info("alertas sincronizados", { ano, bimestre, desativados: desativar.length, gravados: 0 });
+            return;
+        }
+        const resultado = await collection.bulkWrite(mudaram.map(alerta => ({
             updateOne: {
                 filter: {
                     ano,
@@ -67,6 +100,7 @@ export class AlertaFaltaDAO {
         log.info("alertas sincronizados", {
             ano,
             bimestre,
+            desativados: desativar.length,
             novos: resultado.upsertedCount,
             atualizados: resultado.modifiedCount,
         });

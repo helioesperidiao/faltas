@@ -268,7 +268,9 @@ export class AlunoDAO {
         const collection = await this.getCollection();
         const docs = await collection.find({
             "auditoria.deletadoEm": null,
-            $or: [{ turma }, { "historicoTurmas.turma": turma }]
+            // toAluno corrige acentos corrompidos (Ã, Â, �) na turma; esses documentos entram
+            // também, e o filtro abaixo compara já com a turma corrigida.
+            $or: [{ turma }, { "historicoTurmas.turma": turma }, { turma: { $regex: "[ÃÂ\uFFFD]" } }]
         }).sort({ _id: 1 }).toArray();
         const alunos = docs.map(doc => this.toAluno(doc));
         // As datas consultadas são dias da chamada; entradas e saídas de turma são instantes,

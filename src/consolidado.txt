@@ -2417,23 +2417,56 @@ export class AlertaFaltaDAO {
         return (await this.database.getDb()).collection("alertasFaltas");
     }
 
-    /** Atualiza a tabela de alertas para refletir a situação calculada do bimestre. */
+    /**
+     * Deixa a tabela de alertas igual à situação calculada do bimestre, gravando só o que
+     * mudou: alerta novo ou com dados diferentes é gravado; alerta que deixou de existir
+     * fica inativo; alerta igual ao já gravado não é tocado. Assim `atualizadoEm` marca a
+     * última mudança do alerta, e abrir o painel não regrava milhares de documentos.
+     */
     public async sincronizar(ano: number, bimestre: number, alertas: DadosAlertaFalta[], funcionario: Funcionario): Promise<void> {
         log.debug("sincronizar()", { ano, bimestre, total: alertas.length });
         const collection = await this.collection();
-        const desativados = await collection.updateMany(
-            { ano, bimestre, ativo: true },
-            { $set: { ativo: false, atualizadoEm: new Date(), "auditoria.alteradoPor": funcionario.idFuncionario } }
-        );
-        if (desativados.modifiedCount > 0) {
-            log.debug("alertas antigos desativados", { ano, bimestre, total: desativados.modifiedCount });
-        }
+        const chave = (alerta: Document | DadosAlertaFalta): string =>
+            `${alerta.matricula}\u0000${alerta.turma}\u0000${alerta.codDisciplina}`;
 
-        if (alertas.length === 0) {
-            log.info("sincronização concluída sem novos alertas", { ano, bimestre });
+        // O primeiro documento de cada chave é o que o updateOne abaixo atualiza; cópias
+        // antigas da mesma chave (de consultas simultâneas) só ficam inativas.
+        const gravados = new Map<string, Document>();
+        const desativar: unknown[] = [];
+        for (const doc of await collection.find({ ano, bimestre }).toArray()) {
+            const k = chave(doc);
+            if (gravados.has(k)) {
+                if (doc.ativo) desativar.push(doc._id);
+            } else {
+                gravados.set(k, doc);
+            }
+        }
+        const calculados = new Set(alertas.map(chave));
+        gravados.forEach((doc, k) => {
+            if (doc.ativo && !calculados.has(k)) desativar.push(doc._id);
+        });
+        const camposComparados: (keyof DadosAlertaFalta)[] = ["alunoNome", "disciplina", "totalFaltas", "cargaHorariaSemanalMinutos", "limiteFaltas"];
+        const mudaram = alertas.filter(alerta => {
+            const doc = gravados.get(chave(alerta));
+            return !doc || doc.ativo !== true || camposComparados.some(campo => doc[campo] !== alerta[campo]);
+        });
+
+        if (desativar.length === 0 && mudaram.length === 0) {
+            log.debug("alertas já sincronizados", { ano, bimestre, total: alertas.length });
             return;
         }
-        const resultado = await collection.bulkWrite(alertas.map(alerta => ({
+        if (desativar.length > 0) {
+            await collection.updateMany(
+                { _id: { $in: desativar as never[] } },
+                { $set: { ativo: false, atualizadoEm: new Date(), "auditoria.alteradoPor": funcionario.idFuncionario } }
+            );
+            log.debug("alertas antigos desativados", { ano, bimestre, total: desativar.length });
+        }
+        if (mudaram.length === 0) {
+            log.info("alertas sincronizados", { ano, bimestre, desativados: desativar.length, gravados: 0 });
+            return;
+        }
+        const resultado = await collection.bulkWrite(mudaram.map(alerta => ({
             updateOne: {
                 filter: {
                     ano,
@@ -2457,6 +2490,7 @@ export class AlertaFaltaDAO {
         log.info("alertas sincronizados", {
             ano,
             bimestre,
+            desativados: desativar.length,
             novos: resultado.upsertedCount,
             atualizados: resultado.modifiedCount,
         });
@@ -2736,7 +2770,9 @@ export class AlunoDAO {
         const collection = await this.getCollection();
         const docs = await collection.find({
             "auditoria.deletadoEm": null,
-            $or: [{ turma }, { "historicoTurmas.turma": turma }]
+            // toAluno corrige acentos corrompidos (Ã, Â, �) na turma; esses documentos entram
+            // também, e o filtro abaixo compara já com a turma corrigida.
+            $or: [{ turma }, { "historicoTurmas.turma": turma }, { turma: { $regex: "[ÃÂ\uFFFD]" } }]
         }).sort({ _id: 1 }).toArray();
         const alunos = docs.map(doc => this.toAluno(doc));
         // As datas consultadas são dias da chamada; entradas e saídas de turma são instantes,
@@ -3733,7 +3769,8 @@ export class FuncionarioDAO {
         const collection = await this.getCollection();
 
         const pipeline = [
-            { $match: { email } },
+            // Só funcionários ativos: um e-mail recadastrado depois de excluído entra normalmente.
+            { $match: { email, "auditoria.deletadoEm": null } },
             {
                 $lookup: {
                     from: "cargo",
@@ -4353,10 +4390,13 @@ export class RegistroDAO {
             situacao,
         });
         const collection = await this.getCollection();
+        // Converter (Abonada/Dispensada) vale só para faltas. Reverter para Normal vale para
+        // todo registro com a situação indicada, inclusive o que foi corrigido para presença
+        // depois do abono: senão ele ficaria Abonada para sempre.
         const filter: Filter<Document> = {
             matricula,
             dia: { $gte: dataInicio, $lte: dataFim },
-            falta: true,
+            ...(situacao === "Normal" ? {} : { falta: true }),
             "auditoria.deletadoEm": null,
             ...(somenteSituacao ? { situacao: somenteSituacao } : {})
         };
@@ -12565,6 +12605,7 @@ ARQUIVO: public\telaChamada.html
     alunosDaTurma = [];
     statusAlunos = [];
     registroIds = [];
+    gravacoesEmAndamento = new Map();
     atualizarResumo();
     aviso.textContent = '';
     if (!valor) return;
@@ -12597,6 +12638,7 @@ ARQUIVO: public\telaChamada.html
     document.getElementById('pesquisa-roster').value = '';
     statusAlunos = alunosDaTurma.map(() => 'present');
     registroIds = alunosDaTurma.map(() => null);
+    gravacoesEmAndamento = new Map();
     const dia = document.getElementById('data-chamada').value;
     if (!dia) {
       aviso.textContent = 'Selecione a data da chamada.';
@@ -12801,25 +12843,29 @@ ARQUIVO: public\telaChamada.html
     };
   }
 
-  async function enviarRegistroDoAluno(indice) {
-    const objeto = objetoDoRegistro(indice);
-    if (registroIds[indice]) {
-      const resposta = await api.put("api/v1/registros", registroIds[indice], objeto);
+  async function enviarRegistro(pedido) {
+    const { objeto, ids, indice } = pedido;
+    if (ids[indice]) {
+      const resposta = await api.put("api/v1/registros", ids[indice], objeto);
       if (!resposta?.success) throw new Error(resposta?.message || 'Não foi possível atualizar o registro.');
       return;
     }
     const resposta = await api.post("api/v1/registros", objeto);
     if (!resposta?.success) throw new Error(resposta?.message || 'Não foi possível salvar o registro.');
-    registroIds[indice] = resposta.data.registros[0].idRegistro;
+    ids[indice] = resposta.data.registros[0].idRegistro;
   }
 
   // Grava um aluno por vez: um segundo envio do mesmo aluno espera o primeiro terminar
   // e, com o id já conhecido, corrige o registro via PUT em vez de criar outro.
+  // O pedido guarda o aluno, a data e os ids da chamada em que foi feito: trocar de
+  // turma ou de data no meio não manda a gravação para a chamada nova.
   var gravacoesEmAndamento = new Map();
   function gravarRegistroDoAluno(indice) {
-    const anterior = gravacoesEmAndamento.get(indice) || Promise.resolve();
-    const atual = anterior.catch(() => {}).then(() => enviarRegistroDoAluno(indice));
-    gravacoesEmAndamento.set(indice, atual);
+    const pedido = { objeto: objetoDoRegistro(indice), ids: registroIds, indice };
+    const fila = gravacoesEmAndamento;
+    const anterior = fila.get(indice) || Promise.resolve();
+    const atual = anterior.catch(() => {}).then(() => enviarRegistro(pedido));
+    fila.set(indice, atual);
     return atual;
   }
 
@@ -12827,18 +12873,23 @@ ARQUIVO: public\telaChamada.html
   async function marcarFalta() {
     if (faltaEmGravacao) return;
     faltaEmGravacao = true;
-    statusAlunos[alunoAtual] = statusAlunos[alunoAtual] === 'absent' ? 'present' : 'absent';
+    // Guarda o aluno e a chamada do clique: durante a gravação o professor pode navegar,
+    // limpar a chamada ou trocar de turma.
+    const indice = alunoAtual;
+    const status = statusAlunos;
+    status[indice] = status[indice] === 'absent' ? 'present' : 'absent';
     try {
-      await gravarRegistroDoAluno(alunoAtual);
+      await gravarRegistroDoAluno(indice);
     } catch (erro) {
-      statusAlunos[alunoAtual] = statusAlunos[alunoAtual] === 'absent' ? 'present' : 'absent';
+      status[indice] = status[indice] === 'absent' ? 'present' : 'absent';
       window.alert(erro.message || 'Não foi possível registrar a falta.');
       mostrarAluno();
       return;
     } finally {
       faltaEmGravacao = false;
     }
-    if (alunoAtual < alunosDaTurma.length - 1) {
+    // Só avança se o professor continua no mesmo aluno da mesma chamada.
+    if (status === statusAlunos && alunoAtual === indice && alunoAtual < alunosDaTurma.length - 1) {
       alunoAtual = alunoAtual + 1;
     }
     mostrarAluno();
@@ -14173,7 +14224,8 @@ export class AbonoService {
         const atualizou = await this._abonoDAO.update(abono, funcionarioLogado);
         // A correção devolve o abono para análise; enquanto não for aprovado de novo,
         // as faltas do período antigo voltam a contar.
-        if (atualizou && existente.status === "Aprovado") {
+        // Anexar um atestado mantém o status; só sair de Aprovado (voltar para análise) desfaz.
+        if (atualizou && existente.status === "Aprovado" && abono.status !== "Aprovado") {
             await this.desfazerAbonadas(existente, funcionarioLogado);
         }
         if (atualizou) {
@@ -14665,7 +14717,7 @@ import { CargoDAO } from "../dao/CargoDAO";
 import { FuncionarioDAO } from "../dao/FuncionarioDAO";
 import { Cargo } from "../models/Cargo";
 import { ErrorResponse } from "../http/ErrorResponse";
-import { CARGO_PROCESSO_PEDAGOGICO } from "../constants/Cargos";
+import { CARGO_PROCESSO_PEDAGOGICO, CARGOS_ACEITOS } from "../constants/Cargos";
 import { Funcionario } from "../models/Funcionario";
 // NOVO: logger (padrão de logs)
 import { createLogger } from "../logging/Logger";
@@ -14700,6 +14752,14 @@ export class CargoService {
      * O cargo "Administrador" deixou de existir (ver docs/cargos-aceitos.md);
      * suas operações administrativas passaram para "Processo Pedagógico".
      */
+    private static exigirNomeAceito(nomeCargo: string): void {
+        if (!(CARGOS_ACEITOS as readonly string[]).includes(nomeCargo)) {
+            throw new ErrorResponse(400, "Cargo inválido", {
+                message: `Os únicos cargos aceitos são ${CARGOS_ACEITOS.join(" e ")}.`
+            });
+        }
+    }
+
     private isAdmin(funcionario: Funcionario): boolean {
         return funcionario.cargo?.nomeCargo === CARGO_PROCESSO_PEDAGOGICO;
     }
@@ -14729,6 +14789,7 @@ export class CargoService {
         // O índice único do Mongo (CargoDAO.ensureIndexes) também protege o caso
         // de corrida: se dois requests passarem por aqui juntos, o segundo recebe
         // erro 11000 e é traduzido abaixo.
+        CargoService.exigirNomeAceito(cargo.nomeCargo);
         const resultado = await this._cargoDAO.findByField("nomeCargo", cargo.nomeCargo);
         if (resultado.length > 0) {
             throw new ErrorResponse(400, "Cargo já existe", {
@@ -14805,6 +14866,16 @@ export class CargoService {
             });
             throw new ErrorResponse(403, "Não autorizado", {
                 message: `O cargo "${funcionarioLogado.cargo?.nomeCargo ?? 'desconhecido'}" não é autorizado a atualizar cargos.`
+            });
+        }
+
+        // Os cargos aceitos têm nome fixo (docs/cargos-aceitos.md): o código compara o nome
+        // exato, e renomear um cargo tiraria o acesso de quem o ocupa.
+        CargoService.exigirNomeAceito(cargo.nomeCargo);
+        const atual = (await this._cargoDAO.findByField("_id", cargo.idCargo))[0];
+        if (atual && atual.nomeCargo !== cargo.nomeCargo) {
+            throw new ErrorResponse(400, "Cargo não pode ser renomeado", {
+                message: `O cargo "${atual.nomeCargo}" tem nome fixo.`
             });
         }
 
@@ -17470,7 +17541,7 @@ function descobrirSeparador(cabecalho) {
  * vazias (linhas de separadores, rodapés em branco) são ignorados. Cada registro guarda a
  * linha do arquivo em que começa, para as mensagens de erro apontarem o lugar certo.
  */
-function lerRegistros(texto, separador) {
+function lerRegistros(texto, separador, quebraDentroDeAspas = true) {
   const registros = [];
   let valores = [];
   let valor = "";
@@ -17496,9 +17567,10 @@ function lerRegistros(texto, separador) {
     } else if (caractere === "\r" || caractere === "\n") {
       if (caractere === "\r" && texto[indice + 1] === "\n") indice += 1;
       linhaAtual += 1;
-      if (entreAspas) {
+      if (entreAspas && quebraDentroDeAspas) {
         valor += " ";
       } else {
+        entreAspas = false;
         fecharRegistro();
         inicioRegistro = linhaAtual;
       }
@@ -17510,6 +17582,9 @@ function lerRegistros(texto, separador) {
     }
   }
   fecharRegistro();
+  // Uma aspa sem par juntaria todo o resto do arquivo numa célula só: nesse caso o arquivo
+  // é lido linha a linha, como antes, e o estrago fica restrito à linha com a aspa solta.
+  if (entreAspas && quebraDentroDeAspas) return lerRegistros(texto, separador, false);
   return registros;
 }
 

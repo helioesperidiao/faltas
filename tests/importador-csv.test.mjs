@@ -42,3 +42,10 @@ test('intervalos de horário da grade em vários formatos', () => {
     assert.equal(linha.horaFim, fim, entrada);
   }
 });
+
+test('aspa sem par não engole o resto do arquivo', () => {
+  const texto = 'ALUNO;NOME_COMPL;TURMA_PREF\n123;"Ana;1A\n124;Bia;1A\n125;Caio;1B';
+  const { linhas } = prepararImportacao(texto, ESQUEMAS_IMPORTACAO.alunos, ALUNOS);
+  assert.deepEqual(linhas.map(l => l.matricula), ['123', '124', '125']);
+  assert.equal(linhas[2].alunoNome, 'Caio');
+});

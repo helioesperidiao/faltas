@@ -93,6 +93,11 @@ async function main() {
     const idPP = cargos.find(c => c.nomeCargo === 'Processo Pedagógico')?.idCargo;
     ok('cargos aceitos existem', idInspetor && idPP, cargos.map(c => c.nomeCargo).join(','));
     r = await req('PUT', `/api/v1/cargos/${idInspetor}`, { cargo: { nomeCargo: 'Inspetor' } }, TK);
+    r = await req('PUT', `/api/v1/cargos/${idInspetor}`, { cargo: { nomeCargo: 'Diretor' } }, TK);
+    ok('cargo não pode ser renomeado para fora da lista', r.status === 400, r.status);
+    r = await req('POST', '/api/v1/cargos', { cargo: { nomeCargo: 'Coordenador' } }, TK);
+    ok('cargo fora da lista não pode ser criado', r.status === 400, r.status);
+    r = await req('PUT', `/api/v1/cargos/${idInspetor}`, { cargo: { nomeCargo: 'Inspetor' } }, TK);
     ok('Processo Pedagógico altera cargo', r.status === 200, r.status + ' ' + r.json?.message);
 
     // ---------- importação de alunos (mesmo caminho da tela) ----------
@@ -191,6 +196,19 @@ async function main() {
     ok('alerta de muitas faltas (MAT, 50min/sem, 4 faltas ≥ 3)', alMat && alMat.totalFaltas === 4, `${r.status} ${JSON.stringify(alertas.map(a => [a.codDisciplina, a.totalFaltas]))}`);
     ok('sem alerta para quem não faltou', !alertas.some(a => a.matricula !== aluno.matricula), alertas.length);
     ok('1º bimestre vai de 01/01 a 31/03 (UTC)', r.json?.data?.dataInicio?.startsWith('2026-01-01T00:00:00') && r.json?.data?.dataFim?.startsWith('2026-03-31T23:59:59'), `${r.json?.data?.dataInicio} ${r.json?.data?.dataFim}`);
+    // P-012: consultar de novo sem mudança nos dados não regrava os alertas guardados.
+    const alertasGuardados = async () => {
+      const c = new MongoClient(process.env.MONGO_URI); await c.connect();
+      const docs = await c.db(BANCO).collection('alertasFaltas').find({ ano: 2026, bimestre: 1 }).toArray();
+      await c.close();
+      return docs;
+    };
+    const antesDaSegunda = await alertasGuardados();
+    await new Promise(resolve => setTimeout(resolve, 25)); // garante carimbo de tempo diferente se houver regravação
+    await req('GET', '/api/v1/relatorios/alertas-faltas-bimestral?ano=2026&bimestre=1', undefined, TK);
+    const depoisDaSegunda = await alertasGuardados();
+    const carimbos = docs => JSON.stringify(docs.map(d => [String(d._id), d.ativo, new Date(d.atualizadoEm).getTime()]).sort());
+    ok('alerta igual ao guardado não é regravado', antesDaSegunda.length > 0 && carimbos(antesDaSegunda) === carimbos(depoisDaSegunda), `${antesDaSegunda.length} alertas`);
     // falta no primeiro dia do bimestre (01/04 é 2º bimestre; 31/03 é o fim do 1º)
     r = await registrarFalta(colegas[1].matricula, '2026-04-01');
     // 01/04 já foi gravado como presença? registrar outro aluno que não tem registro nesse dia
@@ -226,6 +244,8 @@ async function main() {
     const r3 = await req('GET', `/api/v1/registros/chamada?turma=${encodeURIComponent(TURMA)}&dia=${SEG[0]}`, undefined, TK);
     ok('corrigir chamada preserva Abonada', (r3.json?.data?.registros || []).find(x => x.matricula === aluno.matricula)?.situacao === 'Abonada', `${r.status} ${(r3.json?.data?.registros || []).find(x => x.matricula === aluno.matricula)?.situacao}`);
     r = await req('GET', '/api/v1/relatorios/alertas-faltas-bimestral?ano=2026&bimestre=1', undefined, TK);
+    const alertaMatGuardado = (await alertasGuardados()).find(d => d.matricula === aluno.matricula && d.codDisciplina === 'MAT' && d.ativo);
+    ok('alerta que mudou é regravado (total 4 → 3)', alertaMatGuardado?.totalFaltas === 3, alertaMatGuardado?.totalFaltas);
     ok('alerta desconta falta abonada', (r.json?.data?.alertas || []).find(a => a.matricula === aluno.matricula && a.codDisciplina === 'MAT')?.totalFaltas === 3, JSON.stringify((r.json?.data?.alertas || []).map(a => [a.codDisciplina, a.totalFaltas])));
     r = await req('PUT', `/api/v1/abonos/${idAbono}`, { abono: { matricula: aluno.matricula, dataInicio: SEG[0], dataFim: SEG[0], motivo: 'Atestado médico corrigido' } }, TK);
     const ab = (await req('GET', `/api/v1/abonos/${idAbono}`, undefined, TK)).json?.data;
@@ -245,6 +265,21 @@ async function main() {
     const situacaoEm = async dia => (await req('GET', `/api/v1/registros/chamada?turma=${encodeURIComponent(TURMA)}&dia=${dia}`, undefined, TK)).json?.data?.registros?.find(x => x.matricula === aluno.matricula)?.situacao;
     ok('falta lançada depois da aprovação já nasce Abonada', await situacaoEm(TER) === 'Abonada', await situacaoEm(TER));
     r = await req('DELETE', `/api/v1/abonos/${abonoCurto}`, undefined, TK);
+    {
+      const QUI = '2026-03-05';
+      const idQui = (await req('POST', '/api/v1/abonos/', { abono: { matricula: aluno.matricula, dataInicio: QUI, dataFim: QUI, motivo: 'Atestado' } }, TK)).json?.data?.abonos?.[0]?.idAbono;
+      await req('PUT', `/api/v1/abonos/${idQui}/aprovar`, {}, TK);
+      await registrarFalta(aluno.matricula, QUI);
+      const anexo = new FormData(); anexo.append('arquivo', new Blob([Buffer.from([0xff, 0xd8, 0xff])], { type: 'image/jpeg' }), 'atestado.jpg');
+      r = await req('POST', `/api/v1/abonos/${idQui}/arquivo`, anexo, TK);
+      arquivosCriados.push(path.join(RAIZ, 'uploads', 'abono', `${idQui}.jpg`));
+      const abQui = (await req('GET', `/api/v1/abonos/${idQui}`, undefined, TK)).json?.data?.abonos;
+      ok('anexar atestado a abono aprovado mantém a falta Abonada', r.status < 300 && await situacaoEm(QUI) === 'Abonada' && (Array.isArray(abQui) ? abQui[0] : abQui)?.status === 'Aprovado', `${r.status} ${await situacaoEm(QUI)}`);
+      const idRegQui = (await req('GET', `/api/v1/registros/chamada?turma=${encodeURIComponent(TURMA)}&dia=${QUI}`, undefined, TK)).json?.data?.registros?.find(x => x.matricula === aluno.matricula)?.idRegistro;
+      await req('PUT', `/api/v1/registros/${idRegQui}`, { registro: { ano: 2026, codDisciplina: 'GERAL', horaInicio: 0, horaFim: 0, matricula: aluno.matricula, falta: false, dia: QUI, atrasado: 'Não' } }, TK);
+      await req('DELETE', `/api/v1/abonos/${idQui}`, undefined, TK);
+      ok('excluir o abono devolve a Normal até o registro corrigido para presença', await situacaoEm(QUI) === 'Normal', await situacaoEm(QUI));
+    }
     ok('excluir um abono não desfaz o dia coberto por outro abono aprovado', await situacaoEm(TER) === 'Abonada', `${r.status} ${await situacaoEm(TER)}`);
     r = await req('POST', '/api/v1/abonos/', { abono: { matricula: aluno.matricula, dataInicio: SEG[2], dataFim: SEG[0], motivo: 'x' } }, TK);
     ok('abono com fim antes do início → 400', r.status === 400, r.status);
@@ -272,6 +307,15 @@ async function main() {
     r = await req('GET', `/api/v1/relatorios/frequencia?turma=${encodeURIComponent(TURMA)}&dia=${SEG[1]}`, undefined, TK);
     const freq = r.json?.data?.frequencia || r.json?.data?.alunos || r.json?.data || [];
     ok('frequência por turma', r.status === 200, r.status);
+    {
+      const c = new MongoClient(process.env.MONGO_URI); await c.connect();
+      const base = await c.db(BANCO).collection('aluno').findOne({ matricula: aluno.matricula });
+      const { _id, ...copia } = base;
+      await c.db(BANCO).collection('aluno').insertOne({ ...copia, matricula: '99999999', alunoNome: 'Aluno Acento', turma: 'AdministraÃ§Ã£o-1A', historicoTurmas: [] });
+      await c.close();
+      const rf = await req('GET', `/api/v1/relatorios/frequencia?turma=${encodeURIComponent('Administração-1A')}&dia=${SEG[1]}`, undefined, TK);
+      ok('turma gravada com acento corrompido aparece na frequência', (rf.json?.data?.frequencia || []).some(a => a.matricula === '99999999'), JSON.stringify(rf.json?.data?.frequencia));
+    }
     ok('frequência mostra atrasado', JSON.stringify(freq).includes('Atrasado'), JSON.stringify(freq).slice(0, 200));
     r = await req('GET', `/api/v1/relatorios/faltas/mes?turma=${encodeURIComponent(TURMA)}&ano=2026&mes=3`, undefined, TK);
     ok('faltas no mês', r.status === 200, r.status);
@@ -320,6 +364,9 @@ async function main() {
     ok('excluído não faz login', r.status === 401, r.status);
     r = await req('GET', '/api/v1/alunos', undefined, TKI);
     ok('token de funcionário excluído perde o acesso na hora', r.status === 401, r.status);
+    r = await req('POST', '/api/v1/funcionarios', { funcionario: { nomeFuncionario: 'Inspetor Novo', email: 'inspetor.teste@exemplo.com', senha: 'outra9012', recebeValeTransporte: 0, cargo: { idCargo: idInspetor } } }, TK);
+    const loginNovo = await req('POST', '/api/v1/funcionarios/login', { funcionario: { email: 'inspetor.teste@exemplo.com', senha: 'outra9012' } });
+    ok('e-mail de funcionário excluído pode ser recadastrado e entrar', r.status === 201 && loginNovo.status === 200, `${r.status} ${loginNovo.status}`);
     // P-010: cadastro manual de matrícula arquivada reativa o cadastro antigo.
     const alvo = (await req('GET', '/api/v1/alunos', undefined, TK)).json?.data?.alunos?.find(a => a.turma !== TURMA + '-NOVA');
     await req('DELETE', `/api/v1/alunos/${alvo.idAluno}`, undefined, TK);
