@@ -23,3 +23,5 @@ Na aba **Alertas de Faltas**, o cargo `Processo Pedagógico` pode alterar esses 
 Além das faltas abonadas, dispensadas ou excluídas, ficam fora dos alertas os alunos arquivados pela importação da lista oficial e as aulas cobertas por uma dispensa vigente. Como a chamada é geral, a dispensa é aplicada por disciplina: uma falta em um dia em que o aluno está dispensado de `HIS` continua contando nas outras disciplinas do dia, mas não em `HIS`. A mesma regra vale para os arquivos CSV do fechamento diário.
 
 O bimestre é recortado em UTC, igual aos dias da chamada: o 1º bimestre vai de `01/01 00:00` a `31/03 23:59:59` UTC, e uma falta de `01/04` pertence somente ao 2º bimestre. As entradas e saídas do período são lidas por completo, sem o limite de 200 registros da listagem.
+
+A coleção `alertasFaltas` é atualizada a cada consulta do bimestre, mas só onde algo mudou: alerta novo ou com total, regra ou disciplina diferente é gravado; alerta que deixou de existir fica `ativo: false`; alerta igual não é tocado. Por isso `atualizadoEm` indica a última mudança do alerta, não a última consulta.

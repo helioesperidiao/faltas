@@ -134,3 +134,33 @@ test('a chamada não lista aluno que entrou na turma depois da data escolhida', 
   await window.selecionarTurma();
   assert.equal(document.getElementById('sum-total').innerHTML, 2);
 });
+
+test('navegar durante a gravação da falta não avança nem desfaz o aluno errado', async () => {
+  const alunos = ['123', '456', '789', '012'].map((matricula, i) => ({ matricula, alunoNome: 'Aluno ' + i }));
+  const { document, window, chamadas } = await iniciarTela(false, [], alunos);
+  document.getElementById('turma-select').value = 'EConInf-3PMA';
+  document.getElementById('data-chamada').value = '2026-03-02';
+  await window.selecionarTurma();
+  const gravando = window.marcarFalta();           // falta do aluno 1 (índice 0)
+  window.irParaAluno(2);                            // professor navega durante a gravação
+  await gravando;
+  assert.equal(document.getElementById('student-count').textContent, 'Aluno 3 de 4');
+  const post = chamadas.find(item => item?.metodo === 'POST');
+  assert.equal(post.objeto.registro.matricula, '123');
+});
+
+test('trocar a data durante o Limpar não grava na chamada nova', async () => {
+  const { document, window, chamadas } = await iniciarTela(false, [
+    { matricula: '123', falta: true, idRegistro: 'existente' }
+  ]);
+  document.getElementById('turma-select').value = 'EConInf-3PMA';
+  document.getElementById('data-chamada').value = '2026-03-02';
+  await window.selecionarTurma();
+  const limpando = window.limparChamada();
+  document.getElementById('data-chamada').value = '2026-03-09';
+  await window.selecionarTurma();
+  await limpando;
+  const correcoes = chamadas.filter(item => typeof item === 'object' && !item.metodo);
+  assert.ok(correcoes.length >= 1);
+  for (const c of correcoes) assert.equal(c.objeto.registro.dia, '2026-03-02');
+});

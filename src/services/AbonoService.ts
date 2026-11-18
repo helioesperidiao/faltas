@@ -129,7 +129,8 @@ export class AbonoService {
         const atualizou = await this._abonoDAO.update(abono, funcionarioLogado);
         // A correção devolve o abono para análise; enquanto não for aprovado de novo,
         // as faltas do período antigo voltam a contar.
-        if (atualizou && existente.status === "Aprovado") {
+        // Anexar um atestado mantém o status; só sair de Aprovado (voltar para análise) desfaz.
+        if (atualizou && existente.status === "Aprovado" && abono.status !== "Aprovado") {
             await this.desfazerAbonadas(existente, funcionarioLogado);
         }
         if (atualizou) {

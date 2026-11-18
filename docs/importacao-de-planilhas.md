@@ -34,4 +34,4 @@ Em `.xlsx` e `.xls`, datas e horas são números seriais. A leitura usa o códig
 
 ## Células com quebra de linha e linhas vazias
 
-O CSV é lido de uma vez, respeitando as aspas: uma célula entre aspas pode conter o separador, aspas duplicadas e quebras de linha, que viram espaço. Linhas em branco ou só com separadores (`;;;`) são ignoradas, e as mensagens de falha apontam a linha real do arquivo.
+O CSV é lido de uma vez, respeitando as aspas: uma célula entre aspas pode conter o separador, aspas duplicadas e quebras de linha, que viram espaço. Linhas em branco ou só com separadores (`;;;`) são ignoradas, e as mensagens de falha apontam a linha real do arquivo. Se o arquivo tiver uma aspa sem par, ele é lido linha a linha, para o problema ficar restrito àquela linha em vez de juntar todo o resto numa célula.

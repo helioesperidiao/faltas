@@ -116,10 +116,13 @@ export class RegistroDAO {
             situacao,
         });
         const collection = await this.getCollection();
+        // Converter (Abonada/Dispensada) vale só para faltas. Reverter para Normal vale para
+        // todo registro com a situação indicada, inclusive o que foi corrigido para presença
+        // depois do abono: senão ele ficaria Abonada para sempre.
         const filter: Filter<Document> = {
             matricula,
             dia: { $gte: dataInicio, $lte: dataFim },
-            falta: true,
+            ...(situacao === "Normal" ? {} : { falta: true }),
             "auditoria.deletadoEm": null,
             ...(somenteSituacao ? { situacao: somenteSituacao } : {})
         };

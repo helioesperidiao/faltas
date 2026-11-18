@@ -401,7 +401,8 @@ export class FuncionarioDAO {
         const collection = await this.getCollection();
 
         const pipeline = [
-            { $match: { email } },
+            // Só funcionários ativos: um e-mail recadastrado depois de excluído entra normalmente.
+            { $match: { email, "auditoria.deletadoEm": null } },
             {
                 $lookup: {
                     from: "cargo",

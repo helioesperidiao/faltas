@@ -132,7 +132,7 @@ function descobrirSeparador(cabecalho) {
  * vazias (linhas de separadores, rodapés em branco) são ignorados. Cada registro guarda a
  * linha do arquivo em que começa, para as mensagens de erro apontarem o lugar certo.
  */
-function lerRegistros(texto, separador) {
+function lerRegistros(texto, separador, quebraDentroDeAspas = true) {
   const registros = [];
   let valores = [];
   let valor = "";
@@ -158,9 +158,10 @@ function lerRegistros(texto, separador) {
     } else if (caractere === "\r" || caractere === "\n") {
       if (caractere === "\r" && texto[indice + 1] === "\n") indice += 1;
       linhaAtual += 1;
-      if (entreAspas) {
+      if (entreAspas && quebraDentroDeAspas) {
         valor += " ";
       } else {
+        entreAspas = false;
         fecharRegistro();
         inicioRegistro = linhaAtual;
       }
@@ -172,6 +173,9 @@ function lerRegistros(texto, separador) {
     }
   }
   fecharRegistro();
+  // Uma aspa sem par juntaria todo o resto do arquivo numa célula só: nesse caso o arquivo
+  // é lido linha a linha, como antes, e o estrago fica restrito à linha com a aspa solta.
+  if (entreAspas && quebraDentroDeAspas) return lerRegistros(texto, separador, false);
   return registros;
 }
 

@@ -31,3 +31,5 @@ O aluno só recebe chamada a partir do dia em que entrou na turma, e a frequênc
 ## Limpar chamada
 
 "Limpar chamada" volta todos para presente na tela e também no banco: as faltas já salvas daquela turma e data são corrigidas para presença, pela mesma fila de gravação por aluno usada pelo botão `Faltou`.
+
+Cada gravação guarda o aluno, a data e a chamada do momento do clique. Se o professor navega para outro aluno, limpa a chamada ou troca a turma ou a data enquanto uma gravação está em andamento, ela termina na chamada certa, e a tela não avança nem desfaz o aluno errado.

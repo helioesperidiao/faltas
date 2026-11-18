@@ -793,6 +793,7 @@
     alunosDaTurma = [];
     statusAlunos = [];
     registroIds = [];
+    gravacoesEmAndamento = new Map();
     atualizarResumo();
     aviso.textContent = '';
     if (!valor) return;
@@ -825,6 +826,7 @@
     document.getElementById('pesquisa-roster').value = '';
     statusAlunos = alunosDaTurma.map(() => 'present');
     registroIds = alunosDaTurma.map(() => null);
+    gravacoesEmAndamento = new Map();
     const dia = document.getElementById('data-chamada').value;
     if (!dia) {
       aviso.textContent = 'Selecione a data da chamada.';
@@ -1029,25 +1031,29 @@
     };
   }
 
-  async function enviarRegistroDoAluno(indice) {
-    const objeto = objetoDoRegistro(indice);
-    if (registroIds[indice]) {
-      const resposta = await api.put("api/v1/registros", registroIds[indice], objeto);
+  async function enviarRegistro(pedido) {
+    const { objeto, ids, indice } = pedido;
+    if (ids[indice]) {
+      const resposta = await api.put("api/v1/registros", ids[indice], objeto);
       if (!resposta?.success) throw new Error(resposta?.message || 'Não foi possível atualizar o registro.');
       return;
     }
     const resposta = await api.post("api/v1/registros", objeto);
     if (!resposta?.success) throw new Error(resposta?.message || 'Não foi possível salvar o registro.');
-    registroIds[indice] = resposta.data.registros[0].idRegistro;
+    ids[indice] = resposta.data.registros[0].idRegistro;
   }
 
   // Grava um aluno por vez: um segundo envio do mesmo aluno espera o primeiro terminar
   // e, com o id já conhecido, corrige o registro via PUT em vez de criar outro.
+  // O pedido guarda o aluno, a data e os ids da chamada em que foi feito: trocar de
+  // turma ou de data no meio não manda a gravação para a chamada nova.
   var gravacoesEmAndamento = new Map();
   function gravarRegistroDoAluno(indice) {
-    const anterior = gravacoesEmAndamento.get(indice) || Promise.resolve();
-    const atual = anterior.catch(() => {}).then(() => enviarRegistroDoAluno(indice));
-    gravacoesEmAndamento.set(indice, atual);
+    const pedido = { objeto: objetoDoRegistro(indice), ids: registroIds, indice };
+    const fila = gravacoesEmAndamento;
+    const anterior = fila.get(indice) || Promise.resolve();
+    const atual = anterior.catch(() => {}).then(() => enviarRegistro(pedido));
+    fila.set(indice, atual);
     return atual;
   }
 
@@ -1055,18 +1061,23 @@
   async function marcarFalta() {
     if (faltaEmGravacao) return;
     faltaEmGravacao = true;
-    statusAlunos[alunoAtual] = statusAlunos[alunoAtual] === 'absent' ? 'present' : 'absent';
+    // Guarda o aluno e a chamada do clique: durante a gravação o professor pode navegar,
+    // limpar a chamada ou trocar de turma.
+    const indice = alunoAtual;
+    const status = statusAlunos;
+    status[indice] = status[indice] === 'absent' ? 'present' : 'absent';
     try {
-      await gravarRegistroDoAluno(alunoAtual);
+      await gravarRegistroDoAluno(indice);
     } catch (erro) {
-      statusAlunos[alunoAtual] = statusAlunos[alunoAtual] === 'absent' ? 'present' : 'absent';
+      status[indice] = status[indice] === 'absent' ? 'present' : 'absent';
       window.alert(erro.message || 'Não foi possível registrar a falta.');
       mostrarAluno();
       return;
     } finally {
       faltaEmGravacao = false;
     }
-    if (alunoAtual < alunosDaTurma.length - 1) {
+    // Só avança se o professor continua no mesmo aluno da mesma chamada.
+    if (status === statusAlunos && alunoAtual === indice && alunoAtual < alunosDaTurma.length - 1) {
       alunoAtual = alunoAtual + 1;
     }
     mostrarAluno();

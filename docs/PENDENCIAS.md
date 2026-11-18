@@ -2,9 +2,7 @@
 
 ## Abertas
 
-- **P-012** · 2026-11-17 · Opcional. O alerta bimestral regrava todos os alertas em `alertasFaltas` a cada consulta (`AlertaFaltaDAO.sincronizar`), atualizando `atualizadoEm`; com 2.437 alertas isso custa ~0,6 s, o que resta do tempo da rota (ver `docs/desempenho.md`). Gravar só o que mudou deixaria a rota em ~0,5 s, mas `atualizadoEm` passaria a significar "última mudança" em vez de "última consulta". Fica para decisão do usuário.
-- **P-013** · 2026-11-17 · Opcional. O fechamento do dia devolve `faltasHistoricas` com todas as faltas de todos os tempos (~960 KB com 80 mil registros), mas nenhuma tela usa esse campo. Removê-lo ou limitá-lo ao dia muda o contrato da API; fica para decisão do usuário.
-- **P-014** · 2026-11-17 · Opcional. `jest`, `ts-jest` e `@types/jest` continuam nas dependências de desenvolvimento, mas os testes usam `node --test`. Remover é troca de dependência; fica para decisão do usuário.
+Nenhuma.
 
 ## Resolvidas
 
@@ -19,3 +17,6 @@
 - **P-009** · aberta em 2026-11-16 · resolvida em 2026-11-17 · Abonos: aprovação fora de ordem, falta posterior à aprovação e abonos sobrepostos → a aprovação grava as faltas antes do status (repetível sem transação), a falta lançada depois já nasce Abonada e desfazer um abono reaplica os outros aprovados. Conferido: e2e com dois abonos sobrepostos.
 - **P-010** · aberta em 2026-11-16 · resolvida em 2026-11-17 · Cadastro manual de matrícula arquivada duplicava o aluno → reativa o cadastro antigo. Conferido: e2e "cadastro manual de matrícula arquivada reativa o mesmo aluno".
 - **P-011** · aberta em 2026-11-16 · resolvida em 2026-11-17 · Dispensas sem tela → encerrada sem fazer, por decisão do usuário; continuam pela API.
+- **P-012** · aberta em 2026-11-17 · resolvida em 2026-11-18 · O alerta bimestral regravava todos os alertas a cada consulta → por decisão do usuário, `AlertaFaltaDAO.sincronizar` grava só o que mudou (novo, diferente ou que deixou de existir); `atualizadoEm` passa a marcar a última mudança. Alertas de ~1,3 s para ~0,7 a 0,9 s com respostas idênticas. Conferido: e2e "alerta igual ao guardado não é regravado" (vermelho com o código anterior) e "alerta que mudou é regravado".
+- **P-013** · aberta em 2026-11-17 · resolvida em 2026-11-18 · `faltasHistoricas` no fechamento do dia → encerrada sem mudança, por decisão do usuário: o campo continua na resposta.
+- **P-014** · aberta em 2026-11-17 · resolvida em 2026-11-18 · Dependências do Jest sem uso → `jest`, `ts-jest` e `@types/jest` removidos com `npm uninstall` (package.json e package-lock.json). Conferido: `npm test` 18/18 com `node --test`.
