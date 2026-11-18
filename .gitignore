@@ -10,10 +10,13 @@ nginx/
 # Uploads de usuários
 uploads/
 
-# Variáveis de ambiente
-#.env
-#.env.*
-#!.env.example
+# Variáveis de ambiente (copie .env.example para .env)
+.env
+.env.*
+!.env.example
+
+# Saída do graphify (grafo do código)
+graphify-out/
 
 # Logs
 *.log

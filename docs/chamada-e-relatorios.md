@@ -23,3 +23,11 @@ Corrigir a chamada altera apenas presença, atraso e acompanhante. A situação 
 Os relatórios exigem a turma e datas no formato `AAAA-MM-DD`; consulta sem turma, com data inválida, com período invertido ou com ano e mês fora do intervalo responde `400` com a mensagem do campo, em vez de devolver uma lista vazia. Os dias são comparados à meia-noite UTC, como são gravados pela chamada: o mês de março vai de `01/03` a `31/03` inteiros, sem puxar o dia 1º do mês seguinte quando o servidor roda no fuso de Brasília.
 
 O total de faltas por semana, mês ou período desconta as faltas abonadas e dispensadas, como já faziam os alertas e o fechamento. As entradas e saídas do intervalo consultado são lidas por completo; a listagem de movimentações continua limitada às 200 mais recentes apenas na tela.
+
+## Data de entrada na turma
+
+O aluno só recebe chamada a partir do dia em que entrou na turma, e a frequência e os relatórios se baseiam nesse dia (decisão do usuário em 17/11/2026). Aluno cadastrado no meio do ano não tem presença nem falta nos dias anteriores ao cadastro: a tela de chamada não o lista em datas anteriores e avisa quantos ficaram de fora, e a API recusa com `400` uma chamada nova para antes da entrada. O dia de entrada é o dia do calendário de Brasília: quem é cadastrado às 22h entra naquele mesmo dia, e não no seguinte (como acontecia ao comparar em UTC). Na virada anual, a entrada na turma nova é o dia da troca; os dias anteriores continuam na turma antiga.
+
+## Limpar chamada
+
+"Limpar chamada" volta todos para presente na tela e também no banco: as faltas já salvas daquela turma e data são corrigidas para presença, pela mesma fila de gravação por aluno usada pelo botão `Faltou`.

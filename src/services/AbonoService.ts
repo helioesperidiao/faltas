@@ -166,10 +166,10 @@ export class AbonoService {
             throw new ErrorResponse(400, "Abono já foi analisado", { status: abono.status });
         }
 
-        abono.status = "Aprovado";
-        abono.aprovadoPor = funcionarioLogado.idFuncionario;
-        await this._abonoDAO.update(abono, funcionarioLogado);
-
+        // O banco não tem transação (MongoDB sem réplica). A ordem é a que permite repetir:
+        // primeiro as faltas viram Abonada (operação idempotente) e só depois o abono fica
+        // Aprovado. Se a segunda etapa falhar, o abono continua Pendente e aprovar de novo
+        // conclui tudo; na ordem inversa ele ficaria "Aprovado" com as faltas ainda contando.
         const total = await this._registroDAO.updateSituacaoPorMatriculaEPeriodo(
             abono.matricula,
             abono.dataInicio,
@@ -177,6 +177,10 @@ export class AbonoService {
             "Abonada",
             funcionarioLogado
         );
+
+        abono.status = "Aprovado";
+        abono.aprovadoPor = funcionarioLogado.idFuncionario;
+        await this._abonoDAO.update(abono, funcionarioLogado);
 
         log.info("abono aprovado", {
             idAbono: abono.idAbono,
@@ -275,6 +279,14 @@ export class AbonoService {
             funcionarioLogado,
             "Abonada"
         );
-        log.info("faltas abonadas revertidas", { idAbono: abono.idAbono, total });
+        // Outro abono aprovado do mesmo aluno pode cobrir parte do período: ele volta a valer.
+        const outrosAprovados = (await this._abonoDAO.findByField("matricula", abono.matricula))
+            .filter(outro => outro.status === "Aprovado" && outro.idAbono !== abono.idAbono);
+        for (const outro of outrosAprovados) {
+            await this._registroDAO.updateSituacaoPorMatriculaEPeriodo(
+                outro.matricula, outro.dataInicio, outro.dataFim, "Abonada", funcionarioLogado, "Normal"
+            );
+        }
+        log.info("faltas abonadas revertidas", { idAbono: abono.idAbono, total, outrosAprovados: outrosAprovados.length });
     };
 }

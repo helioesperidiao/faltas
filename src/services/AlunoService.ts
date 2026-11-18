@@ -36,6 +36,18 @@ export class AlunoService {
             throw new ErrorResponse(400, "Já existe um aluno com esta matrícula");
         }
 
+        // Matrícula arquivada volta com o mesmo cadastro, histórico e registros (como na
+        // importação), em vez de virar um segundo aluno. Vale o arquivamento mais recente.
+        const arquivado = (await this._alunoDAO.findAllDeleted())
+            .filter(item => item.matricula === aluno.matricula)
+            .sort((a, b) => (b.auditoria.deletadoEm?.getTime() ?? 0) - (a.auditoria.deletadoEm?.getTime() ?? 0))[0];
+        if (arquivado && await this._alunoDAO.reativar(arquivado.idAluno, funcionarioLogado)) {
+            aluno.idAluno = arquivado.idAluno;
+            await this.update(aluno, funcionarioLogado);
+            log.info("aluno arquivado reativado pelo cadastro", { idAluno: arquivado.idAluno, matricula: aluno.matricula });
+            return (await this._alunoDAO.findById(arquivado.idAluno)) ?? aluno;
+        }
+
         const criado = await this._alunoDAO.create(aluno, funcionarioLogado);
         log.info("aluno criado", {
             idAluno: criado.idAluno,

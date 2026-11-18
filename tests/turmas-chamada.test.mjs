@@ -32,7 +32,7 @@ test('não associa siglas ou nomes ambíguos e prefere uma correspondência exat
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 
-async function iniciarTela(falharChamada = false, registrosSalvos = null) {
+async function iniciarTela(falharChamada = false, registrosSalvos = null, alunosDaTurma = null) {
   const elementos = new Map();
   const elemento = () => ({
     value: '', style: {}, textContent: '', innerHTML: '', children: [],
@@ -50,7 +50,7 @@ async function iniciarTela(falharChamada = false, registrosSalvos = null) {
       chamadas.push(url);
       if (url === 'api/v1/gradehorarios') return { success: true, data: { gradeHorarios: itens('EConInf-3PMA', 'Outra') } };
       if (url === 'api/v1/alunos') return { success: true, data: { alunos: itens('ETecInf-3PMA', 'ForaDaGrade') } };
-      if (url.startsWith('api/v1/alunos/turma/')) return { success: true, data: { alunos: [{ matricula: '123', alunoNome: 'Ana' }] } };
+      if (url.startsWith('api/v1/alunos/turma/')) return { success: true, data: { alunos: alunosDaTurma ?? [{ matricula: '123', alunoNome: 'Ana' }] } };
       if (url.startsWith('api/v1/registros/chamada?')) return falharChamada ? { success: false } : { success: true, data: { registros: registrosSalvos ?? [{ matricula: '123', falta: true, idRegistro: 'existente' }] } };
       throw Error(url);
     }
@@ -105,4 +105,32 @@ test('clique duplo em Faltou cria um único registro e corrige o mesmo via PUT',
   assert.equal(posts[0].url, 'api/v1/registros');
   assert.equal(posts[0].objeto.registro.falta, true);
   assert.equal(chamadas.find(item => typeof item === 'object' && !item.metodo).id, 'novo');
+});
+
+test('limpar a chamada devolve para presença, no banco, a falta já salva', async () => {
+  const { document, window, chamadas } = await iniciarTela();
+  document.getElementById('turma-select').value = 'EConInf-3PMA';
+  document.getElementById('data-chamada').value = '2026-03-02';
+  await window.selecionarTurma();
+  assert.equal(document.getElementById('sum-absent').innerHTML, 1);
+  await window.limparChamada();
+  const correcao = chamadas.find(item => typeof item === 'object' && item.id === 'existente');
+  assert.ok(correcao, 'a falta salva deve ser corrigida via PUT');
+  assert.equal(correcao.objeto.registro.falta, false);
+});
+
+test('a chamada não lista aluno que entrou na turma depois da data escolhida', async () => {
+  const { document, window } = await iniciarTela(false, [], [
+    { matricula: '123', alunoNome: 'Ana', turmaInicioEm: '2026-01-01T03:00:00.000Z' },
+    // Cadastrada às 22h de 05/03 em Brasília (já 06/03 em UTC): entra no dia 05/03.
+    { matricula: '456', alunoNome: 'Bia', turmaInicioEm: '2026-03-06T01:00:00.000Z' }
+  ]);
+  document.getElementById('turma-select').value = 'EConInf-3PMA';
+  document.getElementById('data-chamada').value = '2026-03-04';
+  await window.selecionarTurma();
+  assert.equal(document.getElementById('sum-total').innerHTML, 1);
+  assert.match(document.getElementById('turma-aviso').textContent, /1 aluno\(s\) entraram na turma depois desta data/);
+  document.getElementById('data-chamada').value = '2026-03-05';
+  await window.selecionarTurma();
+  assert.equal(document.getElementById('sum-total').innerHTML, 2);
 });

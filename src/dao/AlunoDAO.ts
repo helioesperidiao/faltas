@@ -1,3 +1,4 @@
+import { diaEscolar, diaGravado } from "../utils/DiaEscolar";
 import { Collection, ObjectId, Filter, UpdateFilter, Document, OptionalId } from "mongodb";
 import { Aluno } from "../models/Aluno";
 import { MongoDatabase } from "../database/MongoDatabase";
@@ -263,25 +264,27 @@ export class AlunoDAO {
      */
     public async findByTurmaNoPeriodo(turma: string, dataInicio: Date, dataFim: Date): Promise<Aluno[]> {
         log.debug("findByTurmaNoPeriodo()", { turma, dataInicio, dataFim });
-        const alunos = await this.findAll();
-        const agora = new Date();
-        const diaUtc = (data: Date): number => Date.UTC(
-            data.getUTCFullYear(),
-            data.getUTCMonth(),
-            data.getUTCDate()
-        );
-        const inicioConsulta = diaUtc(dataInicio);
-        const fimConsulta = diaUtc(dataFim);
-        const hoje = diaUtc(agora);
+        // Só quem está ou esteve na turma; ordenado por _id para manter a ordem da listagem.
+        const collection = await this.getCollection();
+        const docs = await collection.find({
+            "auditoria.deletadoEm": null,
+            $or: [{ turma }, { "historicoTurmas.turma": turma }]
+        }).sort({ _id: 1 }).toArray();
+        const alunos = docs.map(doc => this.toAluno(doc));
+        // As datas consultadas são dias da chamada; entradas e saídas de turma são instantes,
+        // convertidos para o dia da escola (quem entra às 22h conta naquele mesmo dia).
+        const inicioConsulta = diaGravado(dataInicio);
+        const fimConsulta = diaGravado(dataFim);
+        const hoje = diaEscolar(new Date());
 
         return alunos.filter(aluno => {
-            const inicioTurmaAtual = diaUtc(aluno.turmaInicioEm);
+            const inicioTurmaAtual = diaEscolar(aluno.turmaInicioEm);
             const vinculoAtual = aluno.turma === turma && inicioTurmaAtual <= fimConsulta;
             const vinculoHistorico = aluno.historicoTurmas.some(historico =>
                 historico.turma === turma &&
-                diaUtc(historico.inicioEm) <= fimConsulta &&
-                diaUtc(historico.fimEm) >= inicioConsulta &&
-                diaUtc(historico.disponivelAte) >= hoje
+                diaEscolar(historico.inicioEm) <= fimConsulta &&
+                diaEscolar(historico.fimEm) >= inicioConsulta &&
+                diaEscolar(historico.disponivelAte) >= hoje
             );
             return vinculoAtual || vinculoHistorico;
         });

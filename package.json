@@ -9,9 +9,7 @@
     "test:watch": "node --test --watch \"tests/**/*.test.mjs\"",
     "test:coverage": "node --test --experimental-test-coverage \"tests/**/*.test.mjs\"",
     "test:e2e": "node tests/e2e-api.mjs .",
-    "test:integracao": "node --test tests/integracao-api.test.cjs",
-    "lint": "eslint src --ext .ts",
-    "lint:fix": "eslint src --ext .ts --fix"
+    "test:integracao": "node --test tests/integracao-api.test.cjs"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

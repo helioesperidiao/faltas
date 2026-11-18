@@ -6,11 +6,15 @@
 
 A data final precisa ser igual ou posterior à inicial; um período invertido é recusado com `400`.
 
+Uma falta lançada (ou corrigida para falta) depois que o abono do período já foi aprovado também fica `Abonada`. Com dois abonos aprovados que cobrem o mesmo dia, excluir ou devolver para análise um deles mantém o dia abonado pelo outro.
+
+Como o MongoDB local não tem transações, a aprovação grava primeiro as faltas como `Abonada` e só depois o abono como `Aprovado`. Se a segunda etapa falhar, o abono continua `Pendente` e aprovar de novo conclui tudo.
+
 Corrigir um abono devolve-o para análise (`Pendente`) e mantém o atestado já anexado, porque a tela de correção não reenvia o arquivo. Se o abono estava aprovado, as faltas que ele havia convertido voltam para `Normal` até a nova aprovação. Excluir um abono aprovado faz o mesmo. As datas da listagem são exibidas no mesmo dia do calendário em que foram gravadas.
 
 ## Dispensas
 
-A dispensa vale para uma disciplina (`cod`), um aluno (`idAluno`, o identificador do cadastro) e um intervalo de datas (`dia` a `dataFim`). Os horários `horaInicio` e `horaFim` são horas inteiras de 0 a 23. Ainda não há tela própria: as dispensas são cadastradas pela API `/api/v1/dispensas`.
+A dispensa vale para uma disciplina (`cod`), um aluno (`idAluno`, o identificador do cadastro) e um intervalo de datas (`dia` a `dataFim`). Os horários `horaInicio` e `horaFim` são horas inteiras de 0 a 23. Não há tela própria: as dispensas são cadastradas pela API `/api/v1/dispensas`. Por decisão do usuário (17/11/2026), a tela não será criada por enquanto.
 
 Como a chamada é geral, a dispensa é aplicada por disciplina nos cálculos: uma aula dispensada fica fora dos alertas bimestrais e dos arquivos CSV do fechamento, enquanto as outras disciplinas do mesmo dia continuam contando. Corrigir uma dispensa sem enviar um novo anexo mantém o arquivo já enviado.
 

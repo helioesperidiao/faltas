@@ -5,6 +5,7 @@ import { Cargo } from "../models/Cargo";
 import { Funcionario } from "../models/Funcionario";
 import { ErrorResponse } from "../http/ErrorResponse";
 import { MeuTokenJWT } from "../http/MeuTokenJWT";
+import { JwtMiddleware } from "../middlewares/JwtMiddleware";
 import { cargoAceito, CARGO_INSPETOR, CARGO_PROCESSO_PEDAGOGICO } from "@/constants/Cargos";
 // NOVO: logger (padrão de logs)
 import { createLogger } from "../logging/Logger";
@@ -81,9 +82,13 @@ export class FuncionarioService {
         }
 
         // 4. Carrega dados do administrador a partir das variáveis de ambiente (ou fallback)
-        const adminName = process.env.DEFAULT_ADMIN_NAME || "Hélio Esperidião";
-        const adminEmail = process.env.DEFAULT_ADMIN_EMAIL || "helioesperidiao@gmail.com";
-        const adminPassword = process.env.DEFAULT_ADMIN_PASSWORD || "@Helio123456";
+        // Sem valores fixos no código: o primeiro acesso vem do .env (ver .env.example).
+        const adminName = process.env.DEFAULT_ADMIN_NAME || "Administrador";
+        const adminEmail = process.env.DEFAULT_ADMIN_EMAIL;
+        const adminPassword = process.env.DEFAULT_ADMIN_PASSWORD;
+        if (!adminEmail || !adminPassword) {
+            throw new Error("Defina DEFAULT_ADMIN_EMAIL e DEFAULT_ADMIN_PASSWORD no .env para criar o primeiro acesso (ver .env.example).");
+        }
         const adminValeTransporte = parseInt(process.env.DEFAULT_ADMIN_VALE_TRANSPORTE || "0", 10);
 
         // 5. Cria o usuário padrão com cargo Processo Pedagógico
@@ -291,6 +296,7 @@ export class FuncionarioService {
         // Persiste a atualização
         const atualizou = await this._funcionarioDAO.update(funcionario, funcionarioLogado);
         if (atualizou) {
+            JwtMiddleware.esquecerFuncionario(funcionario.idFuncionario);
             log.info("funcionário atualizado", {
                 idFuncionario: funcionario.idFuncionario,
                 atualizadoPor: funcionarioLogado.email,
@@ -316,6 +322,7 @@ export class FuncionarioService {
         funcionario.marcarDeletadoPor(funcionarioLogado.idFuncionario);
         const excluiu = await this._funcionarioDAO.delete(funcionario, funcionarioLogado);
         if (excluiu) {
+            JwtMiddleware.esquecerFuncionario(funcionario.idFuncionario);
             log.info("funcionário excluído", {
                 idFuncionario: funcionario.idFuncionario,
                 excluidoPor: funcionarioLogado.email,

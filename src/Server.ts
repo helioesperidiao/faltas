@@ -17,6 +17,8 @@ import { ConfiguracaoAlertaFaltaRouter } from "./routers/ConfiguracaoAlertaFalta
 import { ErrorResponse } from "./http/ErrorResponse";
 import { StandardResponse } from "./http/StandardResponse";
 import { MongoDatabase } from "./database/MongoDatabase";
+import { FuncionarioDAO } from "./dao/FuncionarioDAO";
+import { JwtMiddleware } from "./middlewares/JwtMiddleware";
 // NOVO: logger e middleware HTTP (padrão de logs)
 import { httpLogger } from "./logging/HttpLogger";
 import { createLogger } from "./logging/Logger";
@@ -65,6 +67,13 @@ export class Server {
 
         await this._dataBase.initializeSchema();
         await this._funcionarioRouter.getService().initializeDefaultAdmin();
+
+        // Cada requisição autenticada confere se o funcionário continua ativo e qual o cargo atual.
+        const funcionarioDAO = new FuncionarioDAO(this._dataBase);
+        JwtMiddleware.configurarConsultaFuncionario(async idFuncionario => {
+            const funcionario = await funcionarioDAO.findById(idFuncionario);
+            return funcionario ? { idCargo: funcionario.cargo.idCargo, nomeCargo: funcionario.cargo.nomeCargo } : null;
+        });
 
         // Middleware de log HTTP — deve vir primeiro entre os middlewares
         // para abrir o contexto (requestId) antes de qualquer outro processamento.

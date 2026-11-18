@@ -99,6 +99,39 @@ export class RelatorioService {
     private _alertaFaltaDAO: AlertaFaltaDAO;
     private _dispensaDAO: DispensaDAO;
 
+    /**
+     * Índices montados uma vez por consulta. A chave é a própria lista carregada do banco
+     * naquela requisição: o índice some junto com ela, sem cache entre consultas. Antes,
+     * cada registro varria a grade inteira e todas as movimentações (milhões de operações
+     * num bimestre); agora cada busca é um acesso a Map.
+     */
+    private readonly _indiceMovimentacoes = new WeakMap<Movimentacao[], {
+        porAlunoEDia: Map<string, Movimentacao[]>;
+        porAluno: Map<string, Movimentacao[]>;
+    }>();
+    private readonly _indiceGrade = new WeakMap<GradeHorario[], {
+        porDia: Map<string, { grade: GradeHorario; turma: string; equivalente: string }[]>;
+        aulas: Map<string, GradeHorario[]>;
+    }>();
+
+    private indiceDasMovimentacoes(movimentacoes: Movimentacao[]) {
+        let indice = this._indiceMovimentacoes.get(movimentacoes);
+        if (!indice) {
+            indice = { porAlunoEDia: new Map(), porAluno: new Map() };
+            for (const movimentacao of movimentacoes) {
+                const chave = `${movimentacao.matricula}|${this.chaveData(movimentacao.data)}`;
+                const doDia = indice.porAlunoEDia.get(chave);
+                if (doDia) doDia.push(movimentacao); else indice.porAlunoEDia.set(chave, [movimentacao]);
+                const doAluno = indice.porAluno.get(movimentacao.matricula);
+                if (doAluno) doAluno.push(movimentacao); else indice.porAluno.set(movimentacao.matricula, [movimentacao]);
+            }
+            // Mesma ordem de antes: sort estável por horário sobre a ordem carregada.
+            indice.porAlunoEDia.forEach(lista => lista.sort((a, b) => a.horario.localeCompare(b.horario)));
+            this._indiceMovimentacoes.set(movimentacoes, indice);
+        }
+        return indice;
+    }
+
     constructor(
         alunoDAODependency: AlunoDAO,
         registroDAODependency: RegistroDAO,
@@ -144,10 +177,10 @@ export class RelatorioService {
         return data.toISOString().slice(0, 10);
     }
 
+    /** Movimentações do aluno no dia do registro, por horário. A lista devolvida é só para leitura. */
     private movimentacoesDoAlunoNoDia(registro: Registro, movimentacoes: Movimentacao[]): Movimentacao[] {
-        return movimentacoes
-            .filter(movimentacao => movimentacao.matricula === registro.matricula && this.mesmaData(movimentacao.data, registro.dia))
-            .sort((a, b) => a.horario.localeCompare(b.horario));
+        return this.indiceDasMovimentacoes(movimentacoes).porAlunoEDia
+            .get(`${registro.matricula}|${this.chaveData(registro.dia)}`) ?? [];
     }
 
     /**
@@ -175,8 +208,8 @@ export class RelatorioService {
     private ultimaMovimentacao(matricula: string, movimentacoes: Movimentacao[], dataInicio?: Date, dataFim?: Date): { tipo: string; horario: string } | null {
         const inicio = dataInicio ? this.chaveData(dataInicio) : null;
         const fim = dataFim ? this.chaveData(dataFim) : null;
-        const movimento = movimentacoes
-            .filter(item => item.matricula === matricula &&
+        const movimento = (this.indiceDasMovimentacoes(movimentacoes).porAluno.get(matricula) ?? [])
+            .filter(item =>
                 (!inicio || this.chaveData(item.data) >= inicio) &&
                 (!fim || this.chaveData(item.data) <= fim))
             .sort((a, b) => {
@@ -228,14 +261,34 @@ export class RelatorioService {
         this.normalizarTurma(valor).replace(/^(etec|econ)/, '');
 
     /** Recupera a grade exata da turma ou a sigla histórica equivalente. */
+    /** A lista devolvida é compartilhada dentro da consulta: só para leitura. */
     private aulasDaTurmaNoDia(turma: string, dia: string, grades: GradeHorario[]): GradeHorario[] {
+        let indice = this._indiceGrade.get(grades);
+        if (!indice) {
+            // Normaliza dia e turma de cada aula uma vez, mantendo a ordem da grade.
+            const porDia = new Map<string, { grade: GradeHorario; turma: string; equivalente: string }[]>();
+            for (const grade of grades) {
+                const diaDaAula = this.normalizarDiaSemana(grade.dia);
+                const item = { grade, turma: this.normalizarTurma(grade.turma), equivalente: this.normalizarTurmaEquivalente(grade.turma) };
+                const lista = porDia.get(diaDaAula);
+                if (lista) lista.push(item); else porDia.set(diaDaAula, [item]);
+            }
+            indice = { porDia, aulas: new Map() };
+            this._indiceGrade.set(grades, indice);
+        }
+        const chave = `${turma}\u0000${dia}`;
+        const guardadas = indice.aulas.get(chave);
+        if (guardadas) return guardadas;
+
+        const doMesmoDia = indice.porDia.get(dia) ?? [];
         const normalizada = this.normalizarTurma(turma);
-        const equivalente = this.normalizarTurmaEquivalente(turma);
-        const doMesmoDia = grades.filter(grade => this.normalizarDiaSemana(grade.dia) === dia);
-        const aulasExatas = doMesmoDia.filter(grade => this.normalizarTurma(grade.turma) === normalizada);
-        return aulasExatas.length > 0
-            ? aulasExatas
-            : doMesmoDia.filter(grade => this.normalizarTurmaEquivalente(grade.turma) === equivalente);
+        let aulas = doMesmoDia.filter(item => item.turma === normalizada).map(item => item.grade);
+        if (aulas.length === 0) {
+            const equivalente = this.normalizarTurmaEquivalente(turma);
+            aulas = doMesmoDia.filter(item => item.equivalente === equivalente).map(item => item.grade);
+        }
+        indice.aulas.set(chave, aulas);
+        return aulas;
     }
 
     /** Indica se a chegada/saída parcial deixou ao menos uma aula ausente no dia. */
@@ -256,7 +309,7 @@ export class RelatorioService {
 
         const alunosDaTurma = await this._alunoDAO.findByTurmaNoPeriodo(turma, dia, dia);
         const [todosRegistros, movimentacoes, grades] = await Promise.all([
-            this._registroDAO.findAll(),
+            this._registroDAO.findDoDia(dia, turma),
             this._movimentacaoDAO.findNoPeriodo(dia, dia),
             this._gradeHorarioDAO.findAll()
         ]);
@@ -295,7 +348,7 @@ export class RelatorioService {
 
         const alunosDaTurma = await this._alunoDAO.findByTurmaNoPeriodo(turma, dataInicio, dataFim);
         const [todosRegistros, movimentacoes, grades] = await Promise.all([
-            this._registroDAO.findAll(),
+            this._registroDAO.findNoPeriodo(dataInicio, dataFim, turma),
             this._movimentacaoDAO.findNoPeriodo(dataInicio, dataFim),
             this._gradeHorarioDAO.findAll()
         ]);
@@ -346,10 +399,13 @@ export class RelatorioService {
             throw new ErrorResponse(400, "Data inválida para o fechamento do dia.");
         }
 
-        const [alunos, alunosArquivados, registros, movimentacoesDoDia, grades, dispensas] = await Promise.all([
+        // Duas leituras no lugar da coleção inteira: as faltas que contam (para o histórico)
+        // e os registros do dia (para as aulas perdidas).
+        const [alunos, alunosArquivados, faltasValidas, registrosDoDia, movimentacoesDoDia, grades, dispensas] = await Promise.all([
             this._alunoDAO.findAll(),
             this._alunoDAO.findAllDeleted(),
-            this._registroDAO.findAll(),
+            this._registroDAO.findFaltasQueContam(),
+            this._registroDAO.findDoDia(data),
             this._movimentacaoDAO.findAll(data),
             this._gradeHorarioDAO.findAll(),
             this._dispensaDAO.findAll()
@@ -390,9 +446,6 @@ export class RelatorioService {
                 horario: movimentacao.horario
             }))
             .sort(compararLinhas);
-        const faltasValidas = registros.filter(registro =>
-            registro.falta === true && !['Abonada', 'Dispensada'].includes(registro.situacao)
-        );
 
         // Uma chamada geral deve aparecer uma única vez por aluno no fechamento,
         // mesmo se a base ainda tiver duplicatas antigas daquela mesma data.
@@ -419,7 +472,6 @@ export class RelatorioService {
 
         // Uma linha por aula efetivamente perdida, mesmo em aulas consecutivas
         // da mesma disciplina. O conjunto geral elimina apenas aulas repetidas.
-        const registrosDoDia = registros.filter(registro => this.mesmaData(registro.dia, data));
         const matriculas = new Set([
             ...registrosDoDia.filter(r => r.falta).map(r => r.matricula),
             ...movimentacoesDoDia.map(m => m.matricula)
@@ -520,14 +572,18 @@ export class RelatorioService {
         // para o fuso do servidor não puxar o dia 1º do bimestre seguinte nem perder o primeiro.
         const dataInicio = new Date(Date.UTC(ano, periodo.inicio, 1));
         const dataFim = new Date(Date.UTC(ano, periodo.fim + 1, 0, 23, 59, 59, 999));
-        const [todosRegistros, grades, configuracoes, movimentacoes, alunosAtivos, dispensas] = await Promise.all([
-            this._registroDAO.findAll(),
+        const [grades, configuracoes, movimentacoes, alunosAtivos, dispensas] = await Promise.all([
             this._gradeHorarioDAO.findAll(),
             this._configuracaoAlertaFaltaDAO.findAll(),
             this._movimentacaoDAO.findNoPeriodo(dataInicio, dataFim),
             this._alunoDAO.findAll(),
             this._dispensaDAO.findAll()
         ]);
+        // Uma presença só vira falta se houver saída antecipada no dia (a entrada só tira a
+        // falta). Logo, basta ler as faltas e os registros de quem teve saída no período: os
+        // demais registros de presença nunca geram alerta. O cálculo abaixo é o mesmo.
+        const matriculasComSaida = [...new Set(movimentacoes.filter(m => m.tipo === "saida").map(m => m.matricula))];
+        const todosRegistros = await this._registroDAO.findFaltasOuDasMatriculasNoPeriodo(dataInicio, dataFim, matriculasComSaida);
         // Alunos arquivados pela importação da lista oficial não geram alertas.
         const alunosPorMatricula = new Map(alunosAtivos.map(aluno => [aluno.matricula, aluno]));
         const estaDispensado = this.criarConsultaDeDispensas(dispensas);

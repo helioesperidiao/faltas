@@ -31,3 +31,7 @@ Primeiro valem os nomes exatos de cada campo. Só depois, e apenas entre as colu
 ## Datas e horas do Excel
 
 Em `.xlsx` e `.xls`, datas e horas são números seriais. A leitura usa o código de data do próprio Excel, sem aplicar o fuso do computador: uma data de nascimento sai como `14/03/2005` e uma hora como `07:30`. Antes, a conversão pelo fuso de Brasília entregava o dia anterior e horas como `1/0/00`. A biblioteca `xlsx.full.min.js` (0.18.5) já embute as páginas de código, inclusive Windows-1252.
+
+## Células com quebra de linha e linhas vazias
+
+O CSV é lido de uma vez, respeitando as aspas: uma célula entre aspas pode conter o separador, aspas duplicadas e quebras de linha, que viram espaço. Linhas em branco ou só com separadores (`;;;`) são ignoradas, e as mensagens de falha apontam a linha real do arquivo.
