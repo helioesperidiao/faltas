@@ -41,3 +41,4 @@ publicado na `main` e no fork como nas etapas anteriores, e nada do chat deixado
 ## Estado
 
 - Concluído: publicado na `main` e no fork, PR aberto no original e banco de teste apagado (resultado no relatório final do chat).
+- Depois da publicação, o usuário pediu para trocar a autoria dos 5 commits (só a foto da Luana, sem a do Claude) e passou a usar a conta da Luana direto no original, sem fork. O histórico reescrito está pronto na branch `claude/skills-aura-analysis-testing-cf0388`; um `git pull` mesclou o histórico antigo na `main` do original, e o push forçado limpo e a exclusão do fork ficaram com o usuário (P-015 e P-016 em `docs/PENDENCIAS.md`).

@@ -2,7 +2,8 @@
 
 ## Abertas
 
-Nenhuma.
+- **P-015** · 2026-11-18 · Os commits antigos (foto do Mateus e do Claude) ainda estão na `main` do original (`helioesperidiao/faltas`). Um `git pull` feito às 00h57 mesclou o histórico antigo com o reescrito (merge `bd5f8ed`), então a `main` do original tem os commits em duplicata. O histórico limpo está pronto na branch local `claude/skills-aura-analysis-testing-cf0388` (autora Luana Pinheiro, sem `Co-Authored-By`, código idêntico, datas preservadas; o estado antigo está guardado em `backup/antes-da-reescrita-2026-11-18`). Falta um push forçado, com a conta LuanaPin-Cruz logada: `git -C "C:/Users/Pichau/Documents/GitHub/faltas" push --force-with-lease=main:bd5f8ed origin claude/skills-aura-analysis-testing-cf0388:main`. Depois, na pasta principal (não na pasta `.claude/worktrees`): `git fetch origin` e `git reset --hard origin/main`; quem já baixou o projeto faz o mesmo. A página do PR #3 deve continuar mostrando os commits antigos, porque é o registro do PR.
+- **P-016** · 2026-11-18 · Excluir o fork `Todeschiniii/faltas`, que não será mais usado (o usuário decidiu trabalhar direto no original). O `gh` não tem o escopo `delete_repo`; o usuário exclui em Settings > Danger Zone. Nada se perde: a `isabelli` é idêntica à do original e os commits reescritos estão no repositório local. Depois, a branch local `backup/antes-da-reescrita-2026-11-18` pode ser apagada.
 
 ## Resolvidas
 
