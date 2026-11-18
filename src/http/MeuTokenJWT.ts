@@ -50,7 +50,12 @@ export class MeuTokenJWT {
      */
     constructor() {
         // Carrega variáveis de ambiente (com fallbacks)
-        this._key = process.env.JWT_SECRET || "x9S4q0v+V0IjvHkG20uAxaHx1ijj+q1HWjHKv+ohxp/oK+77qyXkVj/l4QYHHTF3";
+        // Sem segredo de reserva no código: quem lê o repositório não pode forjar tokens.
+        const segredo = process.env.JWT_SECRET;
+        if (!segredo) {
+            throw new Error("JWT_SECRET não definido. Copie .env.example para .env e preencha o segredo.");
+        }
+        this._key = segredo;
         this._alg = process.env.JWT_ALGORITHM || "HS256";
         this._type = process.env.JWT_TYPE || "JWT";
         this._iss = process.env.JWT_ISSUER || "http://localhost";

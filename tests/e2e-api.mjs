@@ -50,6 +50,18 @@ const dataISO = (d) => d.toISOString().slice(0, 10);
 const SEG = ['2026-03-02', '2026-03-09', '2026-03-16', '2026-03-23'];
 
 async function main() {
+  // P-001: não há segredo de reserva no código; sem JWT_SECRET o servidor recusa subir.
+  {
+    const semSegredo = spawn(process.execPath, ['-r', 'ts-node/register/transpile-only', '-r', 'tsconfig-paths/register', 'src/index.ts'],
+      { cwd: RAIZ, env: { ...process.env, JWT_SECRET: '', MONGO_DATABASE: BANCO, PORT: String(PORTA + 1) }, stdio: ['ignore', 'pipe', 'pipe'] });
+    let saida = '';
+    semSegredo.stdout.on('data', d => saida += d); semSegredo.stderr.on('data', d => saida += d);
+    const codigo = await Promise.race([
+      new Promise(resolve => semSegredo.on('exit', resolve)),
+      new Promise(resolve => setTimeout(() => { semSegredo.kill(); resolve('ainda rodando'); }, 30000))
+    ]);
+    ok('servidor não sobe sem JWT_SECRET', codigo === 1 && saida.includes('JWT_SECRET'), `saída=${codigo}`);
+  }
   const srv = await subirServidor();
   try {
     // ---------- estáticos ----------
@@ -223,6 +235,17 @@ async function main() {
     ok('abono de volta à análise devolve a falta para Normal', (r4.json?.data?.registros || []).find(x => x.matricula === aluno.matricula)?.situacao === 'Normal', (r4.json?.data?.registros || []).find(x => x.matricula === aluno.matricula)?.situacao);
     r = await req('PUT', `/api/v1/abonos/${idAbono}/aprovar`, {}, TK);
     ok('reaprova abono corrigido', r.status === 200, r.status);
+    // P-009: abono aprovado antes de a falta existir; dois abonos aprovados sobrepostos.
+    const TER = '2026-03-03', QUA = '2026-03-04';
+    const abonoLongo = (await req('POST', '/api/v1/abonos/', { abono: { matricula: aluno.matricula, dataInicio: TER, dataFim: QUA, motivo: 'Atestado de 2 dias' } }, TK)).json?.data?.abonos?.[0]?.idAbono;
+    const abonoCurto = (await req('POST', '/api/v1/abonos/', { abono: { matricula: aluno.matricula, dataInicio: TER, dataFim: TER, motivo: 'Consulta' } }, TK)).json?.data?.abonos?.[0]?.idAbono;
+    await req('PUT', `/api/v1/abonos/${abonoLongo}/aprovar`, {}, TK);
+    await req('PUT', `/api/v1/abonos/${abonoCurto}/aprovar`, {}, TK);
+    await registrarFalta(aluno.matricula, TER);
+    const situacaoEm = async dia => (await req('GET', `/api/v1/registros/chamada?turma=${encodeURIComponent(TURMA)}&dia=${dia}`, undefined, TK)).json?.data?.registros?.find(x => x.matricula === aluno.matricula)?.situacao;
+    ok('falta lançada depois da aprovação já nasce Abonada', await situacaoEm(TER) === 'Abonada', await situacaoEm(TER));
+    r = await req('DELETE', `/api/v1/abonos/${abonoCurto}`, undefined, TK);
+    ok('excluir um abono não desfaz o dia coberto por outro abono aprovado', await situacaoEm(TER) === 'Abonada', `${r.status} ${await situacaoEm(TER)}`);
     r = await req('POST', '/api/v1/abonos/', { abono: { matricula: aluno.matricula, dataInicio: SEG[2], dataFim: SEG[0], motivo: 'x' } }, TK);
     ok('abono com fim antes do início → 400', r.status === 400, r.status);
 
@@ -269,6 +292,9 @@ async function main() {
     ok('virada anual de turma', r.status === 200, r.status + ' ' + r.json?.message);
     r = await req('GET', `/api/v1/registros/chamada?turma=${encodeURIComponent(TURMA)}&dia=${SEG[0]}`, undefined, TK);
     ok('registros antigos mantêm a turma anterior', (r.json?.data?.registros || []).length === colegas.length, (r.json?.data?.registros || []).length);
+    // P-003: depois da virada, a entrada na turma nova é hoje; não há chamada antes disso.
+    r = await registrarFalta(colegas[1].matricula, '2026-03-20');
+    ok('chamada antes da entrada do aluno na turma → 400', r.status === 400, `${r.status} ${r.json?.message}`);
 
     // ---------- funcionários e permissões ----------
     r = await req('POST', '/api/v1/funcionarios', { funcionario: { nomeFuncionario: 'Inspetor Teste', email: 'inspetor.teste@exemplo.com', senha: '1234', recebeValeTransporte: 0, cargo: { idCargo: idInspetor } } }, TK);
@@ -292,6 +318,15 @@ async function main() {
     ok('exclui inspetor', r.status === 200 || r.status === 204, r.status);
     r = await req('POST', '/api/v1/funcionarios/login', { funcionario: { email: 'inspetor.teste@exemplo.com', senha: 'nova5678' } });
     ok('excluído não faz login', r.status === 401, r.status);
+    r = await req('GET', '/api/v1/alunos', undefined, TKI);
+    ok('token de funcionário excluído perde o acesso na hora', r.status === 401, r.status);
+    // P-010: cadastro manual de matrícula arquivada reativa o cadastro antigo.
+    const alvo = (await req('GET', '/api/v1/alunos', undefined, TK)).json?.data?.alunos?.find(a => a.turma !== TURMA + '-NOVA');
+    await req('DELETE', `/api/v1/alunos/${alvo.idAluno}`, undefined, TK);
+    r = await req('POST', '/api/v1/alunos', { aluno: { matricula: alvo.matricula, alunoNome: alvo.alunoNome, turma: alvo.turma, curso: alvo.curso, serie: alvo.serie, ano: alvo.ano } }, TK);
+    const reativado = r.json?.data?.alunos?.[0] || r.json?.data?.aluno;
+    const arquivadosDepois = ((await req('GET', '/api/v1/alunos/deleted', undefined, TK)).json?.data?.alunos || []).filter(a => a.matricula === alvo.matricula).length;
+    ok('cadastro manual de matrícula arquivada reativa o mesmo aluno', reativado?.idAluno === alvo.idAluno && arquivadosDepois === 0, `${r.status} ${reativado?.idAluno} vs ${alvo.idAluno}, arquivados=${arquivadosDepois}`);
     const dupAlertas = await cli.db(BANCO).collection('alertasFaltas').aggregate([{ $group: { _id: { m: '$matricula', c: '$codDisciplina', a: '$ano', b: '$bimestre' }, n: { $sum: 1 } } }, { $match: { n: { $gt: 1 } } }]).toArray();
     ok('alertas gravados sem duplicata', dupAlertas.length === 0, dupAlertas.length);
     await cli.close();

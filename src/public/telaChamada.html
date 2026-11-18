@@ -745,6 +745,12 @@
   var registroIds = []; // guarda o id do registro já criado para permitir corrigir via PUT
   var chamadaEmSalvamento = false;
 
+  // Dia do calendário de Brasília em que um instante caiu, no formato AAAA-MM-DD.
+  const formatoDiaBrasilia = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' });
+  function diaDeBrasilia(instante) {
+    return formatoDiaBrasilia.format(new Date(instante));
+  }
+
   document.getElementById('data-chamada').addEventListener('change', async () => {
     if (turmaAtual) await selecionarTurma();
   });
@@ -806,7 +812,13 @@
       aviso.textContent = 'Não foi possível carregar os alunos. Atualize a página para tentar novamente.';
       return;
     }
-    alunosDaTurma = resposta.data.alunos || [];
+    // O aluno só recebe chamada a partir do dia em que entrou na turma (dia de Brasília).
+    const todosDaTurma = resposta.data.alunos || [];
+    const diaSelecionado = document.getElementById('data-chamada').value;
+    alunosDaTurma = diaSelecionado
+      ? todosDaTurma.filter(aluno => !aluno.turmaInicioEm || diaDeBrasilia(aluno.turmaInicioEm) <= diaSelecionado)
+      : todosDaTurma;
+    const entraramDepois = todosDaTurma.length - alunosDaTurma.length;
     alunoAtual = 0;
     pesquisaRoster = '';
     ordemRoster = 0;
@@ -824,7 +836,10 @@
       aviso.textContent = 'Não foi possível carregar a chamada salva. Atualize a página para tentar novamente.';
       return;
     }
-    aviso.textContent = alunosDaTurma.length ? '' : 'Não há alunos ativos vinculados a esta turma.';
+    const avisoEntrada = entraramDepois > 0
+      ? `${entraramDepois} aluno(s) entraram na turma depois desta data e não aparecem nesta chamada.`
+      : '';
+    aviso.textContent = alunosDaTurma.length ? avisoEntrada : (avisoEntrada || 'Não há alunos ativos vinculados a esta turma.');
     document.getElementById('empty-card').style.display = 'none';
     document.getElementById('turma-summary').style.display = 'block';
     botao.style.display = alunosDaTurma.length ? 'block' : 'none';
@@ -1076,15 +1091,26 @@
     mostrarAluno();
   }
 
-  function limparChamada() {
-    if (!window.confirm('Limpar as marcações desta chamada e recomeçar do primeiro aluno?')) {
+  async function limparChamada() {
+    if (!window.confirm('Limpar as marcações desta chamada? As faltas já salvas desta turma e data voltam a presença.')) {
       return;
     }
+    // Faltas já gravadas (ou em gravação) precisam voltar a presença também no banco.
+    const faltasGravadas = statusAlunos
+      .map((status, indice) => status === 'absent' && (registroIds[indice] || gravacoesEmAndamento.has(indice)) ? indice : -1)
+      .filter(indice => indice >= 0);
     statusAlunos = alunosDaTurma.map(() => 'present');
     alunoAtual = 0;
-    // registroIds é preservado de propósito: o registro já gravado no backend continua
-    // existindo, e marcar de novo o corrige via PUT em vez de criar uma duplicata.
+    // registroIds é preservado de propósito: o registro já gravado no backend é
+    // corrigido via PUT em vez de ganhar uma duplicata.
     mostrarAluno();
+    try {
+      for (const indice of faltasGravadas) {
+        await gravarRegistroDoAluno(indice);
+      }
+    } catch (erro) {
+      window.alert(erro.message || 'Não foi possível desfazer as faltas já salvas. Confira a conexão e conclua a chamada para gravar.');
+    }
   }
 
   async function salvarChamada() {

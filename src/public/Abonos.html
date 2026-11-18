@@ -72,18 +72,17 @@
   </main>
 
   <script type="module">
-    import { montarTopbar } from './js/Topbar.js';
+    import { exigirSessao, montarTopbar } from './js/Topbar.js';
     import ApiService from './ApiService.js';
     import { montarControlesListagem } from './js/ControlesListagem.js';
 
-    let userData = localStorage.getItem("userData");
-    if (userData) {
-      userData = JSON.parse(userData);
-    } else {
-      window.location.href = "Login.html";
+    // Sem sessão volta ao login; exigirSessao não quebra com dado ausente ou corrompido.
+    const sessao = exigirSessao();
+    if (!sessao) {
+      // exigirSessao já redirecionou para o login; nada mais roda nesta página.
+      throw new Error('Sessão não encontrada.');
     }
-
-    const token = userData.data.token;
+    const token = sessao.token;
     const api = new ApiService(token);
     montarTopbar('abonos');
 

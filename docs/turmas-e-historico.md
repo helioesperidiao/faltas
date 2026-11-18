@@ -10,7 +10,7 @@ Faltas, abonos e dispensas não dependem mais apenas da turma atual. Cada falta 
 
 Na página **Alunos**, a seção **Virada anual de turma** move todos os alunos de uma turma atual para a nova turma. A operação é exclusiva do cargo `Processo Pedagógico`; ela mantém os cadastros, registra a turma anterior por um ano e atualiza a série e o ano letivo quando informados.
 
-Também é possível editar uma pessoa individualmente, criar alunos e fazer a exclusão lógica de um aluno. A exclusão retira o aluno da lista ativa, mas não apaga o seu histórico e seus registros já feitos.
+Também é possível editar uma pessoa individualmente, criar alunos e fazer a exclusão lógica de um aluno. Cadastrar manualmente uma matrícula que está arquivada reativa o cadastro antigo, com o histórico e os registros, como já acontece na importação, em vez de criar um segundo aluno. A exclusão retira o aluno da lista ativa, mas não apaga o seu histórico e seus registros já feitos.
 
 ## Relatórios e dados antigos
 

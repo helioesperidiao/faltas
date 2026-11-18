@@ -6,7 +6,7 @@
 npm test
 ```
 
-Roda `tests/*.test.mjs` com o executor nativo do Node (`node --test`), sem banco nem servidor. Verifica a associação de turmas da chamada e a leitura de planilhas CSV e Excel. Cobre o seletor de turmas da chamada, a correspondência de siglas legadas, a recuperação da chamada salva pela rota `api/v1/registros` e o clique duplo em `Faltou`, que deve gerar um único registro. Esses testes não precisam de banco de dados.
+Roda `tests/*.test.mjs` com o executor nativo do Node (`node --test`), sem banco nem servidor. Verifica a associação de turmas da chamada e a leitura de planilhas CSV e Excel (inclusive células com quebra de linha e linhas vazias, em `tests/importador-csv.test.mjs`), além de "Limpar chamada" no banco e a chamada sem alunos que entraram depois da data. Cobre o seletor de turmas da chamada, a correspondência de siglas legadas, a recuperação da chamada salva pela rota `api/v1/registros` e o clique duplo em `Faltou`, que deve gerar um único registro. Esses testes não precisam de banco de dados.
 
 ## Integração com o servidor compilado
 
@@ -32,8 +32,10 @@ npm run test:e2e
 
 Requer o MongoDB de `MONGO_URI` em execução e as variáveis `DEFAULT_ADMIN_*` do `.env`. Os anexos enviados pelo teste são apagados ao final.
 
-Em 16/11/2026 o roteiro tinha 82 verificações: o código anterior às correções passava em 52 e o atual passa em todas.
+Em 16/11/2026 o roteiro tinha 82 verificações: o código anterior às correções passava em 52 e o atual passa em todas. Em 17/11/2026 passou a ter 89, incluindo o boot sem `JWT_SECRET`, o token de funcionário excluído, a chamada antes da entrada na turma, abonos sobrepostos e o cadastro manual de matrícula arquivada.
+
+Na integração (`npm run test:integracao`), o aluno do roteiro passa a entrar na turma no início do ano letivo, porque as datas do roteiro são fixas (16 e 17/11/2026) e o aluno só conta a partir da entrada. Com isso, os 17 cenários passam em qualquer dia.
 
 ## Lint
 
-O script `npm run lint` chama o ESLint, que não está instalado nem configurado no projeto (ver `docs/PENDENCIAS.md`).
+O projeto não tem ESLint. Os scripts `lint` e `lint:fix`, que chamavam o ESLint sem ele estar instalado, foram removidos por decisão do usuário (17/11/2026). A verificação estática é a do TypeScript (`npx tsc --noEmit`).

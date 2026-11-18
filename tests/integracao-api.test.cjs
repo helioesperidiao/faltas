@@ -83,6 +83,9 @@ test('simulação HTTP com banco isolado', async t => {
     const aluno = {matricula:'12345678',alunoNome:'Aluno Teste',turma:'EConAdm-2PMB',curso:'Administração',serie:'2',ano:'2026',paiEmail:'pai@example.test'};
     shared.aluno = aluno;
     shared.idAluno = validar(await requisicao('POST','/api/v1/alunos',{aluno}),201,'cadastrar aluno').alunos[0].idAluno;
+    // O aluno só conta a partir do dia em que entrou na turma (docs/chamada-e-relatorios.md).
+    // As datas deste roteiro são fixas (16 e 17/11/2026), então ele entra no início do ano letivo.
+    await mongoClient.db('teste_isolado').collection('aluno').updateOne({ matricula: aluno.matricula }, { $set: { turmaInicioEm: new Date('2026-01-01T03:00:00Z') } });
     const gradeHorario = {turma:aluno.turma,horaInicio:'07:00',horaFim:'07:50',dia:'Segunda-feira',cod:'ADM1',disciplina:'Administração'};
     shared.grade = gradeHorario;
     shared.idGrade = validar(await requisicao('POST','/api/v1/gradehorarios',{gradeHorario}),201,'cadastrar aula').gradeHorarios[0].idGradeHorario;

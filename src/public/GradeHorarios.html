@@ -64,19 +64,23 @@
        a chamada fica só para versões que exigem registrar a tabela. -->
   <script>if (window.XLSX && window.cptable && typeof window.XLSX.set_cptable === "function") window.XLSX.set_cptable(window.cptable);</script>
   <script type="module">
-    import { montarTopbar, escaparHtml } from './js/Topbar.js';
+    import { exigirSessao, montarTopbar, escaparHtml, temAcessoTotal } from './js/Topbar.js';
     import ApiService from './ApiService.js';
     import { ESQUEMAS_IMPORTACAO, lerArquivoPlanilha, normalizarLinhaGradeHorario, prepararImportacao } from './js/ImportadorCsv.js';
     import { montarControlesListagem } from './js/ControlesListagem.js';
 
-    let userData = localStorage.getItem("userData");
-    if (userData) {
-      userData = JSON.parse(userData);
-    } else {
-      window.location.href = "Login.html";
+    // Sem sessão volta ao login; exigirSessao não quebra com dado ausente ou corrompido.
+    const sessao = exigirSessao();
+    if (!sessao) {
+      // exigirSessao já redirecionou para o login; nada mais roda nesta página.
+      throw new Error('Sessão não encontrada.');
     }
-
-    const token = userData.data.token;
+    if (!temAcessoTotal(sessao.cargo)) {
+      // Módulo restrito: quem não tem acesso volta ao painel (a API também recusa).
+      window.location.href = 'dashboard.html';
+      throw new Error('Acesso restrito.');
+    }
+    const token = sessao.token;
     const api = new ApiService(token);
     montarTopbar('gradehorarios');
 

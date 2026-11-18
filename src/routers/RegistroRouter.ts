@@ -1,3 +1,4 @@
+import { AbonoDAO } from "../dao/AbonoDAO";
 import { Router } from "express";
 import { JwtMiddleware } from "../middlewares/JwtMiddleware";
 import { RegistroController } from "../controllers/RegistroController";
@@ -32,7 +33,7 @@ export class RegistroRouter {
         const registroDAO = new RegistroDAO(dbInstance);
         const alunoDAO = new AlunoDAO(dbInstance);
         const dispensaDAO = new DispensaDAO(dbInstance);
-        const registroService = new RegistroService(registroDAO, alunoDAO, dispensaDAO);
+        const registroService = new RegistroService(registroDAO, alunoDAO, dispensaDAO, new AbonoDAO(dbInstance));
         const registroController = new RegistroController(registroService);
         const jwtMiddleware = new JwtMiddleware();
 

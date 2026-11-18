@@ -35,3 +35,9 @@ Varredura completa feita com o sistema rodando (MongoDB 9.0.4 local, banco desca
 | BUG-029 | Alto | Grade (tela) | Editar uma aula pela tela de Grade de Horários nunca funcionou: o servidor respondia 404 em HTML e a tela mostrava erro de JSON | `GradeHorarios.html` chamava `api.put("api/v1/gradehorarios/", id)`; o `ApiService` monta `recurso/id`, resultando em `gradehorarios//id`, que nenhuma rota atende | Barra final removida | Teste de integração da colega ("edição da grade pela tela e ApiService reais") e e2e "telas não montam URL com barra dupla" | Validado |
 
 O BUG-029 não foi achado na varredura original: ela chamava a API direto e não os caminhos que cada tela monta. Foi o `tests/integracao-api.test.cjs` (LuanaPin-Cruz, 17/11) que o expôs ao simular a tela com o `ApiService` real; o e2e passou a ter uma verificação estática equivalente.
+
+## 17/11/2026
+
+| ID | Gravidade | Área | Sintoma | Causa raiz | Correção | Teste de regressão | Status |
+|---|---|---|---|---|---|---|---|
+| BUG-030 | Médio | Inicialização | Qualquer falha ao iniciar aparecia no log sem o motivo (`"error":{}`) | `log.error(..., { error })`: um `Error` vira `{}` ao ser serializado | Mensagem e pilha explícitas no log de boot | e2e "servidor não sobe sem JWT_SECRET" confere o motivo na saída | Validado |

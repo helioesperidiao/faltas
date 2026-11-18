@@ -35,7 +35,7 @@ cd faltas_cti
 
 3.2. Criar o arquivo .env
 
-Na raiz do projeto, crie um arquivo .env com o seguinte conteúdo:
+O .env não é versionado. Copie o modelo .env.example para .env e preencha os valores (veja docs/configuracao.md). O conteúdo é este:
 # Servidor
 PORT=8080
 

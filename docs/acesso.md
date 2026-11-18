@@ -14,4 +14,6 @@ Um funcionário excluído (exclusão lógica) não consegue mais entrar, e edita
 
 Quando o servidor responde `401` a uma tela já autenticada (token vencido ou inválido), a sessão salva no navegador é apagada e a tela volta para o login. A tela antiga `telaLoginChamada.html` não envia mais o formulário de forma nativa, e o link "Esqueci minha senha" orienta a procurar o Processo Pedagógico.
 
-O token já emitido continua válido até expirar, mesmo que o funcionário seja excluído depois; ver `docs/PENDENCIAS.md`.
+A cada requisição autenticada, o servidor confere no banco se o funcionário do token continua ativo e qual é o cargo dele agora. Um funcionário excluído perde o acesso na hora, mesmo com um token ainda dentro da validade, e uma troca de cargo vale já na requisição seguinte. Para não fazer uma consulta por requisição, a situação fica guardada por até 1 minuto; alterar ou excluir o funcionário apaga essa memória na hora.
+
+As telas de módulos restritos (Alunos, Grade de Horários, Relatórios, Alertas de Faltas, Cargos e Funcionários) devolvem ao painel quem não é `Processo Pedagógico`, e todas as telas voltam ao login quando não há sessão salva. A API continua recusando por conta própria.
