@@ -25,6 +25,9 @@ export class MovimentacaoService {
         return this.movimentacaoDAO.createLote(movimentacoes, funcionario);
     }
 
+    async anexar(id: string, nomeArquivo: string): Promise<boolean> { return this.movimentacaoDAO.anexar(id, nomeArquivo); }
+    async buscar(id: string): Promise<Movimentacao | null> { return this.movimentacaoDAO.buscar(id); }
+
     async findAll(data?: Date): Promise<Movimentacao[]> {
         log.debug("findAll()", { data });
         return this.movimentacaoDAO.findAll(data);

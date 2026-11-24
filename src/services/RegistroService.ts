@@ -1,3 +1,4 @@
+import { AbonoDAO } from "../dao/AbonoDAO";
 import { RegistroDAO } from "../dao/RegistroDAO";
 import { Registro } from "../models/Registro";
 import { ErrorResponse } from "../http/ErrorResponse";
@@ -17,7 +18,7 @@ export class RegistroService {
     private _dispensaDAO: DispensaDAO;
 
     //construtor
-    constructor(registroDAODependency: RegistroDAO, alunoDAODependency: AlunoDAO, dispensaDAODependency: DispensaDAO){
+    constructor(registroDAODependency: RegistroDAO, alunoDAODependency: AlunoDAO, dispensaDAODependency: DispensaDAO, private readonly abonoDAO: AbonoDAO){
         this._registroDAO = registroDAODependency;
         this._alunoDAO = alunoDAODependency;
         this._dispensaDAO = dispensaDAODependency;
@@ -53,6 +54,11 @@ export class RegistroService {
                 matricula: registro.matricula,
                 idDispensa: dispensaVigente.idDispensa,
             });
+        }
+
+        if (await this.abonoDAO.existeAprovadoNaData(registro.matricula, registro.dia)) {
+            registro.falta = true;
+            registro.situacao = "Abonada";
         }
 
         registro.alunoNome = aluno.alunoNome;
@@ -101,6 +107,9 @@ export class RegistroService {
     //update
     public update = async (registro: Registro, funcionarioLogado: Funcionario): Promise<boolean> => {
         log.debug("update()", { idRegistro: registro.idRegistro });
+        const existente = await this._registroDAO.findById(registro.idRegistro);
+        if (!existente) return false;
+        if (await this.abonoDAO.existeAprovadoNaData(existente.matricula, existente.dia)) registro.falta = true;
         const atualizou = await this._registroDAO.update(registro, funcionarioLogado);
         if (atualizou) {
             log.info("registro atualizado", {

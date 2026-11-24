@@ -136,7 +136,7 @@ function encontrarIndice(cabecalhos, apelidos) {
 
   return cabecalhos.findIndex(cabecalho => {
     const normalizado = normalizarTexto(cabecalho);
-    return normalizados.some(apelido => normalizado.includes(apelido) || apelido.includes(normalizado));
+    return Boolean(normalizado) && normalizados.some(apelido => apelido && (normalizado.includes(apelido) || apelido.includes(normalizado)));
   });
 }
 

@@ -21,3 +21,5 @@ Ao importar novamente uma grade, uma aula já existente com a mesma turma, horá
 ## Horários de aula
 
 A grade preserva horários com minutos e aceita formatos como `7`, `07:00`, `07h30`, `10:50-11:40` e valores de horário do Excel. Todos são guardados no formato `HH:MM`, evitando que uma formatação diferente da planilha cause erro ou descarte os minutos.
+
+A grade rejeita horários finais iguais ou anteriores ao início, inclusive ao atualizar ou importar. A tela de edição envia a alteração ao endereço correto da API.

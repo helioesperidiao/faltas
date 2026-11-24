@@ -591,3 +591,10 @@ textarea.form-control:focus {
     transition: none;
   }
 }
+
+/* Padrão de destaque para botões em todas as telas. */
+button:not(:disabled):hover, .btn:not(:disabled):hover, a.btn:hover {
+  background-color: #235789 !important;
+  border-color: #235789 !important;
+  color: #fff !important;
+}

@@ -1,4 +1,6 @@
 import { Request, Response } from "express";
+import path from "path";
+import fs from "fs";
 import { MovimentacaoService } from "../services/MovimentacaoService";
 import { Movimentacao } from "../models/Movimentacao";
 import { StandardResponse } from "../http/StandardResponse";
@@ -20,10 +22,12 @@ export class MovimentacaoController extends BaseController {
         const movimentacao = new Movimentacao();
         movimentacao.nomeAluno = dados.nomeAluno;
         movimentacao.matricula = dados.matricula;
-        const [ano, mes, dia] = String(dados.data || '').split("-").map(Number);
-        movimentacao.data = new Date(ano, mes - 1, dia);
+        const data = String(dados.data || "");
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(data) || isNaN(Date.parse(data)) || new Date(data).toISOString().slice(0, 10) !== data) throw new Error("Data inválida.");
+        movimentacao.data = new Date(data);
         movimentacao.horario = dados.horario;
         movimentacao.tipo = dados.tipo;
+        movimentacao.motivo = dados.motivo || "";
         return movimentacao;
     };
 
@@ -49,6 +53,24 @@ export class MovimentacaoController extends BaseController {
         StandardResponse.created("Lista de movimentações registrada com sucesso", { movimentacoes: resultado }).send(response);
     };
 
+    uploadArquivo = async (request: Request, response: Response): Promise<void> => {
+        if (!request.file) { StandardResponse.error("Selecione uma imagem.", null, 400).send(response); return; }
+        const id = String(request.params.id);
+        const anterior = await this.movimentacaoService.buscar(id);
+        if (!anterior || !(await this.movimentacaoService.anexar(id, request.file.filename))) {
+            await fs.promises.unlink(request.file.path).catch(() => {});
+            StandardResponse.notFound("Movimentação não encontrada.").send(response); return;
+        }
+        if (anterior.nomeArquivo) await fs.promises.unlink(path.resolve(__dirname, "../../uploads/movimentacao", path.basename(anterior.nomeArquivo))).catch(() => {});
+        StandardResponse.success("Imagem anexada com sucesso", {}).send(response);
+    };
+
+    obterArquivo = async (request: Request, response: Response): Promise<void> => {
+        const item = await this.movimentacaoService.buscar(String(request.params.id));
+        if (!item?.nomeArquivo) { StandardResponse.notFound("Imagem não encontrada.").send(response); return; }
+        response.sendFile(path.resolve(__dirname, "../../uploads/movimentacao", path.basename(item.nomeArquivo)));
+    };
+
     findAll = async (request: Request, response: Response): Promise<void> => {
         log.debug("findAll()", { data: request.query.data });
 
@@ -60,8 +82,8 @@ export class MovimentacaoController extends BaseController {
                 return;
             }
             const [ano, mes, dia] = valorData.split("-").map(Number);
-            data = new Date(ano, mes - 1, dia);
-            if (data.getFullYear() !== ano || data.getMonth() !== mes - 1 || data.getDate() !== dia) {
+            data = new Date(Date.UTC(ano, mes - 1, dia));
+            if (data.getUTCFullYear() !== ano || data.getUTCMonth() !== mes - 1 || data.getUTCDate() !== dia) {
                 StandardResponse.error("Data inválida. Use o formato AAAA-MM-DD.", null, 400).send(response);
                 return;
             }

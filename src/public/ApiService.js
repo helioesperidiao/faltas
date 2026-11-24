@@ -165,7 +165,7 @@ export default class ApiService {
      * @returns {Promise<Object|null>} Retorna JSON do recurso ou null em caso de erro.
      */
     async getById(uri, id) {
-        const fullUri = this._buildUrl(`${uri}/${id}`);
+        const fullUri = this._buildUrl(`${uri.replace(/\/+$/, "")}/${id}`);
         console.log(`[ApiService] 🔍 getById() iniciado para: ${fullUri}`);
         try {
             const headers = this._getHeaders();
@@ -263,7 +263,7 @@ export default class ApiService {
      * @returns {Promise<Object|null>} Retorna JSON da resposta ou null em caso de erro.
      */
     async put(uri, id, jsonObject) {
-        const fullUri = this._buildUrl(`${uri}/${id}`);
+        const fullUri = this._buildUrl(`${uri.replace(/\/+$/, "")}/${id}`);
         console.log(`[ApiService] 📤 put() iniciado para: ${fullUri}`);
         try {
             const headers = this._getHeaders();
@@ -293,7 +293,7 @@ export default class ApiService {
      * para padronizar a resposta no front-end.
      */
     async delete(uri, id) {
-        const fullUri = this._buildUrl(`${uri}/${id}`);
+        const fullUri = this._buildUrl(`${uri.replace(/\/+$/, "")}/${id}`);
         console.log(`[ApiService] 🗑️ delete() iniciado para: ${fullUri}`);
         try {
             const headers = this._getHeaders();

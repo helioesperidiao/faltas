@@ -1,3 +1,4 @@
+import { AbonoDAO } from "../dao/AbonoDAO";
 import { AlunoDAO } from "../dao/AlunoDAO";
 import { RegistroDAO } from "../dao/RegistroDAO";
 import { Registro } from "../models/Registro";
@@ -54,6 +55,7 @@ export interface FaltaPorAula {
     horarioInicio: string;
     matricula: string;
     emailPai: string;
+    motivo: string;
 }
 
 export interface FechamentoDia {
@@ -102,7 +104,8 @@ export class RelatorioService {
         movimentacaoDAODependency: MovimentacaoDAO,
         gradeHorarioDAODependency: GradeHorarioDAO,
         configuracaoAlertaFaltaDAODependency: ConfiguracaoAlertaFaltaDAO,
-        alertaFaltaDAODependency: AlertaFaltaDAO
+        alertaFaltaDAODependency: AlertaFaltaDAO,
+        private readonly abonoDAO: AbonoDAO
     ) {
         this._alunoDAO = alunoDAODependency;
         this._registroDAO = registroDAODependency;
@@ -134,7 +137,7 @@ export class RelatorioService {
      */
     private faltaNoHorario(registro: Registro, movimentacoes: Movimentacao[], horarioInicio: string): boolean {
         const doAlunoNoDia = this.movimentacoesDoAlunoNoDia(registro, movimentacoes);
-        let falta = registro.falta;
+        let falta = doAlunoNoDia[0]?.tipo === "entrada" || registro.falta;
         doAlunoNoDia
             .filter(movimentacao => movimentacao.horario <= horarioInicio)
             .forEach(movimentacao => {
@@ -226,6 +229,16 @@ export class RelatorioService {
         return aulas.some(aula => this.faltaNoHorario(registro, movimentacoes, aula.horaInicio));
     }
 
+    /** Uma chamada salva prova o vínculo do aluno naquele dia, mesmo em cadastros importados depois. */
+    private async incluirAlunosComRegistros(alunos: Awaited<ReturnType<AlunoDAO["findAll"]>>, registros: Registro[]): Promise<void> {
+        const faltantes = new Set(registros.map(r => r.matricula).filter(m => !alunos.some(a => a.matricula === m)));
+        if (!faltantes.size) return;
+        const [ativos, arquivados] = await Promise.all([this._alunoDAO.findAll(), this._alunoDAO.findAllDeleted()]);
+        for (const aluno of [...ativos, ...arquivados]) {
+            if (faltantes.delete(aluno.matricula)) alunos.push(aluno);
+        }
+    }
+
     //frequência de uma turma num dia: busca os alunos da turma, depois os registros do dia, e interpola via software
     public frequenciaPorTurma = async (turma: string, dia: Date): Promise<FrequenciaAluno[]> => {
         log.debug("frequenciaPorTurma()", { turma, dia });
@@ -237,6 +250,7 @@ export class RelatorioService {
             this._gradeHorarioDAO.findAll()
         ]);
 
+        await this.incluirAlunosComRegistros(alunosDaTurma, todosRegistros.filter(registro => registro.turma === turma && this.mesmaData(registro.dia, dia)));
         return alunosDaTurma.map(aluno => {
             const registroDoDia = todosRegistros.find(registro =>
                 registro.matricula === aluno.matricula &&
@@ -281,6 +295,7 @@ export class RelatorioService {
             registro.dia >= dataInicio && registro.dia <= dataFim && this.possuiFaltaNaGradeDoDia(registro, movimentacoes, grades)
         );
 
+        await this.incluirAlunosComRegistros(alunosDaTurma, registrosNoPeriodo);
         return alunosDaTurma.map(aluno => {
             const totalFaltas = registrosNoPeriodo.filter(registro => registro.matricula === aluno.matricula).length;
             return {
@@ -317,12 +332,13 @@ export class RelatorioService {
             throw new ErrorResponse(400, "Data inválida para o fechamento do dia.");
         }
 
-        const [alunos, alunosArquivados, registros, movimentacoesDoDia, grades] = await Promise.all([
+        const [alunos, alunosArquivados, registros, movimentacoesDoDia, grades, abonos] = await Promise.all([
             this._alunoDAO.findAll(),
             this._alunoDAO.findAllDeleted(),
             this._registroDAO.findAll(),
             this._movimentacaoDAO.findAll(data),
-            this._gradeHorarioDAO.findAll()
+            this._gradeHorarioDAO.findAll(),
+            this.abonoDAO.findAll()
         ]);
         // Registros históricos podem pertencer a alunos arquivados após uma
         // importação. Mantemos seus contatos para montar os CSVs completos.
@@ -331,6 +347,8 @@ export class RelatorioService {
             ...alunos.map(aluno => [aluno.matricula, aluno] as const)
         ]);
         const dataFormatada = this.chaveData(data);
+        const abonosDoDia = abonos.filter(abono => abono.status === 'Aprovado' && this.chaveData(abono.dataInicio) <= dataFormatada && this.chaveData(abono.dataFim) >= dataFormatada);
+        const abonoPorMatricula = new Map(abonosDoDia.map(abono => [abono.matricula, abono]));
         const dadosDoAluno = (matricula: string, nomeRegistrado: string, turmaRegistrada = '') => {
             const aluno = alunosPorMatricula.get(matricula);
             return {
@@ -360,7 +378,7 @@ export class RelatorioService {
             }))
             .sort(compararLinhas);
         const faltasValidas = registros.filter(registro =>
-            registro.falta === true && !['Abonada', 'Dispensada'].includes(registro.situacao)
+            registro.falta === true && registro.situacao !== 'Dispensada'
         );
 
         // Uma chamada geral deve aparecer uma única vez por aluno no fechamento,
@@ -375,6 +393,11 @@ export class RelatorioService {
                     data: dataFormatada
                 });
             });
+        abonosDoDia.forEach(abono => {
+            if (!faltasDoDiaPorMatricula.has(abono.matricula)) faltasDoDiaPorMatricula.set(abono.matricula, {
+                ...dadosDoAluno(abono.matricula, abono.alunoNome, abono.turma), data: dataFormatada
+            });
+        });
         const faltasDoDia = Array.from(faltasDoDiaPorMatricula.values()).sort(compararLinhas);
 
         const faltasHistoricas = faltasValidas
@@ -391,7 +414,8 @@ export class RelatorioService {
         const registrosDoDia = registros.filter(registro => this.mesmaData(registro.dia, data));
         const matriculas = new Set([
             ...registrosDoDia.filter(r => r.falta).map(r => r.matricula),
-            ...movimentacoesDoDia.map(m => m.matricula)
+            ...movimentacoesDoDia.map(m => m.matricula),
+            ...abonosDoDia.map(a => a.matricula)
         ]);
         const aulasAntecipados: FaltaPorAula[] = [];
         const aulasAtrasados: FaltaPorAula[] = [];
@@ -399,21 +423,25 @@ export class RelatorioService {
         const turmasSemGrade = new Set<string>();
         const todasAulasAusentes: FaltaPorAula[] = [];
         matriculas.forEach(matricula => {
-            const registrosAluno = registrosDoDia.filter(r => r.matricula === matricula);
+            const registrosAluno = registrosDoDia.filter(r => r.matricula === matricula).sort((a, b) => {
+                const momento = (r: Registro) => (r.auditoria.alteradoEm || r.auditoria.criadoEm).getTime();
+                return momento(b) - momento(a) || b.idRegistro.localeCompare(a.idRegistro);
+            });
             const registroGeral = registrosAluno.find(r => r.codDisciplina.trim().toUpperCase() === 'GERAL');
             const registro = registroGeral || registrosAluno[0];
-            if (registroGeral && ['Abonada', 'Dispensada'].includes(registroGeral.situacao)) return;
+            const abono = abonoPorMatricula.get(matricula);
+            if (!abono && registroGeral?.situacao === 'Dispensada') return;
             const movimentos = movimentacoesDoDia.filter(m => m.matricula === matricula)
                 .sort((a, b) => a.horario.localeCompare(b.horario));
             const aluno = alunosPorMatricula.get(matricula);
-            const turma = registro?.turma || aluno?.turma || '';
+            const turma = abono?.turma || registro?.turma || aluno?.turma || '';
             const aulas = this.aulasDaTurmaNoDia(turma, this.diaSemanaDaData(data), grades);
             if (!aulas.length) { turmasSemGrade.add(turma || '(turma não encontrada)'); return; }
             const resultado = aulas.map(aula => {
                 // Na ausência de chamada, uma entrada implica ausência inicial;
                 // uma saída implica presença inicial, como no controle diário.
                 const registroDaAula = registroGeral || registrosAluno.find(r => r.codDisciplina === aula.cod);
-                if (registroDaAula && ['Abonada', 'Dispensada'].includes(registroDaAula.situacao)) {
+                if (!abono && registroDaAula?.situacao === 'Dispensada') {
                     return { aula, ausente: false, causa: '' };
                 }
                 let ausente = movimentos[0]?.tipo === 'entrada' || Boolean(registroDaAula?.falta);
@@ -423,14 +451,17 @@ export class RelatorioService {
                     causa = ausente ? 'saida' : '';
                 });
                 if (ausente && causa === 'chamada' && movimentos.some(m => m.tipo === 'entrada' && m.horario > aula.horaInicio)) causa = 'entrada';
-                return { aula, ausente, causa };
+                return { aula, ausente: Boolean(abono) || ausente, causa };
             });
             const faltouDiaTodo = resultado.every(item => item.ausente);
             resultado.filter(item => item.ausente).forEach(({ aula, causa }) => {
                 const linha: FaltaPorAula = {
                     ano: Number(dataFormatada.slice(0, 4)), codDisciplina: aula.cod,
                     data: dataFormatada, horarioInicio: aula.horaInicio, matricula,
-                    emailPai: aluno?.paiEmail || ''
+                    emailPai: aluno?.paiEmail || '',
+                    motivo: (causa === 'entrada'
+                        ? movimentos.find(m => m.tipo === 'entrada' && m.horario > aula.horaInicio)
+                        : causa === 'saida' ? [...movimentos].reverse().find(m => m.tipo === 'saida' && m.horario <= aula.horaInicio) : undefined)?.motivo || ''
                 };
                 todasAulasAusentes.push(linha);
                 if (causa === 'entrada') aulasAtrasados.push(linha);
@@ -439,7 +470,14 @@ export class RelatorioService {
             });
         });
         const ordenar = (a: FaltaPorAula, b: FaltaPorAula) => a.matricula.localeCompare(b.matricula) || a.horarioInicio.localeCompare(b.horarioInicio) || a.codDisciplina.localeCompare(b.codDisciplina);
-        aulasAntecipados.sort(ordenar); aulasAtrasados.sort(ordenar); aulasFaltasDia.sort(ordenar);
+        const deduplicar = (linhas: FaltaPorAula[]) => {
+            const unicas = new Map<string, FaltaPorAula>();
+            linhas.forEach(linha => unicas.set(JSON.stringify([linha.matricula, linha.data, linha.horarioInicio, linha.codDisciplina]), linha));
+            return [...unicas.values()].sort(ordenar);
+        };
+        aulasAntecipados.splice(0, aulasAntecipados.length, ...deduplicar(aulasAntecipados));
+        aulasAtrasados.splice(0, aulasAtrasados.length, ...deduplicar(aulasAtrasados));
+        aulasFaltasDia.splice(0, aulasFaltasDia.length, ...deduplicar(aulasFaltasDia));
         const unicas = new Map<string, FaltaPorAula>();
         todasAulasAusentes.forEach(linha => {
             unicas.set(JSON.stringify([linha.matricula, linha.data, linha.horarioInicio, linha.codDisciplina]), linha);

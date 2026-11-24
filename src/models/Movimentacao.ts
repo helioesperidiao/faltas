@@ -15,6 +15,8 @@ export class Movimentacao {
     private _data: Date = new Date();
     private _horario: string = "";
     private _tipo: TipoMovimentacao = "entrada";
+    private _motivo: string = "";
+    private _nomeArquivo: string = "";
     private _auditoria: Auditoria = new Auditoria();
 
     get idMovimentacao(): string { return this._idMovimentacao; }
@@ -55,6 +57,14 @@ export class Movimentacao {
         this._tipo = value;
     }
 
+    get motivo(): string { return this._motivo; }
+    set motivo(value: string) {
+        if (value && !["com responsável", "atestado", "orientação", "bilhete"].includes(value)) throw new Error("Motivo inválido.");
+        this._motivo = value || "";
+    }
+    get nomeArquivo(): string { return this._nomeArquivo; }
+    set nomeArquivo(value: string) { this._nomeArquivo = value || ""; }
+
     get auditoria(): Auditoria { return this._auditoria; }
     set auditoria(value: Auditoria) { this._auditoria = value; }
 
@@ -68,6 +78,8 @@ export class Movimentacao {
             data: this._data.toISOString(),
             horario: this._horario,
             tipo: this._tipo,
+            motivo: this._motivo,
+            nomeArquivo: this._nomeArquivo,
             auditoria: this._auditoria.toJSON()
         };
     }

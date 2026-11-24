@@ -11,3 +11,7 @@ Ao lado da pesquisa há os botões `A–Z`, `Z–A` e `Limpar`. Eles organizam a
 No celular, o cabeçalho usa menu lateral e os campos, botões e cartões passam para uma coluna. As ações das tabelas ficam empilhadas, evitando que os botões de abono escapem para a lateral. Quando a tabela precisa de mais espaço, ela permanece rolável horizontalmente sem aumentar a largura da página.
 
 Na frequência por turma, alunos com ausência parcial causada por entrada atrasada aparecem como `Atrasado`, em amarelo. A tela não oferece mais saída em PDF; os arquivos operacionais da escola continuam sendo gerados em CSV na área Entradas e Saídas.
+
+## Botões
+
+Os botões usam a mesma cor azul ao passar o cursor, inclusive os botões de ação das diferentes telas.

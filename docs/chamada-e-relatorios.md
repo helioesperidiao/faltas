@@ -11,3 +11,7 @@ Ao concluir, o sistema grava tanto as faltas marcadas quanto as presenças resta
 O seletor da chamada apresenta as turmas distintas que possuem ao menos uma aula ativa na grade de horários. As opções são agrupadas pelo nome, com os números em ordem crescente dentro de cada grupo (por exemplo, `1adm`, `2adm`, `3adm`, `1quim`, `2quim`). Turmas que existem apenas no cadastro de alunos não aparecem; ao remover todas as aulas de uma turma da grade, ela também deixa de aparecer. Uma turma da grade sem alunos ativos continua visível, com aviso e sem permitir iniciar a chamada.
 
 Ao selecionar uma turma, o sistema procura os alunos ativos pelo nome da turma, ignorando diferenças de maiúsculas, acentos e pontuação. Se não houver correspondência, aceita as siglas legadas `ETec` e `ECon` quando houver uma única associação possível entre grade e alunos. Nomes ambíguos exigem correção nos cadastros antes de iniciar a chamada. Os registros continuam usando a turma do cadastro do aluno, inclusive para recuperar chamadas anteriores e para consultas nos relatórios. Se a grade, os alunos ou a chamada salva não puderem ser carregados, a tela não permite iniciar a chamada.
+
+## Registros anteriores ao cadastro
+
+Se uma chamada salva vincula um aluno a uma turma e data, os relatórios incluem esse aluno mesmo quando o cadastro foi importado posteriormente ou arquivado. O registro preservado é a evidência do vínculo naquele período, sem alterar o histórico de turmas.

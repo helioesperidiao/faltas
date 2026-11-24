@@ -44,8 +44,8 @@ export class Dispensa {
         if (!value) {
             throw new Error("idAluno é obrigatório.");
         }
-        if (value.length > 20) {
-            throw new Error(`idAluno pode ter no máximo 20 caracteres.`);
+        if (value.length > 24) {
+            throw new Error(`idAluno pode ter no máximo 24 caracteres.`);
         }
         this._idAluno = value;
     }

@@ -83,3 +83,18 @@ log.debug("configurado", {
     uploadDirAbono,
     tiposPermitidos: [".jpg", ".jpeg", ".pdf"],
 });
+// Imagens de movimentações ficam fora da área pública e são acessadas por rota autenticada.
+const uploadDirMovimentacao = path.resolve(__dirname, "../../uploads/movimentacao");
+fs.mkdirSync(uploadDirMovimentacao, { recursive: true });
+export const uploadMovimentacaoMiddleware = multer({
+    storage: multer.diskStorage({
+        destination: (_req, _file, cb) => cb(null, uploadDirMovimentacao),
+        filename: (_req, file, cb) => cb(null, require("crypto").randomUUID() + path.extname(file.originalname).toLowerCase())
+    }),
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => {
+        const ext = path.extname(file.originalname).toLowerCase();
+        if ([".jpg", ".jpeg", ".png"].includes(ext) && ["image/jpeg", "image/png"].includes(file.mimetype)) cb(null, true);
+        else cb(new Error("Selecione uma imagem JPG ou PNG."));
+    }
+});

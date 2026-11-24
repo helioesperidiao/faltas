@@ -51,7 +51,7 @@ async function iniciarTela(falharChamada = false) {
       if (url === 'api/v1/gradehorarios') return { success: true, data: { gradeHorarios: itens('EConInf-3PMA', 'Outra') } };
       if (url === 'api/v1/alunos') return { success: true, data: { alunos: itens('ETecInf-3PMA', 'ForaDaGrade') } };
       if (url.startsWith('api/v1/alunos/turma/')) return { success: true, data: { alunos: [{ matricula: '123', alunoNome: 'Ana' }] } };
-      if (url.startsWith('api/v1/registro/chamada?')) return falharChamada ? { success: false } : { success: true, data: { registros: [{ matricula: '123', falta: true, idRegistro: 'existente' }] } };
+      if (url.startsWith('api/v1/registros/chamada?')) return falharChamada ? { success: false } : { success: true, data: { registros: [{ matricula: '123', falta: true, idRegistro: 'existente' }] } };
       throw Error(url);
     }
     async put(url, id, objeto) { chamadas.push({ url, id, objeto }); return { success: true }; }
@@ -72,7 +72,7 @@ test('a chamada usa a turma da grade, recupera e atualiza o registro da turma le
   select.value = 'EConInf-3PMA';
   await window.selecionarTurma();
   assert.ok(chamadas.includes('api/v1/alunos/turma/ETecInf-3PMA'));
-  assert.ok(chamadas.some(url => typeof url === 'string' && url.startsWith('api/v1/registro/chamada?turma=ETecInf-3PMA&')));
+  assert.ok(chamadas.some(url => typeof url === 'string' && url.startsWith('api/v1/registros/chamada?turma=ETecInf-3PMA&')));
   assert.equal(document.getElementById('sum-absent').innerHTML, 1);
   await window.salvarChamada();
   assert.equal(chamadas.find(item => typeof item === 'object').id, 'existente');

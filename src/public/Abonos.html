@@ -45,6 +45,15 @@
     </div>
   </div>
 
+  <div class="card mt-4">
+    <div class="card-header">CSV de abonos aprovados</div>
+    <div class="card-body">
+      <div class="row mb-2"><div class="col-md-6"><label for="csvInicio">De</label><input class="form-control" type="date" id="csvInicio"></div><div class="col-md-6"><label for="csvFim">Até</label><input class="form-control" type="date" id="csvFim"></div></div>
+      <button type="button" class="btn btn-primary" id="csvAbonos">Gerar CSV de abonados</button>
+      <div id="csvResposta" role="status"></div>
+    </div>
+  </div>
+
   <div class="card mt-4" id="cardListagem">
     <div class="card-header">Lista de Abonos</div>
     <div class="card-body">
@@ -86,6 +95,25 @@
     const token = userData.data.token;
     const api = new ApiService(token);
     montarTopbar('abonos');
+
+    document.getElementById('csvAbonos').addEventListener('click', async () => {
+      const inicio = document.getElementById('csvInicio').value, fim = document.getElementById('csvFim').value;
+      const mensagem = document.getElementById('csvResposta');
+      if (!inicio || !fim || inicio > fim) { mensagem.textContent = 'Informe um período válido.'; return; }
+      const resposta = await api.get('api/v1/abonos/');
+      if (!resposta?.success) { mensagem.textContent = resposta?.message || 'Não foi possível carregar os abonos.'; return; }
+      const data = valor => String(valor).slice(0, 10);
+      const formatar = valor => data(valor).split('-').reverse().join('/');
+      const campo = valor => `"${String(valor ?? '').replace(/"/g, '""')}"`;
+      const linhas = (resposta.data.abonos || []).filter(a => a.status === 'Aprovado' && data(a.dataInicio) <= fim && data(a.dataFim) >= inicio)
+        .sort((a, b) => (a.alunoNome || '').localeCompare(b.alunoNome || '', 'pt-BR'))
+        .map(a => [a.matricula, a.alunoNome, a.motivo, `${formatar(a.dataInicio)} - ${formatar(a.dataFim)}`]);
+      const conteudo = [['Matrícula', 'Nome', 'Motivo', 'Período'], ...linhas].map(l => l.map(campo).join(';')).join('\r\n');
+      const url = URL.createObjectURL(new Blob(['\uFEFF', conteudo], { type: 'text/csv;charset=utf-8' }));
+      const link = document.createElement('a'); link.href = url; link.download = `abonados-${inicio}-${fim}.csv`; link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      mensagem.textContent = `${linhas.length} abono(s) incluído(s).`;
+    });
 
     let API_DATA;
 
@@ -139,6 +167,10 @@
       }
       if (!txtDataInicio.value || !txtDataFim.value) {
         mostrarMensagem("Informe o período (data início e data fim)", "warning");
+        return false;
+      }
+      if (txtDataInicio.value > txtDataFim.value) {
+        mostrarMensagem("A data inicial deve ser anterior ou igual à final", "warning");
         return false;
       }
       if (!txtMotivo.value.trim()) {
@@ -310,11 +342,11 @@
         tr.appendChild(tdMatricula);
 
         const tdInicio = document.createElement("td");
-        tdInicio.textContent = new Date(abono.dataInicio).toLocaleDateString("pt-BR");
+        tdInicio.textContent = String(abono.dataInicio).slice(0, 10).split("-").reverse().join("/");
         tr.appendChild(tdInicio);
 
         const tdFim = document.createElement("td");
-        tdFim.textContent = new Date(abono.dataFim).toLocaleDateString("pt-BR");
+        tdFim.textContent = String(abono.dataFim).slice(0, 10).split("-").reverse().join("/");
         tr.appendChild(tdFim);
 
         const tdMotivo = document.createElement("td");

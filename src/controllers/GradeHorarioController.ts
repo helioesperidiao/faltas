@@ -34,15 +34,17 @@ export class GradeHorarioController extends BaseController {
         return grade;
     };
 
+    private horariosValidos(dados: any): boolean {
+        if (!dados || !GradeHorario.isHorarioValido(dados.horaInicio) || !GradeHorario.isHorarioValido(dados.horaFim)) return false;
+        try { GradeHorario.calcularDuracaoMinutos(dados.horaInicio, dados.horaFim); return true; } catch { return false; }
+    }
+
     public create = async (request: Request, response: Response): Promise<void> => {
         log.debug("create()");
 
         const funcionarioLogado: Funcionario = this.getFuncionarioLogado(request);
         const dados = request.body.gradeHorario;
-        const horaInicio = dados?.horaInicio;
-        const horaFim = dados?.horaFim;
-
-        if (!dados || !GradeHorario.isHorarioValido(horaInicio) || !GradeHorario.isHorarioValido(horaFim)) {
+        if (!this.horariosValidos(dados)) {
             StandardResponse.error("Horários inválidos. Informe horas inteiras ou no formato HHMM.", null, 400).send(response);
             return;
         }
@@ -64,7 +66,7 @@ export class GradeHorarioController extends BaseController {
             return;
         }
         const possuiHorarioInvalido = dadosImportados.some(dados =>
-            !dados || !GradeHorario.isHorarioValido(dados.horaInicio) || !GradeHorario.isHorarioValido(dados.horaFim)
+            !this.horariosValidos(dados)
         );
         if (possuiHorarioInvalido) {
             StandardResponse.error("Há horários inválidos na planilha.", null, 400).send(response);
@@ -123,6 +125,10 @@ export class GradeHorarioController extends BaseController {
 
         const funcionarioLogado: Funcionario = this.getFuncionarioLogado(request);
 
+        if (!this.horariosValidos(request.body.gradeHorario)) {
+            StandardResponse.error("Horários inválidos: o fim deve ser posterior ao início.", null, 400).send(response);
+            return;
+        }
         const grade = new GradeHorario();
         grade.idGradeHorario = request.params.idGradeHorario.toString();
         grade.turma = request.body.gradeHorario.turma;

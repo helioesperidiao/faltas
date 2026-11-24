@@ -2,6 +2,7 @@ import { Router } from "express";
 import { JwtMiddleware } from "../middlewares/JwtMiddleware";
 import { RelatorioController } from "../controllers/RelatorioController";
 import { RelatorioService } from "../services/RelatorioService";
+import { AbonoDAO } from "../dao/AbonoDAO";
 import { AlunoDAO } from "../dao/AlunoDAO";
 import { RegistroDAO } from "../dao/RegistroDAO";
 import { MovimentacaoDAO } from "../dao/MovimentacaoDAO";
@@ -50,7 +51,8 @@ export class RelatorioRouter {
             movimentacaoDAO,
             gradeHorarioDAO,
             new ConfiguracaoAlertaFaltaDAO(this._dataBase),
-            new AlertaFaltaDAO(this._dataBase)
+            new AlertaFaltaDAO(this._dataBase),
+            new AbonoDAO(this._dataBase)
         );
         const relatorioController = new RelatorioController(relatorioService);
         const jwtMiddleware = new JwtMiddleware();

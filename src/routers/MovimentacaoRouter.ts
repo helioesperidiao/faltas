@@ -4,6 +4,7 @@ import { MovimentacaoController } from "../controllers/MovimentacaoController";
 import { MovimentacaoService } from "../services/MovimentacaoService";
 import { MovimentacaoDAO } from "../dao/MovimentacaoDAO";
 import { MongoDatabase } from "../database/MongoDatabase";
+import { uploadMovimentacaoMiddleware } from "../middlewares/UploadMiddleware";
 import { asyncHandler } from "../http/asyncHandler";
 import { createLogger } from "../logging/Logger";
 
@@ -30,6 +31,8 @@ export class MovimentacaoRouter {
         const movimentacaoController = new MovimentacaoController(movimentacaoService);
         const jwtMiddleware = new JwtMiddleware();
 
+        subRouter.post("/:id/arquivo", jwtMiddleware.validateToken, uploadMovimentacaoMiddleware.single("arquivo"), asyncHandler(movimentacaoController.uploadArquivo));
+        subRouter.get("/:id/arquivo", jwtMiddleware.validateToken, asyncHandler(movimentacaoController.obterArquivo));
         subRouter.post("/lote", jwtMiddleware.validateToken, asyncHandler(movimentacaoController.createLote));
         subRouter.post("/", jwtMiddleware.validateToken, asyncHandler(movimentacaoController.create));
         subRouter.get("/", jwtMiddleware.validateToken, asyncHandler(movimentacaoController.findAll));

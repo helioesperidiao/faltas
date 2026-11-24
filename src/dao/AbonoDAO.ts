@@ -154,6 +154,12 @@ export class AbonoDAO {
         return doc ? this.toAbono(doc) : null;
     }
 
+    public async existeAprovadoNaData(matricula: string, data: Date): Promise<boolean> {
+        const inicio = new Date(Date.UTC(data.getUTCFullYear(), data.getUTCMonth(), data.getUTCDate()));
+        const fim = new Date(inicio.getTime() + 86400000);
+        return Boolean(await (await this.getCollection()).findOne({ matricula, status: "Aprovado", dataInicio: { $lt: fim }, dataFim: { $gte: inicio }, "auditoria.deletadoEm": null }));
+    }
+
     public async findAll(): Promise<Abono[]> {
         log.debug("findAll()");
         const collection = await this.getCollection();

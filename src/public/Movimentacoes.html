@@ -65,6 +65,10 @@
               <div class="field"><label for="data">Data</label><input id="data" type="date"></div>
               <div class="field"><label for="horario">Horário</label><select id="horario"><optgroup label="Manhã"><option value="07:50">07:50</option><option value="08:40">08:40</option><option value="09:50">09:50</option><option value="10:40">10:40</option><option value="11:40">11:40</option></optgroup><optgroup label="Tarde"><option value="13:00">13:00</option><option value="13:50">13:50</option><option value="14:40">14:40</option><option value="15:30">15:30</option><option value="16:20">16:20</option><option value="17:00">17:00</option></optgroup></select></div>
           </div>
+          <div class="two">
+            <div class="field"><label for="motivo">Motivo</label><select id="motivo"><option value="">Selecione</option><option value="com responsável">Com responsável</option><option value="atestado">Atestado</option><option value="orientação">Orientação</option><option value="bilhete">Bilhete</option></select></div>
+            <div class="field"><label for="arquivo">Imagem (opcional, JPG ou PNG, até 5 MB)</label><input id="arquivo" type="file" accept="image/jpeg,image/png"></div>
+          </div>
           <div class="field"><label>Movimento</label><div class="tipo"><label class="entrada"><input type="radio" name="tipo" value="entrada" checked><span>Entrada</span></label><label class="saida"><input type="radio" name="tipo" value="saida"><span>Saída</span></label></div></div>
           <div id="mensagem" class="message" role="status"></div>
         </div>
@@ -131,12 +135,20 @@
     }
     function renderHistorico(registros) {
       if (!registros.length) { $('historico').textContent = 'Nenhuma movimentação registrada.'; return; }
-      $('historico').innerHTML = `<table><thead><tr><th>Aluno</th><th>Data</th><th>Hora</th><th>Tipo</th></tr></thead><tbody>${registros.map(item => `<tr><td>${escaparHtml(item.nomeAluno)}<br><small>${escaparHtml(item.matricula)}</small></td><td>${formatarDataLocal(item.data)}</td><td>${escaparHtml(item.horario)}</td><td><span class="badge ${item.tipo === 'saida' ? 'saida' : 'entrada'}">${item.tipo === 'entrada' ? 'Entrada' : 'Saída'}</span></td></tr>`).join('')}</tbody></table>`;
+      $('historico').innerHTML = `<table><thead><tr><th>Aluno</th><th>Data</th><th>Hora</th><th>Tipo</th><th>Motivo</th><th>Imagem</th></tr></thead><tbody>${registros.map(item => `<tr><td>${escaparHtml(item.nomeAluno)}<br><small>${escaparHtml(item.matricula)}</small></td><td>${formatarDataLocal(item.data)}</td><td>${escaparHtml(item.horario)}</td><td><span class="badge ${item.tipo === 'saida' ? 'saida' : 'entrada'}">${item.tipo === 'entrada' ? 'Entrada' : 'Saída'}</span></td><td>${escaparHtml(item.motivo || '-')}</td><td>${item.nomeArquivo ? `<button class="btn ver-imagem" type="button" data-id="${escaparHtml(item.idMovimentacao)}">Ver imagem</button>` : '-'}</td></tr>`).join('')}</tbody></table>`;
       montarControlesListagem($('historico'), $('historico').querySelector('table'), { colunaOrdenacao: 0 });
+      $('historico').querySelectorAll('.ver-imagem').forEach(botao => botao.addEventListener('click', async () => {
+        const resposta = await fetch(`api/v1/movimentacoes/${encodeURIComponent(botao.dataset.id)}/arquivo`, { headers: { Authorization: `Bearer ${token}` } });
+        if (!resposta.ok) { mostrarMensagem('Não foi possível carregar a imagem.', 'error'); return; }
+        const url = URL.createObjectURL(await resposta.blob());
+        const link = document.createElement('a'); link.href = url; link.download = 'imagem-movimentacao'; link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+      }));
     }
     function limparCamposDeAluno() {
       $('matricula-aluno').value = '';
       $('nome-aluno').value = '';
+      $('arquivo').value = '';
       $('matricula-aluno').focus();
     }
     function renderListaPendente() {
@@ -153,7 +165,7 @@
         const titulo = document.createElement('strong');
         titulo.textContent = item.nomeAluno;
         const detalhes = document.createElement('small');
-        detalhes.textContent = `${item.tipo === 'entrada' ? 'Atrasado' : 'Saída antecipada'} · ${item.data.split('-').reverse().join('/')} às ${item.horario} · Matrícula ${item.matricula}`;
+        detalhes.textContent = `${item.tipo === 'entrada' ? 'Atrasado' : 'Saída antecipada'} · ${item.data.split('-').reverse().join('/')} às ${item.horario} · Matrícula ${item.matricula} · ${item.motivo}${item.arquivo ? ' · imagem selecionada' : ''}`;
         descricao.append(titulo, detalhes);
         const remover = document.createElement('button');
         remover.type = 'button';
@@ -200,7 +212,10 @@
       const matricula = aluno?.matricula;
       if (!aluno) { mostrarMensagem('Matrícula não encontrada. Verifique o número informado.', 'error'); return; }
       if (!nomeAluno || !matricula || !$('data').value || !$('horario').value) { mostrarMensagem('Preencha aluno, matrícula, data e horário.', 'error'); return; }
-      const item = { nomeAluno, matricula, data: $('data').value, horario: $('horario').value, tipo: document.querySelector('input[name="tipo"]:checked').value };
+      if (!$('motivo').value) { mostrarMensagem('Selecione o motivo.', 'error'); return; }
+      const arquivo = $('arquivo').files[0] || null;
+      if (arquivo && (arquivo.size > 5 * 1024 * 1024 || !['image/jpeg', 'image/png'].includes(arquivo.type))) { mostrarMensagem('Selecione uma imagem JPG ou PNG de até 5 MB.', 'error'); return; }
+      const item = { nomeAluno, matricula, data: $('data').value, horario: $('horario').value, tipo: document.querySelector('input[name="tipo"]:checked').value, motivo: $('motivo').value, arquivo };
       const jaAdicionado = listaPendente.some(pendente =>
         pendente.matricula === item.matricula && pendente.data === item.data && pendente.horario === item.horario && pendente.tipo === item.tipo
       );
@@ -216,13 +231,24 @@
         return;
       }
       $('finalizar-lista').disabled = true;
-      const resposta = await api.post('api/v1/movimentacoes/lote', { movimentacoes: listaPendente });
-      $('finalizar-lista').disabled = false;
-      if (!resposta?.success) { mostrarMensagem(resposta?.message || 'Não foi possível salvar a lista.', 'error'); return; }
-      listaPendente = [];
-      renderListaPendente();
-      mostrarMensagem('Lista de alunos finalizada e gravada com sucesso.', 'ok');
-      await carregarHistorico();
+      try {
+        const resposta = await api.post('api/v1/movimentacoes/lote', { movimentacoes: listaPendente.map(({ arquivo, ...dados }) => dados) });
+        if (!resposta?.success) { mostrarMensagem(resposta?.message || 'Não foi possível salvar a lista.', 'error'); return; }
+        const falhas = [];
+        for (let i = 0; i < listaPendente.length; i++) {
+          const item = listaPendente[i];
+          if (!item.arquivo) continue;
+          try {
+            const form = new FormData(); form.append('arquivo', item.arquivo);
+            const envio = await fetch(`api/v1/movimentacoes/${resposta.data.movimentacoes[i].idMovimentacao}/arquivo`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form });
+            if (!envio.ok) falhas.push(item);
+          } catch { falhas.push(item); }
+        }
+        listaPendente = falhas;
+        renderListaPendente();
+        mostrarMensagem(falhas.length ? 'Registros salvos, mas algumas imagens falharam. Finalize novamente para tentar os anexos pendentes.' : 'Lista de alunos finalizada e gravada com sucesso.', falhas.length ? 'error' : 'ok');
+        await carregarHistorico();
+      } finally { $('finalizar-lista').disabled = false; }
     }
     $('matricula-aluno').addEventListener('input', buscarAlunoPorMatricula);
     $('matricula-aluno').addEventListener('keydown', evento => { if (evento.key === 'Enter') { evento.preventDefault(); adicionarNaLista(); } });
@@ -292,8 +318,8 @@
         };
         const [linhas, nome] = opcoes[tipo];
         const prefixo = `fechamento-${fechamento.data}-${nome}`;
-        baixarCsv(`${prefixo}.csv`, ['Ano', 'Codigo da Disciplina', 'Data', 'Horário início de cada aula', 'Matricula'],
-          linhas.map(item => [item.ano, item.codDisciplina, item.data, item.horarioInicio, item.matricula]));
+        baixarCsv(`${prefixo}.csv`, ['Ano', 'Codigo da Disciplina', 'Data', 'Horário início de cada aula', 'Matricula', 'Motivo'],
+          linhas.map(item => [item.ano, item.codDisciplina, item.data, item.horarioInicio, item.matricula, item.motivo]));
         baixarCsvEmails(`${prefixo}-emails-dos-pais.csv`, `E-MAILS DOS PAIS - ${nome.toUpperCase()}`, linhas.map(item => item.emailPai));
         mostrarMensagemFechamento('Arquivos CSV baixados com sucesso.', 'ok');
       } catch (erro) {

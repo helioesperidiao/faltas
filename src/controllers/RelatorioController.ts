@@ -28,8 +28,8 @@ export class RelatorioController extends BaseController {
             throw new ErrorResponse(400, "Data inválida. Use o formato AAAA-MM-DD.");
         }
         const [ano, mes, dia] = valor.split('-').map(Number);
-        const data = new Date(ano, mes - 1, dia);
-        if (data.getFullYear() !== ano || data.getMonth() !== mes - 1 || data.getDate() !== dia) {
+        const data = new Date(Date.UTC(ano, mes - 1, dia));
+        if (data.getUTCFullYear() !== ano || data.getUTCMonth() !== mes - 1 || data.getUTCDate() !== dia) {
             throw new ErrorResponse(400, "Data inválida. Use o formato AAAA-MM-DD.");
         }
         return data;

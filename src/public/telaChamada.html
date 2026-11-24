@@ -836,7 +836,7 @@
   async function carregarChamadaSalva(turma, dia, selecao) {
     if (!dia) return false;
     if (!alunosDaTurma.length) return true;
-    const resposta = await api.get(`api/v1/registro/chamada?turma=${encodeURIComponent(turma)}&dia=${encodeURIComponent(dia)}`);
+    const resposta = await api.get(`api/v1/registros/chamada?turma=${encodeURIComponent(turma)}&dia=${encodeURIComponent(dia)}`);
     if (selecao !== selecaoAtual || !resposta.success) return false;
     const registrosPorMatricula = new Map((resposta.data.registros || [])
       .map(registro => [registro.matricula, registro]));
@@ -1017,11 +1017,11 @@
   async function gravarRegistroDoAluno(indice) {
     const objeto = objetoDoRegistro(indice);
     if (registroIds[indice]) {
-      const resposta = await api.put("api/v1/registro", registroIds[indice], objeto);
+      const resposta = await api.put("api/v1/registros", registroIds[indice], objeto);
       if (!resposta?.success) throw new Error(resposta.message || 'Não foi possível atualizar o registro.');
       return;
     }
-    const resposta = await api.post("api/v1/registro", objeto);
+    const resposta = await api.post("api/v1/registros", objeto);
     if (!resposta.success) throw new Error(resposta.message || 'Não foi possível salvar o registro.');
     registroIds[indice] = resposta.data.registros[0].idRegistro;
   }

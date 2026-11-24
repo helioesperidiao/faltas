@@ -36,6 +36,7 @@ export class AbonoService {
             );
         }
 
+        if (abono.dataInicio > abono.dataFim) throw new ErrorResponse(400, "Período de abono inválido.");
         abono.status = "Pendente";
         const alunos = await this._alunoDAO.findByField("matricula", abono.matricula);
         if (alunos.length === 0) {
@@ -58,7 +59,13 @@ export class AbonoService {
 
     public findAll = async (): Promise<Abono[]> => {
         log.debug("findAll()");
-        return await this._abonoDAO.findAll();
+        const abonos = await this._abonoDAO.findAll();
+        if (abonos.some(abono => !abono.alunoNome)) {
+            const [ativos, arquivados] = await Promise.all([this._alunoDAO.findAll(), this._alunoDAO.findAllDeleted()]);
+            const nomes = new Map([...arquivados, ...ativos].map(aluno => [aluno.matricula, aluno.alunoNome]));
+            abonos.forEach(abono => { if (!abono.alunoNome) abono.alunoNome = nomes.get(abono.matricula) || ""; });
+        }
+        return abonos;
     };
 
     public findById = async (idAbono: string): Promise<Abono | null> => {
@@ -105,6 +112,7 @@ export class AbonoService {
             );
         }
 
+        if (abono.dataInicio > abono.dataFim) throw new ErrorResponse(400, "Período de abono inválido.");
         const alunos = await this._alunoDAO.findByField("matricula", abono.matricula);
         if (alunos.length === 0) {
             throw new ErrorResponse(404, "Aluno não encontrado", { matricula: abono.matricula });

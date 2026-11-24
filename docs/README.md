@@ -11,3 +11,7 @@
 - [Exclusão de registros](exclusao-de-registros.md): exclusão lógica, atualização das listagens e mensagens de resultado.
 - [Fechamento diário](fechamento-diario.md): arquivos de atrasos, saídas, faltas e contatos dos responsáveis.
 - [Listagens e uso no celular](listagens-e-layout-movel.md): pesquisa, ordenação e comportamento responsivo das telas.
+
+- [Abonos](abonos.md): aprovação, faltas e exportação por período.
+- [Testes](testes.md): comandos e limites das validações.
+- [Dispensas](dispensas.md): vínculo com o aluno e efeito no fechamento.

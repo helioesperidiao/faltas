@@ -89,13 +89,12 @@ export class RegistroDAO {
         log.debug("update()", { idRegistro: registro.idRegistro });
         const collection = await this.getCollection();
         registro.marcarAlteradoPor(funcionarioLogado.idFuncionario);
-        const filter: Filter<Document> = { _id: new ObjectId(registro.idRegistro) };
+        const filter: Filter<Document> = { _id: new ObjectId(registro.idRegistro), "auditoria.deletadoEm": null };
         const update: UpdateFilter<Document> = {
             $set: {
                 falta: registro.falta,
                 atrasado: registro.atrasado,
                 nomeAcompanhante: registro.nomeAcompanhante,
-                situacao: registro.situacao,
                 "auditoria.alteradoPor": registro.auditoria.alteradoPor,
                 "auditoria.alteradoEm": registro.auditoria.alteradoEm
             }
@@ -117,13 +116,13 @@ export class RegistroDAO {
         const collection = await this.getCollection();
         const filter: Filter<Document> = {
             matricula,
-            dia: { $gte: dataInicio, $lte: dataFim },
-            falta: true,
+            dia: { $gte: new Date(Date.UTC(dataInicio.getUTCFullYear(), dataInicio.getUTCMonth(), dataInicio.getUTCDate())), $lt: new Date(Date.UTC(dataFim.getUTCFullYear(), dataFim.getUTCMonth(), dataFim.getUTCDate() + 1)) },
             "auditoria.deletadoEm": null
         };
         const update: UpdateFilter<Document> = {
             $set: {
                 situacao,
+                falta: true,
                 "auditoria.alteradoPor": funcionarioLogado.idFuncionario,
                 "auditoria.alteradoEm": new Date()
             }
