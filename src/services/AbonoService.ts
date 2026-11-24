@@ -36,7 +36,7 @@ export class AbonoService {
             );
         }
 
-        if (abono.dataInicio > abono.dataFim) throw new ErrorResponse(400, "Período de abono inválido.");
+        AbonoService.validarPeriodo(abono);
         abono.status = "Pendente";
         const alunos = await this._alunoDAO.findByField("matricula", abono.matricula);
         if (alunos.length === 0) {
@@ -112,7 +112,16 @@ export class AbonoService {
             );
         }
 
-        if (abono.dataInicio > abono.dataFim) throw new ErrorResponse(400, "Período de abono inválido.");
+        AbonoService.validarPeriodo(abono);
+        const existente = await this._abonoDAO.findById(abono.idAbono);
+        if (!existente) {
+            return false;
+        }
+        // A tela de correção não reenvia o atestado: o anexo já enviado é mantido.
+        if (!abono.nomeArquivo) {
+            abono.nomeArquivo = existente.nomeArquivo;
+        }
+
         const alunos = await this._alunoDAO.findByField("matricula", abono.matricula);
         if (alunos.length === 0) {
             throw new ErrorResponse(404, "Aluno não encontrado", { matricula: abono.matricula });
@@ -124,6 +133,12 @@ export class AbonoService {
         abono.serie = aluno.serie;
 
         const atualizou = await this._abonoDAO.update(abono, funcionarioLogado);
+        // A correção devolve o abono para análise; enquanto não for aprovado de novo,
+        // as faltas do período antigo voltam a contar.
+        // Anexar um atestado mantém o status; só sair de Aprovado (voltar para análise) desfaz.
+        if (atualizou && existente.status === "Aprovado" && abono.status !== "Aprovado") {
+            await this.desfazerAbonadas(existente, funcionarioLogado);
+        }
         if (atualizou) {
             log.info("abono atualizado", {
                 idAbono: abono.idAbono,
@@ -158,10 +173,10 @@ export class AbonoService {
             throw new ErrorResponse(400, "Abono já foi analisado", { status: abono.status });
         }
 
-        abono.status = "Aprovado";
-        abono.aprovadoPor = funcionarioLogado.idFuncionario;
-        await this._abonoDAO.update(abono, funcionarioLogado);
-
+        // O banco não tem transação (MongoDB sem réplica). A ordem é a que permite repetir:
+        // primeiro as faltas viram Abonada (operação idempotente) e só depois o abono fica
+        // Aprovado. Se a segunda etapa falhar, o abono continua Pendente e aprovar de novo
+        // conclui tudo; na ordem inversa ele ficaria "Aprovado" com as faltas ainda contando.
         const total = await this._registroDAO.updateSituacaoPorMatriculaEPeriodo(
             abono.matricula,
             abono.dataInicio,
@@ -169,6 +184,10 @@ export class AbonoService {
             "Abonada",
             funcionarioLogado
         );
+
+        abono.status = "Aprovado";
+        abono.aprovadoPor = funcionarioLogado.idFuncionario;
+        await this._abonoDAO.update(abono, funcionarioLogado);
 
         log.info("abono aprovado", {
             idAbono: abono.idAbono,
@@ -231,7 +250,11 @@ export class AbonoService {
             );
         }
 
+        const existente = await this._abonoDAO.findById(abono.idAbono);
         const excluiu = await this._abonoDAO.delete(abono, funcionarioLogado);
+        if (excluiu && existente?.status === "Aprovado") {
+            await this.desfazerAbonadas(existente, funcionarioLogado);
+        }
         if (excluiu) {
             log.info("abono excluído", {
                 idAbono: abono.idAbono,
@@ -244,5 +267,33 @@ export class AbonoService {
     public count = async (): Promise<number> => {
         log.debug("count()");
         return await this._abonoDAO.count();
+    };
+
+    /** O período do abono precisa terminar no mesmo dia ou depois do início. */
+    private static validarPeriodo(abono: Abono): void {
+        if (abono.dataFim.getTime() < abono.dataInicio.getTime()) {
+            throw new ErrorResponse(400, "A data final do abono deve ser igual ou posterior à data inicial.");
+        }
+    }
+
+    /** Devolve para Normal as faltas que um abono aprovado havia convertido. */
+    private desfazerAbonadas = async (abono: Abono, funcionarioLogado: Funcionario): Promise<void> => {
+        const total = await this._registroDAO.updateSituacaoPorMatriculaEPeriodo(
+            abono.matricula,
+            abono.dataInicio,
+            abono.dataFim,
+            "Normal",
+            funcionarioLogado,
+            "Abonada"
+        );
+        // Outro abono aprovado do mesmo aluno pode cobrir parte do período: ele volta a valer.
+        const outrosAprovados = (await this._abonoDAO.findByField("matricula", abono.matricula))
+            .filter(outro => outro.status === "Aprovado" && outro.idAbono !== abono.idAbono);
+        for (const outro of outrosAprovados) {
+            await this._registroDAO.updateSituacaoPorMatriculaEPeriodo(
+                outro.matricula, outro.dataInicio, outro.dataFim, "Abonada", funcionarioLogado, "Normal"
+            );
+        }
+        log.info("faltas abonadas revertidas", { idAbono: abono.idAbono, total, outrosAprovados: outrosAprovados.length });
     };
 }

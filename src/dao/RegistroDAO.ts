@@ -89,6 +89,8 @@ export class RegistroDAO {
         log.debug("update()", { idRegistro: registro.idRegistro });
         const collection = await this.getCollection();
         registro.marcarAlteradoPor(funcionarioLogado.idFuncionario);
+        // A situação (Abonada/Dispensada) é mantida pelos fluxos de abono e dispensa;
+        // corrigir a chamada não pode apagá-la.
         const filter: Filter<Document> = { _id: new ObjectId(registro.idRegistro), "auditoria.deletadoEm": null };
         const update: UpdateFilter<Document> = {
             $set: {
@@ -106,7 +108,7 @@ export class RegistroDAO {
         return ok;
     }
 
-    public async updateSituacaoPorMatriculaEPeriodo(matricula: string, dataInicio: Date, dataFim: Date, situacao: string, funcionarioLogado: Funcionario): Promise<number> {
+    public async updateSituacaoPorMatriculaEPeriodo(matricula: string, dataInicio: Date, dataFim: Date, situacao: string, funcionarioLogado: Funcionario, somenteSituacao?: string): Promise<number> {
         log.debug("updateSituacaoPorMatriculaEPeriodo()", {
             matricula,
             dataInicio,
@@ -114,15 +116,17 @@ export class RegistroDAO {
             situacao,
         });
         const collection = await this.getCollection();
+        // Aprovar abono marca falta no período; reverter a situação preserva a falta gravada.
         const filter: Filter<Document> = {
             matricula,
             dia: { $gte: new Date(Date.UTC(dataInicio.getUTCFullYear(), dataInicio.getUTCMonth(), dataInicio.getUTCDate())), $lt: new Date(Date.UTC(dataFim.getUTCFullYear(), dataFim.getUTCMonth(), dataFim.getUTCDate() + 1)) },
-            "auditoria.deletadoEm": null
+            "auditoria.deletadoEm": null,
+            ...(somenteSituacao ? { situacao: somenteSituacao } : {})
         };
         const update: UpdateFilter<Document> = {
             $set: {
                 situacao,
-                falta: true,
+                ...(situacao === "Abonada" ? { falta: true } : {}),
                 "auditoria.alteradoPor": funcionarioLogado.idFuncionario,
                 "auditoria.alteradoEm": new Date()
             }
@@ -241,10 +245,7 @@ export class RegistroDAO {
         log.debug("findAusentesEntrada()", { totalMatriculas: matriculas.length, dia });
         const collection = await this.getCollection();
 
-        const inicioDia = new Date(dia);
-        inicioDia.setHours(0, 0, 0, 0);
-        const fimDia = new Date(dia);
-        fimDia.setHours(23, 59, 59, 999);
+        const { inicioDia, fimDia } = RegistroDAO.limitesDoDiaUtc(dia);
 
         const filter: Filter<Document> = {
             matricula: { $in: matriculas },
@@ -262,8 +263,7 @@ export class RegistroDAO {
     public async findChamadaPorTurmaEDia(turma: string, dia: Date): Promise<Registro[]> {
         log.debug("findChamadaPorTurmaEDia()", { turma, dia });
         const collection = await this.getCollection();
-        const inicioDia = new Date(Date.UTC(dia.getUTCFullYear(), dia.getUTCMonth(), dia.getUTCDate(), 0, 0, 0, 0));
-        const fimDia = new Date(Date.UTC(dia.getUTCFullYear(), dia.getUTCMonth(), dia.getUTCDate(), 23, 59, 59, 999));
+        const { inicioDia, fimDia } = RegistroDAO.limitesDoDiaUtc(dia);
         const docs = await collection.find({
             turma,
             codDisciplina: "GERAL",
@@ -271,5 +271,81 @@ export class RegistroDAO {
             "auditoria.deletadoEm": null
         }).toArray();
         return docs.map(doc => this.toRegistro(doc));
+    }
+
+    /**
+     * Registros ativos de um intervalo (inclusive), opcionalmente de uma turma. Os relatórios
+     * usam isto em vez de carregar a coleção inteira: o filtro é o mesmo que eles aplicavam
+     * em memória, agora feito pelo banco com índice.
+     */
+    public async findNoPeriodo(dataInicio: Date, dataFim: Date, turma?: string): Promise<Registro[]> {
+        log.debug("findNoPeriodo()", { dataInicio, dataFim, turma });
+        const collection = await this.getCollection();
+        const filtro: Filter<Document> = { "auditoria.deletadoEm": null, dia: { $gte: dataInicio, $lte: dataFim } };
+        if (turma !== undefined) filtro.turma = turma;
+        const docs = await collection.find(filtro).toArray();
+        return docs.map(doc => this.toRegistro(doc));
+    }
+
+    /**
+     * Registros do período que podem virar falta: as faltas e os registros das matrículas
+     * informadas (quem teve saída antecipada, que transforma presença em ausência).
+     */
+    public async findFaltasOuDasMatriculasNoPeriodo(dataInicio: Date, dataFim: Date, matriculas: string[]): Promise<Registro[]> {
+        log.debug("findFaltasOuDasMatriculasNoPeriodo()", { dataInicio, dataFim, matriculas: matriculas.length });
+        const collection = await this.getCollection();
+        const docs = await collection.find({
+            "auditoria.deletadoEm": null,
+            dia: { $gte: dataInicio, $lte: dataFim },
+            $or: [{ falta: true }, { matricula: { $in: matriculas } }]
+        }).toArray();
+        return docs.map(doc => this.toRegistro(doc));
+    }
+
+    /** Registros ativos do dia do calendário (UTC), opcionalmente de uma turma. */
+    public async findDoDia(dia: Date, turma?: string): Promise<Registro[]> {
+        const { inicioDia, fimDia } = RegistroDAO.limitesDoDiaUtc(dia);
+        return this.findNoPeriodo(inicioDia, fimDia, turma);
+    }
+
+    /** Faltas do fechamento incluem abonadas e excluem dispensadas e excluídas. */
+    public async findFaltasParaFechamento(): Promise<Registro[]> {
+        const docs = await (await this.getCollection()).find({ "auditoria.deletadoEm": null, falta: true, situacao: { $ne: "Dispensada" } }).toArray();
+        return docs.map(doc => this.toRegistro(doc));
+    }
+
+    /** Faltas que contam (nem abonadas nem dispensadas), de todo o histórico. */
+    public async findFaltasQueContam(): Promise<Registro[]> {
+        log.debug("findFaltasQueContam()");
+        const collection = await this.getCollection();
+        const docs = await collection.find({
+            "auditoria.deletadoEm": null,
+            falta: true,
+            situacao: { $nin: ["Abonada", "Dispensada"] }
+        }).toArray();
+        return docs.map(doc => this.toRegistro(doc));
+    }
+
+    /** Registro geral (chamada do dia) já gravado para o aluno, se houver. */
+    public async findGeralDoAlunoNoDia(matricula: string, dia: Date): Promise<Registro | null> {
+        log.debug("findGeralDoAlunoNoDia()", { matricula, dia });
+        const collection = await this.getCollection();
+        const { inicioDia, fimDia } = RegistroDAO.limitesDoDiaUtc(dia);
+        const doc = await collection.findOne({
+            matricula,
+            codDisciplina: "GERAL",
+            dia: { $gte: inicioDia, $lte: fimDia },
+            "auditoria.deletadoEm": null
+        });
+        return doc ? this.toRegistro(doc) : null;
+    }
+
+    /** Os dias são gravados à meia-noite UTC; a consulta usa o mesmo dia do calendário em UTC. */
+    private static limitesDoDiaUtc(dia: Date): { inicioDia: Date; fimDia: Date } {
+        const ano = dia.getUTCFullYear(), mes = dia.getUTCMonth(), data = dia.getUTCDate();
+        return {
+            inicioDia: new Date(Date.UTC(ano, mes, data, 0, 0, 0, 0)),
+            fimDia: new Date(Date.UTC(ano, mes, data, 23, 59, 59, 999))
+        };
     }
 }

@@ -9,6 +9,7 @@ import { MovimentacaoDAO } from "../dao/MovimentacaoDAO";
 import { GradeHorarioDAO } from "../dao/GradeHorarioDAO";
 import { ConfiguracaoAlertaFaltaDAO } from "../dao/ConfiguracaoAlertaFaltaDAO";
 import { AlertaFaltaDAO } from "../dao/AlertaFaltaDAO";
+import { DispensaDAO } from "../dao/DispensaDAO";
 import { MongoDatabase } from "../database/MongoDatabase";
 // NOVO: logger (padrão de logs)
 import { createLogger } from "../logging/Logger";
@@ -38,9 +39,9 @@ export class RelatorioRouter {
         this._dataBase = dataBase;
 
         // Monta a cadeia DAO → Service → Controller com a conexão compartilhada.
-        // O RelatorioService agrega 6 DAOs: ele precisa ler alunos, registros,
-        // movimentações, grade de horários, configurações de alerta e a própria
-        // coleção de alertas sincronizados para montar os relatórios.
+        // O RelatorioService agrega 7 DAOs: ele precisa ler alunos, registros,
+        // movimentações, grade de horários, configurações de alerta, a própria
+        // coleção de alertas sincronizados e as dispensas por disciplina.
         const alunoDAO = new AlunoDAO(this._dataBase);
         const registroDAO = new RegistroDAO(this._dataBase);
         const movimentacaoDAO = new MovimentacaoDAO(this._dataBase);
@@ -52,6 +53,7 @@ export class RelatorioRouter {
             gradeHorarioDAO,
             new ConfiguracaoAlertaFaltaDAO(this._dataBase),
             new AlertaFaltaDAO(this._dataBase),
+            new DispensaDAO(this._dataBase),
             new AbonoDAO(this._dataBase)
         );
         const relatorioController = new RelatorioController(relatorioService);

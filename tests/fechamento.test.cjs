@@ -3,16 +3,16 @@ const assert = require('node:assert/strict');
 const { RelatorioService } = require('../dist/services/RelatorioService');
 
 const dia = new Date('2026-11-16T00:00:00Z');
-const aluno = { matricula: '100', alunoNome: 'Ana', turma: '1A', paiEmail: 'pai@example.test' };
+const aluno = { idAluno: 'aluno1', matricula: '100', alunoNome: 'Ana', turma: '1A', paiEmail: 'pai@example.test' };
 const registro = (falta = false, situacao = 'Normal') => ({ idRegistro:'1', matricula:'100', alunoNome:'Ana', turma:'1A', codDisciplina:'GERAL', falta, situacao, dia, ano:2026, auditoria: { criadoEm: dia, alteradoEm: null } });
 const grade = ['07:00','07:50','08:40'].map((horaInicio,i) => ({ turma:'1A', dia:'segunda-feira', horaInicio, cod:`D${i}` }));
 const movimento = (tipo, horario, motivo = 'atestado') => ({ matricula:'100', nomeAluno:'Ana', tipo, horario, data:dia, motivo });
-function service(registros = [], movimentos = [], abonos = [], grades = grade) {
+function service(registros = [], movimentos = [], abonos = [], grades = grade, dispensas = []) {
   return new RelatorioService(
     { findAll: async () => [aluno], findAllDeleted: async () => [] },
-    { findAll: async () => registros },
+    { findFaltasParaFechamento: async () => registros.filter(r => r.falta && r.situacao !== "Dispensada"), findDoDia: async () => registros },
     { findAll: async () => movimentos },
-    { findAll: async () => grades }, {}, {}, { findAll: async () => abonos }
+    { findAll: async () => grades }, {}, {}, { findAll: async () => dispensas }, { findAll: async () => abonos }
   );
 }
 test('entrada e saída geram aulas parciais sem duplicação e preservam motivo', async () => {
@@ -45,4 +45,14 @@ test('faltas abonadas existentes entram no CSV e dispensas não entram', async (
 test('turmas sem grade são sinalizadas em vez de gerar arquivo incompleto', async () => {
   const f = await service([registro(true)], [], [], []).fechamentoDia(dia);
   assert.deepEqual(f.turmasSemGrade, ['1A']);
+});
+
+test('abono aprovado prevalece no fechamento sobre dispensa de disciplina', async () => {
+  const abono = { matricula:'100', alunoNome:'Ana', turma:'1A', status:'Aprovado', dataInicio:dia, dataFim:dia };
+  const dispensa = { idAluno:'aluno1', cod:'D0', dia, dataFim:dia };
+  const semAbono = await service([registro(true)], [], [], grade, [dispensa]).fechamentoDia(dia);
+  assert.equal(semAbono.aulasGeral.length, 2);
+  const abonado = await service([registro(true)], [], [abono], grade, [dispensa]).fechamentoDia(dia);
+  assert.equal(abonado.aulasGeral.length, 3);
+  assert.equal(abonado.aulasFaltasDia.length, 3);
 });

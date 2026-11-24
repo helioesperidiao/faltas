@@ -1,5 +1,6 @@
 import express, { Express, Request, Response, NextFunction } from "express";
 import cors from "cors";
+import multer from "multer";
 import path from "path";
 
 import { CargoRouter } from "./routers/CargoRouter";
@@ -16,6 +17,8 @@ import { ConfiguracaoAlertaFaltaRouter } from "./routers/ConfiguracaoAlertaFalta
 import { ErrorResponse } from "./http/ErrorResponse";
 import { StandardResponse } from "./http/StandardResponse";
 import { MongoDatabase } from "./database/MongoDatabase";
+import { FuncionarioDAO } from "./dao/FuncionarioDAO";
+import { JwtMiddleware } from "./middlewares/JwtMiddleware";
 // NOVO: logger e middleware HTTP (padrão de logs)
 import { httpLogger } from "./logging/HttpLogger";
 import { createLogger } from "./logging/Logger";
@@ -63,6 +66,14 @@ export class Server {
         log.debug("init()");
 
         await this._dataBase.initializeSchema();
+        await this._funcionarioRouter.getService().initializeDefaultAdmin();
+
+        // Cada requisição autenticada confere se o funcionário continua ativo e qual o cargo atual.
+        const funcionarioDAO = new FuncionarioDAO(this._dataBase);
+        JwtMiddleware.configurarConsultaFuncionario(async idFuncionario => {
+            const funcionario = await funcionarioDAO.findById(idFuncionario);
+            return funcionario ? { idCargo: funcionario.cargo.idCargo, nomeCargo: funcionario.cargo.nomeCargo } : null;
+        });
 
         // Middleware de log HTTP — deve vir primeiro entre os middlewares
         // para abrir o contexto (requestId) antes de qualquer outro processamento.
@@ -104,13 +115,13 @@ export class Server {
                 });
                 return StandardResponse.error(
                     "Payload too large",
-                    { message: "O arquivo/envio excede o tamanho m�ximo permitido." },
+                    { message: "O arquivo/envio excede o tamanho máximo permitido." },
                     413
                 ).send(res);
             }
 
             if (error instanceof ErrorResponse) {
-                log.warn("erro de neg�cio", {
+                log.warn("erro de negócio", {
                     httpCode: error.httpCode,
                     message: error.message,
                     details: error.error,
@@ -118,7 +129,34 @@ export class Server {
                 return StandardResponse.error(error.message, error.error, error.httpCode).send(res);
             }
 
-            log.error("erro n�o tratado", {
+            // Arquivo enviado fora das regras do upload (tamanho, campo ou tipo).
+            if (error instanceof multer.MulterError) {
+                const httpCode = error.code === "LIMIT_FILE_SIZE" ? 413 : 400;
+                const message = error.code === "LIMIT_FILE_SIZE"
+                    ? "O arquivo excede o tamanho máximo permitido."
+                    : "Arquivo enviado de forma inválida.";
+                log.warn("upload recusado", { code: error.code, field: error.field });
+                return StandardResponse.error(message, { code: error.code }, httpCode).send(res);
+            }
+
+            // Identificador que não é um ObjectId válido.
+            if (error?.name === "BSONError") {
+                log.warn("identificador inválido", { message: error.message });
+                return StandardResponse.error("Identificador inválido.", { message: error.message }, 400).send(res);
+            }
+
+            // Erros do próprio Express/body-parser que já trazem um status 4xx,
+            // como JSON malformado (entity.parse.failed).
+            const statusCliente = Number(error?.status ?? error?.statusCode);
+            if (statusCliente >= 400 && statusCliente < 500) {
+                log.warn("requisição inválida", { status: statusCliente, type: error?.type });
+                const message = error?.type === "entity.parse.failed"
+                    ? "O corpo da requisição não é um JSON válido."
+                    : "Requisição inválida.";
+                return StandardResponse.error(message, null, statusCliente).send(res);
+            }
+
+            log.error("erro não tratado", {
                 message: error?.message,
                 stack: error?.stack,
             });

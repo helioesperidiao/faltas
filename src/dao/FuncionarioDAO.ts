@@ -86,7 +86,7 @@ export class FuncionarioDAO {
             senha: senha,
             recebeValeTransporte: objFuncionarioModel.recebeValeTransporte,
             cargoId: new ObjectId(objFuncionarioModel.cargo.idCargo),
-            auditoria: objFuncionarioModel.auditoria
+            auditoria: objFuncionarioModel.auditoria.toJSON()
         };
 
         const result = await collection.insertOne(doc);
@@ -169,13 +169,18 @@ export class FuncionarioDAO {
         // Registra auditoria: quem alterou
         objFuncionarioModel.marcarAlteradoPor(funcionarioLogado.idFuncionario);
 
-        const filter: Filter<Document> = { _id: new ObjectId(objFuncionarioModel.idFuncionario) };
+        // Só altera funcionário ativo e preserva criação/exclusão da auditoria.
+        const filter: Filter<Document> = {
+            _id: new ObjectId(objFuncionarioModel.idFuncionario),
+            "auditoria.deletadoEm": null
+        };
 
         const updateData: any = {
             nomeFuncionario: objFuncionarioModel.nomeFuncionario,
             email: objFuncionarioModel.email,
             recebeValeTransporte: objFuncionarioModel.recebeValeTransporte,
-            auditoria: objFuncionarioModel.auditoria
+            "auditoria.alteradoPor": objFuncionarioModel.auditoria.alteradoPor,
+            "auditoria.alteradoEm": objFuncionarioModel.auditoria.alteradoEm
         };
 
         // Obtém a senha do campo privado
@@ -396,7 +401,8 @@ export class FuncionarioDAO {
         const collection = await this.getCollection();
 
         const pipeline = [
-            { $match: { email } },
+            // Só funcionários ativos: um e-mail recadastrado depois de excluído entra normalmente.
+            { $match: { email, "auditoria.deletadoEm": null } },
             {
                 $lookup: {
                     from: "cargo",
@@ -504,13 +510,17 @@ export class FuncionarioDAO {
 
         // Restaura a auditoria
         if (doc.auditoria) {
+            // Cadastros antigos gravaram a auditoria com os nomes internos (_criadoEm...).
+            const a = doc.auditoria;
             const auditoria = new Auditoria();
-            auditoria.criadoPor = doc.auditoria.criadoPor || '';
-            auditoria.criadoEm = doc.auditoria.criadoEm ? new Date(doc.auditoria.criadoEm) : new Date();
-            auditoria.alteradoPor = doc.auditoria.alteradoPor || '';
-            auditoria.alteradoEm = doc.auditoria.alteradoEm ? new Date(doc.auditoria.alteradoEm) : null;
-            auditoria.deletadoPor = doc.auditoria.deletadoPor || '';
-            auditoria.deletadoEm = doc.auditoria.deletadoEm ? new Date(doc.auditoria.deletadoEm) : null;
+            auditoria.criadoPor = a.criadoPor || a._criadoPor || '';
+            const criadoEm = a.criadoEm ?? a._criadoEm;
+            auditoria.criadoEm = criadoEm ? new Date(criadoEm) : new Date();
+            auditoria.alteradoPor = a.alteradoPor || a._alteradoPor || '';
+            const alteradoEm = a.alteradoEm ?? a._alteradoEm;
+            auditoria.alteradoEm = alteradoEm ? new Date(alteradoEm) : null;
+            auditoria.deletadoPor = a.deletadoPor || '';
+            auditoria.deletadoEm = a.deletadoEm ? new Date(a.deletadoEm) : null;
             funcionario.auditoria = auditoria;
         }
 

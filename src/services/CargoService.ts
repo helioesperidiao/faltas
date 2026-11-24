@@ -2,6 +2,7 @@ import { CargoDAO } from "../dao/CargoDAO";
 import { FuncionarioDAO } from "../dao/FuncionarioDAO";
 import { Cargo } from "../models/Cargo";
 import { ErrorResponse } from "../http/ErrorResponse";
+import { CARGO_PROCESSO_PEDAGOGICO, CARGOS_ACEITOS } from "../constants/Cargos";
 import { Funcionario } from "../models/Funcionario";
 // NOVO: logger (padrão de logs)
 import { createLogger } from "../logging/Logger";
@@ -31,14 +32,21 @@ export class CargoService {
     }
 
     /**
-     * Verifica se o funcionário logado tem permissão de administrador.
+     * Verifica se o funcionário logado tem permissão administrativa.
      *
-     * ⚠️ Hoje este método checa "Administrador" — mas o middleware JWT só aceita
-     * "Inspetor" ou "Processo Pedagógico" (`CARGOS_ACEITOS` em constants/Cargos.ts).
-     * Ou seja: em runtime, NINGUÉM passa por aqui. Ver nota no fim da resposta.
+     * O cargo "Administrador" deixou de existir (ver docs/cargos-aceitos.md);
+     * suas operações administrativas passaram para "Processo Pedagógico".
      */
+    private static exigirNomeAceito(nomeCargo: string): void {
+        if (!(CARGOS_ACEITOS as readonly string[]).includes(nomeCargo)) {
+            throw new ErrorResponse(400, "Cargo inválido", {
+                message: `Os únicos cargos aceitos são ${CARGOS_ACEITOS.join(" e ")}.`
+            });
+        }
+    }
+
     private isAdmin(funcionario: Funcionario): boolean {
-        return funcionario.cargo?.nomeCargo === "Administrador";
+        return funcionario.cargo?.nomeCargo === CARGO_PROCESSO_PEDAGOGICO;
     }
 
     /**
@@ -66,6 +74,7 @@ export class CargoService {
         // O índice único do Mongo (CargoDAO.ensureIndexes) também protege o caso
         // de corrida: se dois requests passarem por aqui juntos, o segundo recebe
         // erro 11000 e é traduzido abaixo.
+        CargoService.exigirNomeAceito(cargo.nomeCargo);
         const resultado = await this._cargoDAO.findByField("nomeCargo", cargo.nomeCargo);
         if (resultado.length > 0) {
             throw new ErrorResponse(400, "Cargo já existe", {
@@ -142,6 +151,16 @@ export class CargoService {
             });
             throw new ErrorResponse(403, "Não autorizado", {
                 message: `O cargo "${funcionarioLogado.cargo?.nomeCargo ?? 'desconhecido'}" não é autorizado a atualizar cargos.`
+            });
+        }
+
+        // Os cargos aceitos têm nome fixo (docs/cargos-aceitos.md): o código compara o nome
+        // exato, e renomear um cargo tiraria o acesso de quem o ocupa.
+        CargoService.exigirNomeAceito(cargo.nomeCargo);
+        const atual = (await this._cargoDAO.findByField("_id", cargo.idCargo))[0];
+        if (atual && atual.nomeCargo !== cargo.nomeCargo) {
+            throw new ErrorResponse(400, "Cargo não pode ser renomeado", {
+                message: `O cargo "${atual.nomeCargo}" tem nome fixo.`
             });
         }
 

@@ -704,7 +704,7 @@
 
 <script type="module">
   import ApiService from './ApiService.js';
-  import { vincularTurmasDaGrade } from './js/TurmasChamada.mjs';
+  import { turmasDosAlunos } from './js/TurmasChamada.mjs';
   import { exigirSessao, montarTopbar, escaparHtml } from './js/Topbar.js';
 
   const sessao = exigirSessao();
@@ -734,8 +734,6 @@
   preencherDataDeHoje();
 
   var turmaAtual = "";
-  var turmaDosAlunos = "";
-  var vinculosTurmas = [];
   var selecaoAtual = 0;
   var alunosDaTurma = []; // { matricula, alunoNome }
   var pesquisaRoster = '';
@@ -745,32 +743,37 @@
   var registroIds = []; // guarda o id do registro já criado para permitir corrigir via PUT
   var chamadaEmSalvamento = false;
 
+  // Dia do calendário de Brasília em que um instante caiu, no formato AAAA-MM-DD.
+  const formatoDiaBrasilia = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' });
+  function diaDeBrasilia(instante) {
+    return formatoDiaBrasilia.format(new Date(instante));
+  }
+
   document.getElementById('data-chamada').addEventListener('change', async () => {
     if (turmaAtual) await selecionarTurma();
   });
 
-  // As opções vêm das aulas ativas; o cadastro do aluno fornece o vínculo da chamada.
+  // As opções são as turmas dos alunos ativos (coluna de turma da planilha importada),
+  // sem repetição; a turma escolhida é a mesma do cadastro, da busca dos alunos e da falta.
   async function carregarTurmas() {
     const select = document.getElementById('turma-select');
     const aviso = document.getElementById('turma-aviso');
-    const [grade, alunos] = await Promise.all([
-      api.get('api/v1/gradehorarios'), api.get('api/v1/alunos')
-    ]);
-    if (!grade.success || !alunos.success) {
+    const alunos = await api.get('api/v1/alunos');
+    if (!alunos?.success) {
       select.innerHTML = '<option value="">Não foi possível carregar as turmas</option>';
-      aviso.textContent = 'Não foi possível consultar a grade e os alunos. Atualize a página para tentar novamente.';
+      aviso.textContent = 'Não foi possível consultar os alunos. Atualize a página para tentar novamente.';
       return;
     }
-    vinculosTurmas = vincularTurmasDaGrade(grade.data.gradeHorarios || [], alunos.data.alunos || []);
+    const turmas = turmasDosAlunos(alunos.data.alunos || []);
     select.innerHTML = '<option value="">Selecione uma turma...</option>';
-    vinculosTurmas.forEach(({ turma }) => {
+    turmas.forEach(turma => {
       const opcao = document.createElement('option');
       opcao.value = turma;
       opcao.textContent = turma;
       select.appendChild(opcao);
     });
     select.disabled = false;
-    if (!vinculosTurmas.length) aviso.textContent = 'Não há turmas cadastradas na grade de horários ativa.';
+    if (!turmas.length) aviso.textContent = 'Não há turmas: importe a planilha de alunos na página Alunos.';
   }
   carregarTurmas();
 
@@ -783,48 +786,50 @@
     document.getElementById('turma-summary').style.display = 'none';
     document.getElementById('empty-card').style.display = 'block';
     turmaAtual = valor;
-    turmaDosAlunos = '';
     alunosDaTurma = [];
     statusAlunos = [];
     registroIds = [];
+    gravacoesEmAndamento = new Map();
     atualizarResumo();
     aviso.textContent = '';
     if (!valor) return;
 
-    const vinculo = vinculosTurmas.find(item => item.turma === valor);
-    if (!vinculo || !vinculo.turmaAlunos) {
-      aviso.textContent = vinculo?.ambiguo
-        ? 'Há mais de uma turma possível para este nome. Confira os nomes na grade e no cadastro de alunos.'
-        : 'Não há alunos ativos vinculados a esta turma no cadastro de alunos.';
-      return;
-    }
-    turmaDosAlunos = vinculo.turmaAlunos;
     aviso.textContent = 'Carregando alunos e chamada...';
-    const resposta = await api.get(`api/v1/alunos/turma/${encodeURIComponent(turmaDosAlunos)}`);
+    const resposta = await api.get(`api/v1/alunos/turma/${encodeURIComponent(valor)}`);
     if (selecao !== selecaoAtual) return;
     if (!resposta.success) {
       aviso.textContent = 'Não foi possível carregar os alunos. Atualize a página para tentar novamente.';
       return;
     }
-    alunosDaTurma = resposta.data.alunos || [];
+    // O aluno só recebe chamada a partir do dia em que entrou na turma (dia de Brasília).
+    const todosDaTurma = resposta.data.alunos || [];
+    const diaSelecionado = document.getElementById('data-chamada').value;
+    alunosDaTurma = diaSelecionado
+      ? todosDaTurma.filter(aluno => !aluno.turmaInicioEm || diaDeBrasilia(aluno.turmaInicioEm) <= diaSelecionado)
+      : todosDaTurma;
+    const entraramDepois = todosDaTurma.length - alunosDaTurma.length;
     alunoAtual = 0;
     pesquisaRoster = '';
     ordemRoster = 0;
     document.getElementById('pesquisa-roster').value = '';
     statusAlunos = alunosDaTurma.map(() => 'present');
     registroIds = alunosDaTurma.map(() => null);
+    gravacoesEmAndamento = new Map();
     const dia = document.getElementById('data-chamada').value;
     if (!dia) {
       aviso.textContent = 'Selecione a data da chamada.';
       return;
     }
-    const carregou = await carregarChamadaSalva(turmaDosAlunos, dia, selecao);
+    const carregou = await carregarChamadaSalva(valor, dia, selecao);
     if (selecao !== selecaoAtual) return;
     if (!carregou) {
       aviso.textContent = 'Não foi possível carregar a chamada salva. Atualize a página para tentar novamente.';
       return;
     }
-    aviso.textContent = alunosDaTurma.length ? '' : 'Não há alunos ativos vinculados a esta turma.';
+    const avisoEntrada = entraramDepois > 0
+      ? `${entraramDepois} aluno(s) entraram na turma depois desta data e não aparecem nesta chamada.`
+      : '';
+    aviso.textContent = alunosDaTurma.length ? avisoEntrada : (avisoEntrada || 'Não há alunos ativos vinculados a esta turma.');
     document.getElementById('empty-card').style.display = 'none';
     document.getElementById('turma-summary').style.display = 'block';
     botao.style.display = alunosDaTurma.length ? 'block' : 'none';
@@ -1014,29 +1019,53 @@
     };
   }
 
-  async function gravarRegistroDoAluno(indice) {
-    const objeto = objetoDoRegistro(indice);
-    if (registroIds[indice]) {
-      const resposta = await api.put("api/v1/registros", registroIds[indice], objeto);
-      if (!resposta?.success) throw new Error(resposta.message || 'Não foi possível atualizar o registro.');
+  async function enviarRegistro(pedido) {
+    const { objeto, ids, indice } = pedido;
+    if (ids[indice]) {
+      const resposta = await api.put("api/v1/registros", ids[indice], objeto);
+      if (!resposta?.success) throw new Error(resposta?.message || 'Não foi possível atualizar o registro.');
       return;
     }
     const resposta = await api.post("api/v1/registros", objeto);
-    if (!resposta.success) throw new Error(resposta.message || 'Não foi possível salvar o registro.');
-    registroIds[indice] = resposta.data.registros[0].idRegistro;
+    if (!resposta?.success) throw new Error(resposta?.message || 'Não foi possível salvar o registro.');
+    ids[indice] = resposta.data.registros[0].idRegistro;
   }
 
+  // Grava um aluno por vez: um segundo envio do mesmo aluno espera o primeiro terminar
+  // e, com o id já conhecido, corrige o registro via PUT em vez de criar outro.
+  // O pedido guarda o aluno, a data e os ids da chamada em que foi feito: trocar de
+  // turma ou de data no meio não manda a gravação para a chamada nova.
+  var gravacoesEmAndamento = new Map();
+  function gravarRegistroDoAluno(indice) {
+    const pedido = { objeto: objetoDoRegistro(indice), ids: registroIds, indice };
+    const fila = gravacoesEmAndamento;
+    const anterior = fila.get(indice) || Promise.resolve();
+    const atual = anterior.catch(() => {}).then(() => enviarRegistro(pedido));
+    fila.set(indice, atual);
+    return atual;
+  }
+
+  var faltaEmGravacao = false;
   async function marcarFalta() {
-    statusAlunos[alunoAtual] = statusAlunos[alunoAtual] === 'absent' ? 'present' : 'absent';
+    if (faltaEmGravacao) return;
+    faltaEmGravacao = true;
+    // Guarda o aluno e a chamada do clique: durante a gravação o professor pode navegar,
+    // limpar a chamada ou trocar de turma.
+    const indice = alunoAtual;
+    const status = statusAlunos;
+    status[indice] = status[indice] === 'absent' ? 'present' : 'absent';
     try {
-      await gravarRegistroDoAluno(alunoAtual);
+      await gravarRegistroDoAluno(indice);
     } catch (erro) {
-      statusAlunos[alunoAtual] = statusAlunos[alunoAtual] === 'absent' ? 'present' : 'absent';
+      status[indice] = status[indice] === 'absent' ? 'present' : 'absent';
       window.alert(erro.message || 'Não foi possível registrar a falta.');
       mostrarAluno();
       return;
+    } finally {
+      faltaEmGravacao = false;
     }
-    if (alunoAtual < alunosDaTurma.length - 1) {
+    // Só avança se o professor continua no mesmo aluno da mesma chamada.
+    if (status === statusAlunos && alunoAtual === indice && alunoAtual < alunosDaTurma.length - 1) {
       alunoAtual = alunoAtual + 1;
     }
     mostrarAluno();
@@ -1061,15 +1090,26 @@
     mostrarAluno();
   }
 
-  function limparChamada() {
-    if (!window.confirm('Limpar as marcações desta chamada e recomeçar do primeiro aluno?')) {
+  async function limparChamada() {
+    if (!window.confirm('Limpar as marcações desta chamada? As faltas já salvas desta turma e data voltam a presença.')) {
       return;
     }
+    // Faltas já gravadas (ou em gravação) precisam voltar a presença também no banco.
+    const faltasGravadas = statusAlunos
+      .map((status, indice) => status === 'absent' && (registroIds[indice] || gravacoesEmAndamento.has(indice)) ? indice : -1)
+      .filter(indice => indice >= 0);
     statusAlunos = alunosDaTurma.map(() => 'present');
     alunoAtual = 0;
-    // registroIds é preservado de propósito: o registro já gravado no backend continua
-    // existindo, e marcar de novo o corrige via PUT em vez de criar uma duplicata.
+    // registroIds é preservado de propósito: o registro já gravado no backend é
+    // corrigido via PUT em vez de ganhar uma duplicata.
     mostrarAluno();
+    try {
+      for (const indice of faltasGravadas) {
+        await gravarRegistroDoAluno(indice);
+      }
+    } catch (erro) {
+      window.alert(erro.message || 'Não foi possível desfazer as faltas já salvas. Confira a conexão e conclua a chamada para gravar.');
+    }
   }
 
   async function salvarChamada() {

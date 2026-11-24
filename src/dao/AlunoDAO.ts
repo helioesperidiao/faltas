@@ -1,3 +1,4 @@
+import { diaEscolar, diaGravado } from "../utils/DiaEscolar";
 import { Collection, ObjectId, Filter, UpdateFilter, Document, OptionalId } from "mongodb";
 import { Aluno } from "../models/Aluno";
 import { MongoDatabase } from "../database/MongoDatabase";
@@ -88,6 +89,26 @@ export class AlunoDAO {
         const ok = result.modifiedCount > 0;
         if (ok) log.info("aluno removido", { idAluno: aluno.idAluno });
         else log.warn("aluno não encontrado para remoção", { idAluno: aluno.idAluno });
+        return ok;
+    }
+
+    /** Desfaz a exclusão lógica de um aluno arquivado, preservando histórico e registros. */
+    public async reativar(idAluno: string, funcionarioLogado: Funcionario): Promise<boolean> {
+        log.debug("reativar()", { idAluno });
+        const collection = await this.getCollection();
+        const result = await collection.updateOne(
+            { _id: new ObjectId(idAluno), "auditoria.deletadoEm": { $ne: null } },
+            {
+                $set: {
+                    "auditoria.deletadoEm": null,
+                    "auditoria.deletadoPor": "",
+                    "auditoria.alteradoPor": funcionarioLogado.idFuncionario,
+                    "auditoria.alteradoEm": new Date()
+                }
+            }
+        );
+        const ok = result.modifiedCount > 0;
+        if (ok) log.info("aluno reativado", { idAluno });
         return ok;
     }
 
@@ -238,30 +259,49 @@ export class AlunoDAO {
     }
 
     /**
+     * Alunos ativos da turma atual, para a chamada. A turma é comparada já corrigida
+     * por toAluno, como nos relatórios: um aluno gravado com acento corrompido
+     * ("AdministraÃ§Ã£o-1A") entra na turma que o seletor mostra ("Administração-1A").
+     */
+    public async findAtivosPorTurma(turma: string): Promise<Aluno[]> {
+        log.debug("findAtivosPorTurma()", { turma });
+        const collection = await this.getCollection();
+        const docs = await collection.find({
+            "auditoria.deletadoEm": null,
+            $or: [{ turma }, { turma: { $regex: "[ÃÂ\uFFFD]" } }]
+        }).sort({ _id: 1 }).toArray();
+        return docs.map(doc => this.toAluno(doc)).filter(aluno => aluno.turma === turma);
+    }
+
+    /**
      * Retorna alunos que estiveram na turma em qualquer parte do período.
      * Vínculos encerrados ficam disponíveis por 12 meses após a troca de turma.
      */
     public async findByTurmaNoPeriodo(turma: string, dataInicio: Date, dataFim: Date): Promise<Aluno[]> {
         log.debug("findByTurmaNoPeriodo()", { turma, dataInicio, dataFim });
-        const alunos = await this.findAll();
-        const agora = new Date();
-        const diaUtc = (data: Date): number => Date.UTC(
-            data.getUTCFullYear(),
-            data.getUTCMonth(),
-            data.getUTCDate()
-        );
-        const inicioConsulta = diaUtc(dataInicio);
-        const fimConsulta = diaUtc(dataFim);
-        const hoje = diaUtc(agora);
+        // Só quem está ou esteve na turma; ordenado por _id para manter a ordem da listagem.
+        const collection = await this.getCollection();
+        const docs = await collection.find({
+            "auditoria.deletadoEm": null,
+            // toAluno corrige acentos corrompidos (Ã, Â, �) na turma; esses documentos entram
+            // também, e o filtro abaixo compara já com a turma corrigida.
+            $or: [{ turma }, { "historicoTurmas.turma": turma }, { turma: { $regex: "[ÃÂ\uFFFD]" } }]
+        }).sort({ _id: 1 }).toArray();
+        const alunos = docs.map(doc => this.toAluno(doc));
+        // As datas consultadas são dias da chamada; entradas e saídas de turma são instantes,
+        // convertidos para o dia da escola (quem entra às 22h conta naquele mesmo dia).
+        const inicioConsulta = diaGravado(dataInicio);
+        const fimConsulta = diaGravado(dataFim);
+        const hoje = diaEscolar(new Date());
 
         return alunos.filter(aluno => {
-            const inicioTurmaAtual = diaUtc(aluno.turmaInicioEm);
+            const inicioTurmaAtual = diaEscolar(aluno.turmaInicioEm);
             const vinculoAtual = aluno.turma === turma && inicioTurmaAtual <= fimConsulta;
             const vinculoHistorico = aluno.historicoTurmas.some(historico =>
                 historico.turma === turma &&
-                diaUtc(historico.inicioEm) <= fimConsulta &&
-                diaUtc(historico.fimEm) >= inicioConsulta &&
-                diaUtc(historico.disponivelAte) >= hoje
+                diaEscolar(historico.inicioEm) <= fimConsulta &&
+                diaEscolar(historico.fimEm) >= inicioConsulta &&
+                diaEscolar(historico.disponivelAte) >= hoje
             );
             return vinculoAtual || vinculoHistorico;
         });

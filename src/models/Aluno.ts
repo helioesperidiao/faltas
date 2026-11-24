@@ -1,3 +1,4 @@
+import { ErrorResponse } from "../http/ErrorResponse";
 import { ObjectId } from "mongodb";
 import { Auditoria } from "./Auditoria";
 import { HistoricoTurma } from "./HistoricoTurma";
@@ -43,10 +44,10 @@ export class Aluno {
     }
     set idAluno(value: string) {
         if (!value) {
-            throw new Error("idAluno é obrigatório.");
+            throw new ErrorResponse(400, "idAluno é obrigatório.");
         }
         if (!ObjectId.isValid(value)) {
-            throw new Error(`idAluno inválido: "${value}".`);
+            throw new ErrorResponse(400, `idAluno inválido: "${value}".`);
         }
         this._idAluno = value;
     }
@@ -56,10 +57,10 @@ export class Aluno {
     }
     set matricula(value: string) {
         if (typeof value !== "string" || value.trim().length === 0) {
-            throw new Error("matricula é obrigatória.");
+            throw new ErrorResponse(400, "matricula é obrigatória.");
         }
         if (value.trim().length > 8) {
-            throw new Error("matricula pode ter no máximo 8 caracteres.");
+            throw new ErrorResponse(400, "matricula pode ter no máximo 8 caracteres.");
         }
         this._matricula = value.trim();
     }
@@ -69,7 +70,7 @@ export class Aluno {
     }
     set alunoNome(value: string) {
         if (typeof value !== "string" || value.trim().length === 0) {
-            throw new Error("alunoNome é obrigatório.");
+            throw new ErrorResponse(400, "alunoNome é obrigatório.");
         }
         this._alunoNome = value.trim();
     }
@@ -79,7 +80,7 @@ export class Aluno {
     }
     set turma(value: string) {
         if (typeof value !== "string" || value.trim().length === 0) {
-            throw new Error("turma é obrigatória.");
+            throw new ErrorResponse(400, "turma é obrigatória.");
         }
         this._turma = value.trim();
     }
@@ -117,7 +118,7 @@ export class Aluno {
     }
     set turmaInicioEm(value: Date) {
         if (!(value instanceof Date) || isNaN(value.getTime())) {
-            throw new Error("turmaInicioEm deve ser uma data válida.");
+            throw new ErrorResponse(400, "turmaInicioEm deve ser uma data válida.");
         }
         this._turmaInicioEm = value;
     }

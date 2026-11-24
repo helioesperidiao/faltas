@@ -108,7 +108,7 @@
   </main>
 
   <script type="module">
-    import { exigirSessao, montarTopbar, escaparHtml } from './js/Topbar.js';
+    import { exigirSessao, montarTopbar, escaparHtml, temAcessoTotal } from './js/Topbar.js';
     import ApiService from './ApiService.js';
     import { montarControlesListagem } from './js/ControlesListagem.js';
 
@@ -116,6 +116,11 @@
     if (!sessao) {
       // exigirSessao já redirecionou para o login; nada mais roda nesta página.
       throw new Error('Sessão não encontrada.');
+    }
+    if (!temAcessoTotal(sessao.cargo)) {
+      // Módulo restrito: quem não tem acesso volta ao painel (a API também recusa).
+      window.location.href = 'dashboard.html';
+      throw new Error('Acesso restrito.');
     }
 
     const api = new ApiService(sessao.token);

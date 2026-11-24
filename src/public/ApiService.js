@@ -121,6 +121,16 @@ export default class ApiService {
      * @param {string} uri - URL do recurso para a requisição GET.
      * @returns {Promise<Object|Array>} Retorna o JSON obtido da resposta ou array vazio em caso de erro.
      */
+    /**
+     * Token vencido ou revogado: limpa a sessão e volta ao login, em vez de deixar a
+     * tela aberta mostrando listas vazias. Só vale para requisições autenticadas.
+     */
+    _tratarSessaoExpirada(response) {
+        if (response?.status !== 401 || !this.#token || typeof window === "undefined") return;
+        try { localStorage.removeItem("userData"); } catch { /* armazenamento indisponível */ }
+        window.location.href = "Login.html";
+    }
+
     async simpleGet(uri) {
         const fullUri = this._buildUrl(uri);
         console.log(`[ApiService] 🔍 simpleGet() iniciado para: ${fullUri}`);
@@ -148,6 +158,7 @@ export default class ApiService {
             const headers = this._getHeaders();
             const options = { method: "GET", headers };
             const response = await fetch(fullUri, options);
+            this._tratarSessaoExpirada(response);
             const jsonObj = await response.json();
             this._logRequest('GET', fullUri, options, response, jsonObj);
             return jsonObj;
@@ -201,6 +212,7 @@ export default class ApiService {
                 body: JSON.stringify(jsonObject)
             };
             const response = await fetch(fullUri, options);
+            this._tratarSessaoExpirada(response);
             const jsonObj = await response.json();
             this._logRequest('POST', fullUri, options, response, jsonObj);
             return jsonObj;
@@ -218,6 +230,7 @@ export default class ApiService {
             if (this.#token) headers["Authorization"] = `Bearer ${this.#token}`;
             const options = { method: "POST", headers, body: formData };
             const response = await fetch(fullUri, options);
+            this._tratarSessaoExpirada(response);
             const jsonObj = await response.json();
             this._logRequest('POST', fullUri, { method: "POST", headers }, response, jsonObj);
             return jsonObj;
@@ -273,12 +286,14 @@ export default class ApiService {
                 body: JSON.stringify(jsonObject)
             };
             const response = await fetch(fullUri, options);
+            this._tratarSessaoExpirada(response);
             const jsonObj = await response.json();
             this._logRequest('PUT', fullUri, options, response, jsonObj);
             return jsonObj;
         } catch (error) {
             this._logRequest('PUT', fullUri, { body: JSON.stringify(jsonObject) }, null, null, error);
-            return null;
+            // Mesmo formato de upload/delete: as telas leem `success` e `message` sem quebrar.
+            return { success: false, message: error.message || "Não foi possível salvar a alteração." };
         }
     }
 
@@ -299,6 +314,7 @@ export default class ApiService {
             const headers = this._getHeaders();
             const options = { method: "DELETE", headers };
             const response = await fetch(fullUri, options);
+            this._tratarSessaoExpirada(response);
 
             // 204 No Content → sucesso sem corpo
             if (response.status === 204) {

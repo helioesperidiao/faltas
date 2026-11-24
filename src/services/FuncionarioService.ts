@@ -5,6 +5,7 @@ import { Cargo } from "../models/Cargo";
 import { Funcionario } from "../models/Funcionario";
 import { ErrorResponse } from "../http/ErrorResponse";
 import { MeuTokenJWT } from "../http/MeuTokenJWT";
+import { JwtMiddleware } from "../middlewares/JwtMiddleware";
 import { cargoAceito, CARGO_INSPETOR, CARGO_PROCESSO_PEDAGOGICO } from "@/constants/Cargos";
 // NOVO: logger (padrão de logs)
 import { createLogger } from "../logging/Logger";
@@ -35,10 +36,9 @@ export class FuncionarioService {
     constructor(funcionarioDAODependency: FuncionarioDAO, cargoDAODependency: CargoDAO) {
         this._funcionarioDAO = funcionarioDAODependency;
         this._cargoDAO = cargoDAODependency;
-        // Inicializa o administrador padrão se não houver funcionários.
-        // O Server também chama initializeDefaultAdmin() no boot; a dupla chamada
-        // é idempotente (verifica count() > 0 antes de criar).
-        this.initializeDefaultAdmin();
+        // O administrador padrão é criado pelo Server.init(), com await, depois do
+        // initializeSchema(): assim o servidor só aceita login com o admin já gravado
+        // e a criação não disputa com a migração dos cargos.
     }
 
     /**
@@ -82,9 +82,13 @@ export class FuncionarioService {
         }
 
         // 4. Carrega dados do administrador a partir das variáveis de ambiente (ou fallback)
-        const adminName = process.env.DEFAULT_ADMIN_NAME || "Hélio Esperidião";
-        const adminEmail = process.env.DEFAULT_ADMIN_EMAIL || "helioesperidiao@gmail.com";
-        const adminPassword = process.env.DEFAULT_ADMIN_PASSWORD || "@Helio123456";
+        // Sem valores fixos no código: o primeiro acesso vem do .env (ver .env.example).
+        const adminName = process.env.DEFAULT_ADMIN_NAME || "Administrador";
+        const adminEmail = process.env.DEFAULT_ADMIN_EMAIL;
+        const adminPassword = process.env.DEFAULT_ADMIN_PASSWORD;
+        if (!adminEmail || !adminPassword) {
+            throw new Error("Defina DEFAULT_ADMIN_EMAIL e DEFAULT_ADMIN_PASSWORD no .env para criar o primeiro acesso (ver .env.example).");
+        }
         const adminValeTransporte = parseInt(process.env.DEFAULT_ADMIN_VALE_TRANSPORTE || "0", 10);
 
         // 5. Cria o usuário padrão com cargo Processo Pedagógico
@@ -133,6 +137,7 @@ export class FuncionarioService {
      */
     create = async (funcionario: Funcionario, funcionarioLogado: Funcionario): Promise<Funcionario> => {
         log.debug("create()", { email: funcionario.email });
+        FuncionarioService.exigirAcessoTotal(funcionarioLogado, "cadastrar funcionários");
 
         // Verifica se o cargo existe
         const cargoExiste = await this._cargoDAO.findByField("_id", funcionario.cargo.idCargo);
@@ -190,6 +195,10 @@ export class FuncionarioService {
             throw new ErrorResponse(401, "Usuário ou senha inválidos");
         }
 
+        if (funcionarioBanco.auditoria.deletadoEm) {
+            log.warn("login falhou", { email: funcionario.email, motivo: "funcionário excluído" });
+            throw new ErrorResponse(401, "Usuário ou senha inválidos");
+        }
         if (!cargoAceito(funcionarioBanco.cargo.nomeCargo)) {
             log.warn("login falhou", { email: funcionario.email, motivo: "cargo não aceito", cargo: funcionarioBanco.cargo.nomeCargo });
             throw new ErrorResponse(401, "Usuário ou senha inválidos");
@@ -252,6 +261,7 @@ export class FuncionarioService {
      */
     updateFuncionario = async (funcionario: Funcionario, funcionarioLogado: Funcionario): Promise<boolean> => {
         log.debug("updateFuncionario()", { idFuncionario: funcionario.idFuncionario });
+        FuncionarioService.exigirAcessoTotal(funcionarioLogado, "alterar funcionários");
 
         // Valida se o email já está em uso por outro funcionário
         if (funcionario.email) {
@@ -274,12 +284,19 @@ export class FuncionarioService {
             }
         }
 
+        // A senha nova é guardada com hash, como no cadastro; sem senha, a atual é mantida.
+        const senhaNova = (funcionario as any)._senha;
+        if (senhaNova) {
+            (funcionario as any)._senha = await bcrypt.hash(senhaNova, 12);
+        }
+
         // Registra auditoria: quem alterou
         funcionario.marcarAlteradoPor(funcionarioLogado.idFuncionario);
 
         // Persiste a atualização
         const atualizou = await this._funcionarioDAO.update(funcionario, funcionarioLogado);
         if (atualizou) {
+            JwtMiddleware.esquecerFuncionario(funcionario.idFuncionario);
             log.info("funcionário atualizado", {
                 idFuncionario: funcionario.idFuncionario,
                 atualizadoPor: funcionarioLogado.email,
@@ -299,11 +316,13 @@ export class FuncionarioService {
      */
     deleteFuncionario = async (funcionario: Funcionario, funcionarioLogado: Funcionario): Promise<boolean> => {
         log.debug("deleteFuncionario()", { idFuncionario: funcionario.idFuncionario });
+        FuncionarioService.exigirAcessoTotal(funcionarioLogado, "excluir funcionários");
 
         // Registra auditoria: quem deletou (soft delete)
         funcionario.marcarDeletadoPor(funcionarioLogado.idFuncionario);
         const excluiu = await this._funcionarioDAO.delete(funcionario, funcionarioLogado);
         if (excluiu) {
+            JwtMiddleware.esquecerFuncionario(funcionario.idFuncionario);
             log.info("funcionário excluído", {
                 idFuncionario: funcionario.idFuncionario,
                 excluidoPor: funcionarioLogado.email,
@@ -318,6 +337,16 @@ export class FuncionarioService {
      * @param _funcionarioLogado - Funcionário autenticado (não utilizado).
      * @returns Número total de funcionários.
      */
+    /** Funcionários é um módulo restrito: só Processo Pedagógico cadastra, altera ou exclui. */
+    private static exigirAcessoTotal(funcionarioLogado: Funcionario, acao: string): void {
+        if (funcionarioLogado.cargo.nomeCargo !== CARGO_PROCESSO_PEDAGOGICO) {
+            log.warn("operação em funcionários negada", { acao, cargoAtor: funcionarioLogado.cargo.nomeCargo });
+            throw new ErrorResponse(403, "Não autorizado", {
+                message: `O cargo "${funcionarioLogado.cargo.nomeCargo}" não pode ${acao}.`
+            });
+        }
+    }
+
     count = async (_funcionarioLogado: Funcionario): Promise<number> => {
         log.debug("count()");
         return await this._funcionarioDAO.count();

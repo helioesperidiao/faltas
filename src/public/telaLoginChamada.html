@@ -283,7 +283,7 @@
 
             <br>
 
-            <form id="form-login" onsubmit="return entrar();">
+            <form id="form-login" onsubmit="entrar(); return false;">
               <div class="msg-erro" id="msg-erro">Usuário ou senha inválidos. Tente novamente.</div>
 
               <div class="field">
@@ -378,7 +378,8 @@
 
   function esqueciSenha() {
     var toast = document.getElementById('toast');
-    toast.innerHTML = 'Instruções de recuperação enviadas para o seu e-mail cadastrado.';
+    // Não há recuperação por e-mail (docs/acesso.md): a senha é trocada no cadastro do funcionário.
+    toast.innerHTML = 'Procure o Processo Pedagógico para redefinir a senha no seu cadastro.';
     toast.style.display = 'block';
     setTimeout(function () {
       toast.style.display = 'none';

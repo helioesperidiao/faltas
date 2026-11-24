@@ -1,3 +1,4 @@
+import { ErrorResponse } from "../http/ErrorResponse";
 import { ObjectId } from "mongodb";
 import { Auditoria } from "./Auditoria";
 
@@ -54,10 +55,10 @@ export class Cargo {
      */
     set idCargo(value: string) {
         if (!value) {
-            throw new Error("idCargo é obrigatório.");
+            throw new ErrorResponse(400, "idCargo é obrigatório.");
         }
         if (!ObjectId.isValid(value)) {
-            throw new Error(`idCargo inválido: "${value}". Deve ser um ObjectId de 24 caracteres hexadecimais.`);
+            throw new ErrorResponse(400, `idCargo inválido: "${value}". Deve ser um ObjectId de 24 caracteres hexadecimais.`);
         }
         this._idCargo = value;
     }
@@ -91,14 +92,14 @@ export class Cargo {
      */
     set nomeCargo(value: string) {
         if (typeof value !== "string") {
-            throw new Error("nomeCargo deve ser uma string.");
+            throw new ErrorResponse(400, "nomeCargo deve ser uma string.");
         }
         const nome = value.trim();
         if (nome.length < 3) {
-            throw new Error("nomeCargo deve ter pelo menos 3 caracteres.");
+            throw new ErrorResponse(400, "nomeCargo deve ter pelo menos 3 caracteres.");
         }
         if (nome.length > 64) {
-            throw new Error("nomeCargo deve ter no máximo 64 caracteres.");
+            throw new ErrorResponse(400, "nomeCargo deve ter no máximo 64 caracteres.");
         }
         this._nomeCargo = nome;
     }

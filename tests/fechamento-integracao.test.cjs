@@ -65,6 +65,7 @@ after(async () => { await mongoClient?.close(); server?.kill(); mongo?.kill(); }
 test('fechamento, anexo e abono na API com banco isolado', async () => {
   const aluno = { matricula:'12345678', alunoNome:'Aluno Teste', turma:'1A', curso:'Teste', serie:'1', ano:'2026', paiEmail:'pai@example.test' };
   validar(await requisicao('POST','/api/v1/alunos',{ aluno }),201,'criar aluno');
+  await mongoClient.db('teste_isolado').collection('aluno').updateOne({ matricula: aluno.matricula }, { $set: { turmaInicioEm: new Date('2026-01-01T03:00:00Z') } });
   const gradeHorario = { turma:'1A', horaInicio:'07:00', horaFim:'07:50', dia:'Segunda-feira', cod:'MAT', disciplina:'Matemática' };
   validar(await requisicao('POST','/api/v1/gradehorarios',{gradeHorario}),201,'criar grade');
   const mov = { nomeAluno:aluno.alunoNome, matricula:aluno.matricula, data:'2026-11-16', horario:'07:50', tipo:'entrada', motivo:'atestado' };
@@ -97,6 +98,9 @@ test('fechamento, anexo e abono na API com banco isolado', async () => {
   assert.equal(chamada.falta,true); assert.equal(chamada.situacao,'Abonada');
   validar(await requisicao('PUT',`/api/v1/registros/${registroId}`,{registro:{falta:false,atrasado:'Não'}}),200,'corrigir chamada');
   chamada = validar(await requisicao('GET','/api/v1/registros/chamada?turma=1A&dia=2026-11-16'),200,'conferir chamada').registros[0];
+  assert.equal(chamada.falta,true); assert.equal(chamada.situacao,'Abonada');
+  validar(await requisicao('POST','/api/v1/registros',{registro:{...registro,falta:false}}),201,'reenvio da chamada abonada');
+  chamada = validar(await requisicao('GET','/api/v1/registros/chamada?turma=1A&dia=2026-11-16'),200,'conferir reenvio abonado').registros[0];
   assert.equal(chamada.falta,true); assert.equal(chamada.situacao,'Abonada');
   fechamento = validar(await requisicao('GET','/api/v1/relatorios/fechamento-dia?data=2026-11-16'),200,'fechamento abonado');
   assert.equal(fechamento.aulasFaltasDia.length,1); assert.equal(fechamento.aulasGeral.length,1); assert.equal(fechamento.aulasAtrasados.length,1);

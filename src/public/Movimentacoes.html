@@ -110,12 +110,16 @@
   </main>
   <script type="module">
     import ApiService from './ApiService.js';
-    import { montarTopbar, escaparHtml } from './js/Topbar.js';
+    import { exigirSessao, montarTopbar, escaparHtml } from './js/Topbar.js';
     import { montarControlesListagem } from './js/ControlesListagem.js';
 
-    const userData = JSON.parse(localStorage.getItem('userData') || 'null');
-    const token = userData?.data?.token || userData?.token;
-    if (!token) window.location.href = 'Login.html';
+    // Sem sessão volta ao login; exigirSessao não quebra com dado ausente ou corrompido.
+    const sessao = exigirSessao();
+    if (!sessao) {
+      // exigirSessao já redirecionou para o login; nada mais roda nesta página.
+      throw new Error('Sessão não encontrada.');
+    }
+    const token = sessao.token;
     montarTopbar('movimentacoes');
     const api = new ApiService(token);
     let alunos = [];

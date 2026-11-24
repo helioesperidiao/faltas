@@ -197,6 +197,11 @@ export class MongoDatabase {
         await Promise.all([
             db.collection("aluno").createIndex({ turma: 1, turmaInicioEm: 1 }),
             db.collection("registro").createIndex({ turma: 1, dia: 1, matricula: 1 }),
+            // Alertas e fechamento leem um período de todas as turmas; a chamada e os abonos
+            // procuram o registro de um aluno num dia.
+            db.collection("registro").createIndex({ dia: 1 }),
+            db.collection("registro").createIndex({ matricula: 1, dia: 1 }),
+            db.collection("aluno").createIndex({ "historicoTurmas.turma": 1 }),
             db.collection("abonos").createIndex({ turma: 1, dataInicio: 1 }),
             db.collection("movimentacao").createIndex({ data: 1, horario: -1 }),
             db.collection("gradeHorario").createIndex({ turma: 1, dia: 1, cod: 1 }),

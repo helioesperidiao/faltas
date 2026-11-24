@@ -58,11 +58,7 @@ export class FuncionarioRouter {
         return this._router;
     };
 
-    /**
-     * Exposto para o Server chamar `initializeDefaultAdmin()` no boot.
-     * ⚠️ Se seu FuncionarioService não tem `initializeDefaultAdmin`,
-     * remova este método e a chamada no Server.ts.
-     */
+    /** Exposto para o Server chamar `initializeDefaultAdmin()` no boot, depois do schema. */
     public getService = (): FuncionarioService => {
         return this._funcionarioService;
     };

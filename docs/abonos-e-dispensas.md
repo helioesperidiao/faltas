@@ -1,0 +1,23 @@
+# Abonos e dispensas
+
+## Abonos
+
+`Inspetor` e `Processo Pedagógico` solicitam e corrigem abonos; somente `Processo Pedagógico` aprova, rejeita e exclui. Ao aprovar, os registros ativos do aluno no período passam a falta `Abonada`. Elas ficam fora dos alertas e dos totais de faltas por turma, mas entram nos CSVs geral e de faltas do dia inteiro. O fechamento também considera um abono aprovado se a chamada ainda não foi gravada.
+
+A data final precisa ser igual ou posterior à inicial; um período invertido é recusado com `400`.
+
+Uma chamada lançada ou corrigida durante um abono aprovado mantém a falta como `Abonada`. Com dois abonos aprovados que cobrem o mesmo dia, excluir ou devolver para análise um deles mantém o dia abonado pelo outro.
+
+Como o MongoDB local não tem transações, a aprovação grava primeiro as faltas como `Abonada` e só depois o abono como `Aprovado`. Se a segunda etapa falhar, o abono continua `Pendente` e aprovar de novo conclui tudo.
+
+Corrigir um abono devolve-o para análise (`Pendente`) e mantém o atestado já anexado, porque a tela de correção não reenvia o arquivo. Se o abono estava aprovado, as faltas que ele havia convertido voltam para `Normal` até a nova aprovação. Excluir um abono aprovado faz o mesmo. Em ambos os casos, a falta já gravada é preservada e volta a ser contada normalmente. As datas da listagem são exibidas no mesmo dia do calendário em que foram gravadas.
+
+## Dispensas
+
+A dispensa vale para uma disciplina (`cod`), um aluno (`idAluno`, o identificador do cadastro) e um intervalo de datas (`dia` a `dataFim`). Os horários `horaInicio` e `horaFim` são horas inteiras de 0 a 23. Não há tela própria: as dispensas são cadastradas pela API `/api/v1/dispensas`. Por decisão do usuário (17/11/2026), a tela não será criada por enquanto.
+
+Como a chamada é geral, a dispensa é aplicada por disciplina nos cálculos: uma aula dispensada fica fora dos alertas bimestrais e do fechamento, enquanto as outras disciplinas do mesmo dia continuam contando. Se houver abono aprovado no dia, o fechamento inclui todas as aulas para cumprir a regra de falta abonada do dia inteiro. Corrigir uma dispensa sem enviar um novo anexo mantém o arquivo já enviado.
+
+## Anexos
+
+Atestados de abono e documentos de dispensa aceitam `.jpg`, `.jpeg` e `.pdf` de até 10 MB e são gravados em `uploads/abono` e `uploads/dispensa` com o identificador do registro como nome. O identificador da rota é validado antes de qualquer gravação: um valor que não seja um identificador válido, ou um arquivo de outro tipo, é recusado com `400`, e nenhum arquivo é gravado fora dessas pastas. Na tela de abonos, se o atestado não puder ser anexado, a mensagem avisa que o abono foi salvo sem o arquivo.

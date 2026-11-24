@@ -36,6 +36,18 @@ export class AlunoService {
             throw new ErrorResponse(400, "Já existe um aluno com esta matrícula");
         }
 
+        // Matrícula arquivada volta com o mesmo cadastro, histórico e registros (como na
+        // importação), em vez de virar um segundo aluno. Vale o arquivamento mais recente.
+        const arquivado = (await this._alunoDAO.findAllDeleted())
+            .filter(item => item.matricula === aluno.matricula)
+            .sort((a, b) => (b.auditoria.deletadoEm?.getTime() ?? 0) - (a.auditoria.deletadoEm?.getTime() ?? 0))[0];
+        if (arquivado && await this._alunoDAO.reativar(arquivado.idAluno, funcionarioLogado)) {
+            aluno.idAluno = arquivado.idAluno;
+            await this.update(aluno, funcionarioLogado);
+            log.info("aluno arquivado reativado pelo cadastro", { idAluno: arquivado.idAluno, matricula: aluno.matricula });
+            return (await this._alunoDAO.findById(arquivado.idAluno)) ?? aluno;
+        }
+
         const criado = await this._alunoDAO.create(aluno, funcionarioLogado);
         log.info("aluno criado", {
             idAluno: criado.idAluno,
@@ -55,6 +67,7 @@ export class AlunoService {
         criados: number;
         atualizados: number;
         arquivados: number;
+        reativados: number;
     }> => {
         if (funcionarioLogado.cargo.nomeCargo !== "Processo Pedagógico") {
             throw new ErrorResponse(403, "Não autorizado", {
@@ -75,11 +88,29 @@ export class AlunoService {
 
         const alunosAtivos = await this._alunoDAO.findAll();
         const alunosPorMatricula = new Map(alunosAtivos.map(aluno => [aluno.matricula, aluno]));
+        // Matrícula arquivada que volta na lista oficial é reativada, sem criar
+        // um segundo cadastro; vale o arquivamento mais recente de cada matrícula.
+        const arquivadosPorMatricula = new Map<string, Aluno>();
+        for (const arquivado of await this._alunoDAO.findAllDeleted()) {
+            const atual = arquivadosPorMatricula.get(arquivado.matricula);
+            const deletadoEm = arquivado.auditoria.deletadoEm?.getTime() ?? 0;
+            if (!atual || deletadoEm > (atual.auditoria.deletadoEm?.getTime() ?? 0)) {
+                arquivadosPorMatricula.set(arquivado.matricula, arquivado);
+            }
+        }
         let criados = 0;
         let atualizados = 0;
+        let reativados = 0;
 
         for (const alunoImportado of alunosImportados) {
-            const alunoExistente = alunosPorMatricula.get(alunoImportado.matricula);
+            let alunoExistente = alunosPorMatricula.get(alunoImportado.matricula);
+            if (!alunoExistente) {
+                const arquivado = arquivadosPorMatricula.get(alunoImportado.matricula);
+                if (arquivado && await this._alunoDAO.reativar(arquivado.idAluno, funcionarioLogado)) {
+                    alunoExistente = arquivado;
+                    reativados += 1;
+                }
+            }
             if (!alunoExistente) {
                 await this._alunoDAO.create(alunoImportado, funcionarioLogado);
                 criados += 1;
@@ -99,7 +130,7 @@ export class AlunoService {
             }
         }
 
-        return { criados, atualizados, arquivados };
+        return { criados, atualizados, arquivados, reativados };
     };
 
     public findAll = async (): Promise<Aluno[]> => {
@@ -122,7 +153,7 @@ export class AlunoService {
 
     public findByTurma = async (turma: string): Promise<Aluno[]> => {
         log.debug("findByTurma()", { turma });
-        return await this._alunoDAO.findByField("turma", turma);
+        return await this._alunoDAO.findAtivosPorTurma(turma);
     };
 
     public findAllDeleted = async (funcionarioLogado: Funcionario): Promise<Aluno[]> => {

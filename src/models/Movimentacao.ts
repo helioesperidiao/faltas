@@ -1,3 +1,4 @@
+import { ErrorResponse } from "../http/ErrorResponse";
 import { ObjectId } from "mongodb";
 import { Auditoria } from "./Auditoria";
 
@@ -21,39 +22,39 @@ export class Movimentacao {
 
     get idMovimentacao(): string { return this._idMovimentacao; }
     set idMovimentacao(value: string) {
-        if (!value || !ObjectId.isValid(value)) throw new Error("idMovimentacao inválido.");
+        if (!value || !ObjectId.isValid(value)) throw new ErrorResponse(400, "idMovimentacao inválido.");
         this._idMovimentacao = value;
     }
 
     get nomeAluno(): string { return this._nomeAluno; }
     set nomeAluno(value: string) {
-        if (typeof value !== "string" || !value.trim()) throw new Error("nomeAluno é obrigatório.");
+        if (typeof value !== "string" || !value.trim()) throw new ErrorResponse(400, "nomeAluno é obrigatório.");
         this._nomeAluno = value.trim();
     }
 
     get matricula(): string { return this._matricula; }
     set matricula(value: string) {
-        if (typeof value !== "string" || !value.trim()) throw new Error("matricula é obrigatória.");
+        if (typeof value !== "string" || !value.trim()) throw new ErrorResponse(400, "matricula é obrigatória.");
         this._matricula = value.trim();
     }
 
     get data(): Date { return this._data; }
     set data(value: Date) {
-        if (!(value instanceof Date) || isNaN(value.getTime())) throw new Error("data inválida.");
+        if (!(value instanceof Date) || isNaN(value.getTime())) throw new ErrorResponse(400, "data inválida.");
         this._data = value;
     }
 
     get horario(): string { return this._horario; }
     set horario(value: string) {
         if (typeof value !== "string" || !HORARIOS_MOVIMENTACAO.includes(value as typeof HORARIOS_MOVIMENTACAO[number])) {
-            throw new Error("horário inválido. Use um dos horários oficiais de entrada ou saída.");
+            throw new ErrorResponse(400, "horário inválido. Use um dos horários oficiais de entrada ou saída.");
         }
         this._horario = value;
     }
 
     get tipo(): TipoMovimentacao { return this._tipo; }
     set tipo(value: TipoMovimentacao) {
-        if (value !== "entrada" && value !== "saida") throw new Error("tipo deve ser entrada ou saida.");
+        if (value !== "entrada" && value !== "saida") throw new ErrorResponse(400, "tipo deve ser entrada ou saida.");
         this._tipo = value;
     }
 

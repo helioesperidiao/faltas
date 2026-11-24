@@ -35,7 +35,7 @@ cd faltas_cti
 
 3.2. Criar o arquivo .env
 
-Na raiz do projeto, crie um arquivo .env com o seguinte conteúdo:
+O .env não é versionado. Copie o modelo .env.example para .env e preencha os valores (veja docs/configuracao.md). O conteúdo é este:
 # Servidor
 PORT=8080
 
@@ -107,7 +107,7 @@ faltas_cti/
 
 7. HISTÓRICO DE TURMAS
 
-O sistema conserva por 12 meses o vínculo anterior de cada aluno ao trocar sua turma. A operação coletiva de virada anual está disponível em Alunos para o cargo Administrador. Consulte `docs/turmas-e-historico.md` para a regra de retenção e o efeito nos registros e relatórios.
+O sistema conserva por 12 meses o vínculo anterior de cada aluno ao trocar sua turma. A operação coletiva de virada anual está disponível em Alunos para o cargo Processo Pedagógico. Consulte `docs/turmas-e-historico.md` para a regra de retenção e o efeito nos registros e relatórios.
 
 8. IMPORTAÇÃO E EXPORTAÇÃO DE ARQUIVOS
 
@@ -127,7 +127,7 @@ No painel de `Processo Pedagógico`, o sistema avisa quando um aluno atinge o li
 
 12. CHAMADA E RELATÓRIOS
 
-A chamada registra presença como padrão e grava a turma completa ao ser concluída. A chamada apresenta as turmas da grade ativa; os relatórios usam as turmas dos alunos ativos. Consulte `docs/chamada-e-relatorios.md`.
+A chamada registra presença como padrão e grava a turma completa ao ser concluída. A chamada e os relatórios apresentam as turmas dos alunos ativos, vindas da planilha de alunos importada, cada uma uma única vez e com todos os seus alunos. Consulte `docs/chamada-e-relatorios.md`.
 
 13. FECHAMENTO DIÁRIO
 
@@ -140,3 +140,6 @@ As listagens possuem pesquisa com lupa e ordenação alfabética. As telas se ad
 15. ABONOS
 
 Abonos aprovados geram faltas no fechamento e podem ser exportados por período. Consulte `docs/abonos.md`.
+16. TESTES
+
+`npm test` roda os testes da tela de chamada. `npm run test:e2e` sobe o servidor num banco descartável (`faltas_teste_claude`) e percorre todos os fluxos pela API; requer o MongoDB em execução. Consulte `docs/testes.md`, os bugs corrigidos em `docs/BUG_AUDIT.md` e os itens em aberto em `docs/PENDENCIAS.md`.

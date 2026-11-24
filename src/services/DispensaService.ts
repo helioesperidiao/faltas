@@ -67,6 +67,14 @@ export class DispensaService {
     //update
     public update = async (dispensa: Dispensa, funcionarioLogado: Funcionario): Promise<boolean> => {
         log.debug("update()", { idDispensa: dispensa.idDispensa });
+        // Uma correção sem novo anexo mantém o arquivo já enviado.
+        if (!dispensa.nomeArquivo) {
+            const existente = await this._dispensaDAO.findById(dispensa.idDispensa);
+            if (!existente) {
+                return false;
+            }
+            dispensa.nomeArquivo = existente.nomeArquivo;
+        }
         const atualizou = await this._dispensaDAO.update(dispensa, funcionarioLogado);
         if (atualizou) {
             log.info("dispensa atualizada", {
